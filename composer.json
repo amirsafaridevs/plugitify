@@ -1,0 +1,19 @@
+{
+    "name": "plugifity/plugifity",
+    "description": "Plugifity is a AI powered plugin that allows administrators to create and manage their own plugins.",
+    "autoload": {
+        "psr-4": {
+            "Plugifity\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Amir Safari",
+            "email": "amir.safari.dev@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "require": {}
+}
