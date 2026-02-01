@@ -1,0 +1,21 @@
+# Dependencies
+/vendor/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+/tmp/
+/temp/
+
+# ============================================
+# Do NOT ignore .cursor – rules and config must be tracked in repo
+# ============================================
+!.cursor
+!.cursor/**
