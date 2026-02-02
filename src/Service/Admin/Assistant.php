@@ -166,23 +166,20 @@ class Assistant extends AbstractService
     public function addMenu(): void
     {
         add_menu_page(
-            esc_html__( 'Assistant', 'plugifity' ),
-            esc_html__( 'Assistant', 'plugifity' ),
+            esc_html__( 'Plugitify', 'plugifity' ),
+            esc_html__( 'Plugitify', 'plugifity' ),
             'manage_options',
             'plugitify-assistant',
             [ $this, 'renderPage' ],
-            'dashicons-superhero-alt',
+            'dashicons-admin-plugins',
             3
         );
 
-        add_submenu_page(
-            'plugitify-assistant',
-            esc_html__( 'Chat', 'plugifity' ),
-            esc_html__( 'Chat', 'plugifity' ),
-            'manage_options',
-            'plugitify-assistant',
-            [ $this, 'renderPage' ]
-        );
+        // Rename first submenu (Chat) - WordPress auto-creates first submenu with parent name
+        global $submenu;
+        if ( isset( $submenu['plugitify-assistant'][0] ) ) {
+            $submenu['plugitify-assistant'][0][0] = esc_html__( 'Chat', 'plugifity' );
+        }
 
         add_submenu_page(
             'plugitify-assistant',
