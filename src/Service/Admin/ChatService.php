@@ -255,13 +255,25 @@ class ChatService
             $this->flushOutput();
 
         } catch ( \Exception $e ) {
-            $this->logError( $e->getMessage(), [ 'chat_id' => $chatId ?? null, 'trace' => $e->getTraceAsString() ], 'CHAT_STREAM_ERROR', $e );
+            // Log to database with full context
+            $this->errorRepository->create( [
+                'message' => $e->getMessage(),
+                'context' => wp_json_encode( [
+                    'chat_id'    => $chatId ?? null,
+                    'user_msg'   => $userMessage ?? null,
+                    'trace'      => $e->getTraceAsString(),
+                ] ),
+                'code'    => 'STREAM_EXCEPTION',
+                'level'   => 'error',
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+            ] );
 
-            // Send error event
+            // Send error event to frontend (user-facing, safe message)
             echo "event: error\n";
             echo 'data: ' . wp_json_encode( [
-                'message' => __( 'Something went wrong. Please try again.', 'plugifity' ),
-                'details' => $e->getMessage(),
+                'message' => __( 'An error occurred while processing your request. Please check your settings and try again.', 'plugifity' ),
+                'code'    => 'STREAM_EXCEPTION',
             ] ) . "\n\n";
             $this->flushOutput();
         }
