@@ -724,30 +724,24 @@
       function onDone() {
         if (currentRequestCancelled) return;
         
-        // Check if we have a streaming message or still have thinking
-        var streamingMsg = document.getElementById(window.currentStreamingMsgId);
-        var thinkingEl = document.getElementById('thinking-msg');
+        console.log('[onDone] Finalizing message');
         
-        // If streaming message exists, finalize it
+        // Get streaming message (which was thinking before)
+        var streamingMsg = document.getElementById(window.currentStreamingMsgId);
+        
         if (streamingMsg) {
+          console.log('[onDone] Removing streaming class');
           streamingMsg.classList.remove('streaming');
           
-          // Move tasks from thinking to final message if needed
-          if (thinkingEl && tasks.length > 0) {
-            var thinkingTaskList = thinkingEl.querySelector('.task-list');
-            if (thinkingTaskList) {
-              var messageBody = streamingMsg.querySelector('.message-body');
-              if (messageBody && !messageBody.querySelector('.task-list')) {
-                // Clone and append task list
-                var clonedList = thinkingTaskList.cloneNode(true);
-                messageBody.appendChild(clonedList);
-              }
-            }
-          }
+          // Task list should already be in the message (we preserved it)
+          var taskList = streamingMsg.querySelector('.task-list');
+          console.log('[onDone] Task list in message:', taskList);
         }
         
-        // Remove thinking message
+        // Remove any leftover thinking message (shouldn't exist)
+        var thinkingEl = document.getElementById('thinking-msg');
         if (thinkingEl) {
+          console.log('[onDone] Removing leftover thinking element');
           thinkingEl.remove();
         }
         
