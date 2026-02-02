@@ -189,66 +189,48 @@ class ChatService
             echo 'data: ' . wp_json_encode( [ 'step' => __( 'Analyzing your request...', 'plugifity' ) ] ) . "\n\n";
             $this->flushOutput();
 
-            // Create agent and get workflow handler
+            // Create agent and get response
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
             $handler = $agent->chat( $messages );
             
-            // Use events() to track workflow progress
-            $fullContent = '';
-            $taskIndex = 0;
-            $tasksCreated = false;
+            // Get response message (blocking - waits for completion)
+            $responseMessage = $handler->getMessage();
+            $fullContent = $responseMessage->getContent() ?? '';
             
-            foreach ( $handler->events() as $event ) {
-                // Tool call event - create tasks and track progress
-                if ( $event instanceof \NeuronAI\Chat\Messages\ToolCallMessage ) {
-                    // First tool call - send task list
-                    if ( ! $tasksCreated ) {
-                        $tasks = [];
-                        foreach ( $event->getTools() as $tool ) {
-                            $tasks[] = [
+            // Check if tools were used by examining state
+            $state = $handler->run();
+            if ( method_exists( $state, 'getChatHistory' ) ) {
+                $chatHistory = $state->getChatHistory();
+                $toolCalls = [];
+                
+                // Extract tool calls from history
+                foreach ( $chatHistory->getMessages() as $msg ) {
+                    if ( $msg instanceof \NeuronAI\Chat\Messages\ToolCallMessage ) {
+                        foreach ( $msg->getTools() as $tool ) {
+                            $toolCalls[] = [
                                 'label' => $this->formatToolLabel( $tool->getName() ),
                             ];
                         }
-                        
-                        echo "event: task\n";
-                        echo 'data: ' . wp_json_encode( [ 'task' => [ 'action' => 'list', 'tasks' => $tasks ] ] ) . "\n\n";
-                        $this->flushOutput();
-                        $tasksCreated = true;
                     }
+                }
+                
+                // Send task list if tools were used
+                if ( count( $toolCalls ) > 0 ) {
+                    echo "event: task\n";
+                    echo 'data: ' . wp_json_encode( [ 'task' => [ 'action' => 'list', 'tasks' => $toolCalls ] ] ) . "\n\n";
+                    $this->flushOutput();
                     
-                    // Send start event for current tool
-                    foreach ( $event->getTools() as $tool ) {
+                    // Mark all as done (since they already executed)
+                    for ( $i = 0; $i < count( $toolCalls ); $i++ ) {
                         echo "event: task\n";
                         echo 'data: ' . wp_json_encode( [
                             'task' => [
-                                'action' => 'start',
-                                'index'  => $taskIndex,
+                                'action' => 'done',
+                                'index'  => $i,
                             ],
                         ] ) . "\n\n";
                         $this->flushOutput();
-                        
-                        echo "event: step\n";
-                        echo 'data: ' . wp_json_encode( [ 'step' => $this->formatToolLabel( $tool->getName() ) ] ) . "\n\n";
-                        $this->flushOutput();
                     }
-                }
-                
-                // Tool result event - mark as done
-                if ( $event instanceof \NeuronAI\Chat\Messages\ToolResultMessage ) {
-                    echo "event: task\n";
-                    echo 'data: ' . wp_json_encode( [
-                        'task' => [
-                            'action' => 'done',
-                            'index'  => $taskIndex,
-                        ],
-                    ] ) . "\n\n";
-                    $this->flushOutput();
-                    $taskIndex++;
-                }
-                
-                // Assistant message event - final response
-                if ( $event instanceof \NeuronAI\Chat\Messages\AssistantMessage ) {
-                    $fullContent = $event->getContent() ?? '';
                 }
             }
             
