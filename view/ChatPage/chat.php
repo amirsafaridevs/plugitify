@@ -3,6 +3,11 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 ?>
+<style>
+  #wpfooter{
+    display: none;
+  }
+</style>
 <div class="plugitify-chat-app app">
   <aside class="sidebar">
     <div class="sidebar-header">

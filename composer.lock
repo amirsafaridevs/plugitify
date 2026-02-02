@@ -402,12 +402,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/neuron-core/neuron-ai.git",
-                "reference": "61d44c999b2f01ec758d6d7b1eab8a14e1230925"
+                "reference": "1a9d62de54a1e6197a8d2bcd577553ecf64ac777"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/neuron-core/neuron-ai/zipball/61d44c999b2f01ec758d6d7b1eab8a14e1230925",
-                "reference": "61d44c999b2f01ec758d6d7b1eab8a14e1230925",
+                "url": "https://api.github.com/repos/neuron-core/neuron-ai/zipball/1a9d62de54a1e6197a8d2bcd577553ecf64ac777",
+                "reference": "1a9d62de54a1e6197a8d2bcd577553ecf64ac777",
                 "shasum": ""
             },
             "require": {
@@ -465,7 +465,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-02-01T09:16:36+00:00"
+            "time": "2026-02-02T12:41:45+00:00"
         },
         {
             "name": "psr/http-client",
