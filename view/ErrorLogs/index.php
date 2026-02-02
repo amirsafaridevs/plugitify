@@ -20,38 +20,35 @@ if ( ! defined( 'ABSPATH' ) ) {
     </h1>
 
     <div class="error-logs-header">
-        <div class="error-logs-stats-wrapper">
-            <div class="error-logs-stats">
-                <div class="error-stat">
-                    <span class="material-symbols-outlined">bug_report</span>
-                    <div class="error-stat-info">
-                        <span class="error-stat-value"><?php echo absint( $totalErrors ); ?></span>
-                        <span class="error-stat-label"><?php esc_html_e( 'Total Errors', 'plugifity' ); ?></span>
-                    </div>
-                </div>
-            </div>
-
+        <div class="error-logs-stats">
+            <span class="error-stat">
+                <span class="material-symbols-outlined">bug_report</span>
+                <?php
+                // translators: %d is the total number of errors
+                printf( esc_html__( 'Total: %d', 'plugifity' ), absint( $totalErrors ) );
+                ?>
+            </span>
             <?php if ( $totalErrors > 0 ): ?>
-                <button type="button" id="btn-clear-all-errors" class="button button-danger" data-nonce="<?php echo esc_attr( wp_create_nonce( 'plugitify_clear_errors' ) ); ?>">
+                <button type="button" id="btn-clear-all-errors" class="button button-link-delete">
                     <span class="material-symbols-outlined">delete_sweep</span>
-                    <?php esc_html_e( 'Clear All Errors', 'plugifity' ); ?>
+                    <?php esc_html_e( 'Clear All', 'plugifity' ); ?>
                 </button>
             <?php endif; ?>
         </div>
 
         <form method="get" action="" class="error-logs-filter">
             <input type="hidden" name="page" value="plugitify-error-logs" />
-            <label for="filter-level"><?php esc_html_e( 'Filter:', 'plugifity' ); ?></label>
+            <label for="filter-level"><?php esc_html_e( 'Filter by level:', 'plugifity' ); ?></label>
             <select name="level" id="filter-level" class="filter-select">
-                <option value=""><?php esc_html_e( 'All Levels', 'plugifity' ); ?></option>
+                <option value=""><?php esc_html_e( 'All', 'plugifity' ); ?></option>
                 <option value="error" <?php selected( $filterLevel, 'error' ); ?>><?php esc_html_e( 'Error', 'plugifity' ); ?></option>
                 <option value="warning" <?php selected( $filterLevel, 'warning' ); ?>><?php esc_html_e( 'Warning', 'plugifity' ); ?></option>
                 <option value="critical" <?php selected( $filterLevel, 'critical' ); ?>><?php esc_html_e( 'Critical', 'plugifity' ); ?></option>
             </select>
-            <button type="submit" class="button button-primary"><?php esc_html_e( 'Apply', 'plugifity' ); ?></button>
+            <button type="submit" class="button"><?php esc_html_e( 'Filter', 'plugifity' ); ?></button>
             <?php if ( $filterLevel ): ?>
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=plugitify-error-logs' ) ); ?>" class="button">
-                    <?php esc_html_e( 'Reset', 'plugifity' ); ?>
+                    <?php esc_html_e( 'Clear', 'plugifity' ); ?>
                 </a>
             <?php endif; ?>
         </form>
@@ -193,7 +190,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
                 const nonce = this.dataset.nonce;
                 this.disabled = true;
-                this.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> <?php echo esc_js( __( 'Deleting...', 'plugifity' ) ); ?>';
+                this.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> <?php echo esc_js( __( 'Clearing...', 'plugifity' ) ); ?>';
 
                 fetch('<?php echo esc_url( rest_url( 'plugitify/v1/errors/clear' ) ); ?>', {
                     method: 'POST',
@@ -211,7 +208,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     } else {
                         alert('<?php echo esc_js( __( 'Failed to clear errors. Please try again.', 'plugifity' ) ); ?>');
                         btnClearAll.disabled = false;
-                        btnClearAll.innerHTML = '<span class="material-symbols-outlined">delete_sweep</span> <?php echo esc_js( __( 'Clear All Errors', 'plugifity' ) ); ?>';
+                        btnClearAll.innerHTML = '<span class="material-symbols-outlined">delete_sweep</span> <?php echo esc_js( __( 'Clear All', 'plugifity' ) ); ?>';
                     }
                 })
                 .catch(function(error) {

@@ -284,10 +284,11 @@ class Assistant extends AbstractService
     public function restClearAllErrors( WP_REST_Request $request ): WP_REST_Response
     {
         $errorRepository = $this->getContainer()->get( 'error.repository' );
-        $result = $errorRepository->deleteAll();
+        $deletedCount = $errorRepository->deleteAll();
         
-        if ( $result ) {
-            return new WP_REST_Response( [ 'success' => true ], 200 );
+        // Success if no errors occurred (even if 0 rows deleted)
+        if ( $deletedCount >= 0 ) {
+            return new WP_REST_Response( [ 'success' => true, 'deleted' => $deletedCount ], 200 );
         }
         
         return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to clear errors', 'plugifity' ) ], 500 );

@@ -81,10 +81,13 @@ class ErrorRepository extends AbstractRepository
     /**
      * Delete all error logs.
      *
-     * @return bool
+     * @return int Number of rows deleted
      */
-    public function deleteAll(): bool
+    public function deleteAll(): int
     {
-        return $this->newQuery()->delete();
+        global $wpdb;
+        $table = $this->getTable();
+        $result = $wpdb->query( "DELETE FROM `{$table}`" );
+        return $result !== false ? (int) $result : 0;
     }
 }
