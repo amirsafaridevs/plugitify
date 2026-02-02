@@ -172,12 +172,7 @@ class ChatService
                 // Send chat_id event
                 echo "event: chat_id\n";
                 echo 'data: ' . wp_json_encode( [ 'chat_id' => $chatId ] ) . "\n\n";
-                if ( function_exists( 'fastcgi_finish_request' ) ) {
-                    flush();
-                } else {
-                    ob_flush();
-                    flush();
-                }
+                $this->flushOutput();
             }
 
             // Save user message
@@ -202,12 +197,7 @@ class ChatService
                 // Send chunk event
                 echo "event: chunk\n";
                 echo 'data: ' . wp_json_encode( [ 'text' => $chunk ] ) . "\n\n";
-                if ( function_exists( 'fastcgi_finish_request' ) ) {
-                    flush();
-                } else {
-                    ob_flush();
-                    flush();
-                }
+                $this->flushOutput();
             }
 
             // Save assistant message
@@ -220,12 +210,7 @@ class ChatService
             // Send done event
             echo "event: done\n";
             echo 'data: ' . wp_json_encode( [ 'success' => true ] ) . "\n\n";
-            if ( function_exists( 'fastcgi_finish_request' ) ) {
-                flush();
-            } else {
-                ob_flush();
-                flush();
-            }
+            $this->flushOutput();
 
         } catch ( \Exception $e ) {
             $this->logError( $e->getMessage(), [ 'chat_id' => $chatId ?? null, 'trace' => $e->getTraceAsString() ], 'CHAT_STREAM_ERROR', $e );
@@ -236,14 +221,24 @@ class ChatService
                 'message' => __( 'Something went wrong. Please try again.', 'plugifity' ),
                 'details' => $e->getMessage(),
             ] ) . "\n\n";
-            if ( function_exists( 'fastcgi_finish_request' ) ) {
-                flush();
-            } else {
-                ob_flush();
-                flush();
-            }
+            $this->flushOutput();
         }
 
         exit;
+    }
+
+    /**
+     * Flush output for SSE streaming (safe wrapper for ob_flush + flush).
+     */
+    private function flushOutput(): void
+    {
+        if ( function_exists( 'fastcgi_finish_request' ) ) {
+            flush();
+        } else {
+            if ( ob_get_level() > 0 ) {
+                ob_flush();
+            }
+            flush();
+        }
     }
 }
