@@ -243,9 +243,14 @@
         var decoder = new TextDecoder();
         var buffer = '';
 
+        var streamComplete = false;
         function processChunk() {
           reader.read().then(function (result) {
             if (result.done) {
+              // Stream ended
+              if (!streamComplete && onDone) {
+                onDone();
+              }
               return;
             }
 
@@ -267,9 +272,11 @@
                   } else if (currentEvent === 'chunk' && data.text) {
                     if (onChunk) onChunk(data.text);
                   } else if (currentEvent === 'done') {
+                    streamComplete = true;
                     if (onDone) onDone();
                     return;
                   } else if (currentEvent === 'error') {
+                    streamComplete = true;
                     var err = new Error(data.message || 'Stream error');
                     if (onError) onError(err);
                     return;
@@ -447,6 +454,16 @@
       function onChatId(chatId) {
         if (currentRequestCancelled) return;
         currentChatId = chatId;
+        // Add new chat to sidebar list
+        if (chatItems && chatListPlaceholder) {
+          chatListPlaceholder.style.display = 'none';
+          var chatHtml = '<li class="chat-item active" data-chat-id="' + chatId + '">' +
+            '<div class="chat-item-content">' +
+            '<div class="chat-title">New Chat</div>' +
+            '<div class="chat-preview"></div>' +
+            '</div></li>';
+          chatItems.insertAdjacentHTML('afterbegin', chatHtml);
+        }
       },
       function onDone() {
         if (currentRequestCancelled) return;
