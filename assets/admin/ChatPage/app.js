@@ -31,8 +31,9 @@
       hour: '2-digit',
       minute: '2-digit',
     });
+    const dir = detectTextDirection(text);
     const html = `
-      <div class="message user" role="listitem">
+      <div class="message user" role="listitem" dir="${dir}">
         <div class="message-avatar" aria-hidden="true">
           <span class="material-symbols-outlined">person</span>
         </div>
