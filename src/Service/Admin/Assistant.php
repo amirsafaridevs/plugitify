@@ -199,7 +199,7 @@ class Assistant extends AbstractService
         $app->enqueueStyle( 'plugitify-admin-menu', 'admin/menu.css', [], 'admin' );
 
         // Load Material Symbols only on plugin pages
-        if ( $hook === 'toplevel_page_plugitify-assistant' || $hook === 'assistant_page_plugitify-error-logs' ) {
+        if ( $hook === 'toplevel_page_plugitify-assistant' || $hook === 'plugitify_page_plugitify-error-logs' ) {
             $app->enqueueExternalStyle(
                 'material-symbols-outlined',
                 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0',
@@ -234,7 +234,7 @@ class Assistant extends AbstractService
         }
 
         // Load Error Logs assets only on Error Logs page
-        if ( $hook === 'assistant_page_plugitify-error-logs' ) {
+        if ( $hook === 'plugitify_page_plugitify-error-logs' ) {
             $app->enqueueStyle(
                 'plugitify-error-logs',
                 'admin/ErrorLogs/style.css',
