@@ -499,38 +499,26 @@
         if (currentRequestCancelled) return;
         console.log('[Task]', task);
         
-        // If this is a new task list, store it
+        // If this is a new task list, create it in thinking message
         if (task.action === 'list' && task.tasks) {
           tasks = task.tasks;
           currentTaskIndex = -1;
-        }
-        // If task starts, update index and show current step
-        else if (task.action === 'start' && task.index !== undefined) {
-          currentTaskIndex = task.index;
-          if (tasks[currentTaskIndex]) {
-            updateThinkingStep(tasks[currentTaskIndex].label);
-          }
-        }
-        // If task completes, mark it as done
-        else if (task.action === 'done' && task.index !== undefined) {
-          // Will be shown in final message with task list
-        }
-      },
-      function onDone() {
-        if (currentRequestCancelled) return;
-        var streamingMsg = document.getElementById(window.currentStreamingMsgId);
-        if (streamingMsg) {
-          streamingMsg.classList.remove('streaming');
           
-          // Add tasks if any
-          if (tasks.length > 0) {
-            var messageBody = streamingMsg.querySelector('.message-body');
+          // Add task list to thinking message
+          var thinkingEl = document.getElementById('thinking-msg');
+          if (thinkingEl) {
+            var messageBody = thinkingEl.querySelector('.message-bubble');
             if (messageBody) {
+              // Remove old task list if exists
+              var oldList = messageBody.querySelector('.task-list');
+              if (oldList) oldList.remove();
+              
+              // Create new task list (all pending)
               var tasksHtml = '<ul class="task-list" data-task-list>';
-              tasks.forEach(function (t) {
+              tasks.forEach(function (t, idx) {
                 tasksHtml +=
-                  '<li class="task-item done">' +
-                  '<span class="material-symbols-outlined task-icon">check_circle</span>' +
+                  '<li class="task-item" data-task-index="' + idx + '">' +
+                  '<span class="material-symbols-outlined task-icon">radio_button_unchecked</span>' +
                   '<span class="task-label">' + escapeHtml(t.label) + '</span></li>';
               });
               tasksHtml += '</ul>';
@@ -538,6 +526,62 @@
             }
           }
         }
+        // If task starts, update current step and mark as running
+        else if (task.action === 'start' && task.index !== undefined) {
+          currentTaskIndex = task.index;
+          if (tasks[currentTaskIndex]) {
+            updateThinkingStep(tasks[currentTaskIndex].label);
+            
+            // Update task item to running (change icon to pending)
+            var taskItem = document.querySelector('.task-item[data-task-index="' + task.index + '"]');
+            if (taskItem) {
+              var icon = taskItem.querySelector('.task-icon');
+              if (icon) icon.textContent = 'pending';
+              taskItem.classList.add('running');
+            }
+          }
+        }
+        // If task completes, mark it as done
+        else if (task.action === 'done' && task.index !== undefined) {
+          var taskItem = document.querySelector('.task-item[data-task-index="' + task.index + '"]');
+          if (taskItem) {
+            var icon = taskItem.querySelector('.task-icon');
+            if (icon) icon.textContent = 'check_circle';
+            taskItem.classList.remove('running');
+            taskItem.classList.add('done');
+          }
+        }
+      },
+      function onDone() {
+        if (currentRequestCancelled) return;
+        
+        // Check if we have a streaming message or still have thinking
+        var streamingMsg = document.getElementById(window.currentStreamingMsgId);
+        var thinkingEl = document.getElementById('thinking-msg');
+        
+        // If streaming message exists, finalize it
+        if (streamingMsg) {
+          streamingMsg.classList.remove('streaming');
+          
+          // Move tasks from thinking to final message if needed
+          if (thinkingEl && tasks.length > 0) {
+            var thinkingTaskList = thinkingEl.querySelector('.task-list');
+            if (thinkingTaskList) {
+              var messageBody = streamingMsg.querySelector('.message-body');
+              if (messageBody && !messageBody.querySelector('.task-list')) {
+                // Clone and append task list
+                var clonedList = thinkingTaskList.cloneNode(true);
+                messageBody.appendChild(clonedList);
+              }
+            }
+          }
+        }
+        
+        // Remove thinking message
+        if (thinkingEl) {
+          thinkingEl.remove();
+        }
+        
         setLoading(false);
         userInput.focus();
       },
