@@ -223,10 +223,11 @@
 
   /**
    * Send chat message with streaming (SSE).
-   * Calls onChunk(text) for each chunk, onChatId(id) when chat_id arrives, onDone() when complete.
+   * Calls onChunk(text) for each chunk, onChatId(id) when chat_id arrives, 
+   * onTask(task) for tasks, onDone() when complete.
    * Throws on error.
    */
-  function sendChatMessageStream(messageText, onChunk, onChatId, onDone, onError) {
+  function sendChatMessageStream(messageText, onChunk, onChatId, onTask, onDone, onError) {
     var restUrl = typeof plugitifyChat !== 'undefined' ? (plugitifyChat.restUrl || '') : '';
     var restNonce = typeof plugitifyChat !== 'undefined' ? (plugitifyChat.nonce || '') : '';
     if (!restUrl || !restNonce) {
@@ -282,6 +283,9 @@
                   } else if (currentEvent === 'step' && data.step) {
                     console.log('[SSE] Current step:', data.step);
                     updateThinkingStep(data.step);
+                  } else if (currentEvent === 'task' && data.task) {
+                    console.log('[SSE] Task event:', data.task);
+                    if (onTask) onTask(data.task);
                   } else if (currentEvent === 'chunk' && data.text) {
                     console.log('[SSE] Received chunk:', data.text);
                     if (onChunk) onChunk(data.text);
@@ -436,6 +440,8 @@
     
     var fullText = '';
     var hasStartedStreaming = false;
+    var tasks = [];
+    var currentTaskIndex = -1;
 
     sendChatMessageStream(
       text,
@@ -487,6 +493,27 @@
             '<div class="chat-preview"></div>' +
             '</div></li>';
           chatItems.insertAdjacentHTML('afterbegin', chatHtml);
+        }
+      },
+      function onTask(task) {
+        if (currentRequestCancelled) return;
+        console.log('[Task]', task);
+        
+        // If this is a new task list, store it
+        if (task.action === 'list' && task.tasks) {
+          tasks = task.tasks;
+          currentTaskIndex = -1;
+        }
+        // If task starts, update index and show current step
+        else if (task.action === 'start' && task.index !== undefined) {
+          currentTaskIndex = task.index;
+          if (tasks[currentTaskIndex]) {
+            updateThinkingStep(tasks[currentTaskIndex].label);
+          }
+        }
+        // If task completes, mark it as done
+        else if (task.action === 'done' && task.index !== undefined) {
+          // Will be shown in final message with task list
         }
       },
       function onDone() {
