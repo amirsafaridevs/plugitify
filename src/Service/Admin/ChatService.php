@@ -203,8 +203,8 @@ class ChatService
                 $chatHistory = $state->getChatHistory();
                 $toolCalls = [];
                 
-                // Extract tool calls from history
-                foreach ( $chatHistory->all() as $msg ) {
+                // Extract tool calls from history (use getMessages() not all())
+                foreach ( $chatHistory->getMessages() as $msg ) {
                     if ( $msg instanceof \NeuronAI\Chat\Messages\ToolCallMessage ) {
                         foreach ( $msg->getTools() as $tool ) {
                             $toolCalls[] = [
