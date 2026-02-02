@@ -193,49 +193,48 @@ class Assistant extends AbstractService
         // Load menu CSS globally in admin
         $app->enqueueStyle( 'plugitify-admin-menu', 'admin/menu.css', [], 'admin' );
 
-        // Load Material Symbols for both Chat and Error Logs pages
-        $app->enqueueExternalStyle(
-            'material-symbols-outlined',
-            'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0',
-            [],
-            'admin_page:toplevel_page_plugitify-assistant,admin_page:assistant_page_plugitify-error-logs'
-        );
+        // Load Material Symbols only on plugin pages
+        if ( $hook === 'toplevel_page_plugitify-assistant' || $hook === 'assistant_page_plugitify-error-logs' ) {
+            $app->enqueueExternalStyle(
+                'material-symbols-outlined',
+                'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0',
+                []
+            );
+        }
 
         // Load ChatPage assets only on Chat page
-        $app->enqueueStyle(
-            'plugitify-chat',
-            'admin/ChatPage/style.css',
-            [ 'material-symbols-outlined' ],
-            'admin_page:toplevel_page_plugitify-assistant'
-        );
-        $app->enqueueScript(
-            'plugitify-chat',
-            'admin/ChatPage/app.js',
-            [],
-            true,
-            'admin_page:toplevel_page_plugitify-assistant'
-        );
-        $app->enqueueScript(
-            'plugitify-chat-mobile',
-            'admin/ChatPage/mobile.js',
-            [ 'plugitify-chat' ],
-            true,
-            'admin_page:toplevel_page_plugitify-assistant'
-        );
-
-        // Load Error Logs assets only on Error Logs page
-        $app->enqueueStyle(
-            'plugitify-error-logs',
-            'admin/ErrorLogs/style.css',
-            [ 'material-symbols-outlined' ],
-            'admin_page:assistant_page_plugitify-error-logs'
-        );
-
         if ( $hook === 'toplevel_page_plugitify-assistant' ) {
+            $app->enqueueStyle(
+                'plugitify-chat',
+                'admin/ChatPage/style.css',
+                [ 'material-symbols-outlined' ]
+            );
+            $app->enqueueScript(
+                'plugitify-chat',
+                'admin/ChatPage/app.js',
+                [],
+                true
+            );
+            $app->enqueueScript(
+                'plugitify-chat-mobile',
+                'admin/ChatPage/mobile.js',
+                [ 'plugitify-chat' ],
+                true
+            );
+
             wp_localize_script( 'plugitify-chat', 'plugitifyChat', [
                 'restUrl' => rest_url( self::REST_NAMESPACE ),
                 'nonce'   => wp_create_nonce( 'wp_rest' ),
             ] );
+        }
+
+        // Load Error Logs assets only on Error Logs page
+        if ( $hook === 'assistant_page_plugitify-error-logs' ) {
+            $app->enqueueStyle(
+                'plugitify-error-logs',
+                'admin/ErrorLogs/style.css',
+                [ 'material-symbols-outlined' ]
+            );
         }
     }
 
