@@ -20,6 +20,8 @@ use NeuronAI\HttpClient\GuzzleHttpClient;
  */
 class CustomGuzzleHttpClient extends GuzzleHttpClient
 {
+	private bool $verifySSL = false;
+
 	/**
 	 * @param array<string,mixed> $customHeaders
 	 */
@@ -28,9 +30,10 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 		float $timeout = 30.0,
 		float $connectTimeout = 10.0,
 		?HandlerStack $handler = null,
-		private readonly bool $verifySSL = false
+		bool $verifySSL = false
 	) {
 		parent::__construct( $customHeaders, $timeout, $connectTimeout, $handler );
+		$this->verifySSL = $verifySSL;
 	}
 
 	/**
@@ -42,8 +45,11 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 			'verify' => $this->verifySSL,
 		];
 
-		// Get base URI if set (via reflection since baseUri is protected)
-		$reflection = new \ReflectionClass( parent::class );
+		// Get parent class properties via reflection
+		$parentClass = get_parent_class( $this );
+		$reflection = new \ReflectionClass( $parentClass );
+
+		// Get base URI
 		$baseUriProperty = $reflection->getProperty( 'baseUri' );
 		$baseUriProperty->setAccessible( true );
 		$baseUri = $baseUriProperty->getValue( $this );
@@ -52,7 +58,7 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 			$config['base_uri'] = rtrim( $baseUri, '/' ) . '/';
 		}
 
-		// Get handler if set (via reflection)
+		// Get handler
 		$handlerProperty = $reflection->getProperty( 'handler' );
 		$handlerProperty->setAccessible( true );
 		$handler = $handlerProperty->getValue( $this );
@@ -67,7 +73,7 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 	/**
 	 * Override withBaseUri to return CustomGuzzleHttpClient instance.
 	 */
-	public function withBaseUri( string $baseUri ): CustomGuzzleHttpClient
+	public function withBaseUri( string $baseUri ): self
 	{
 		$new = new self(
 			$this->getCustomHeaders(),
@@ -77,11 +83,8 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 			$this->verifySSL
 		);
 		
-		// Set baseUri via reflection (protected property)
-		$reflection = new \ReflectionClass( parent::class );
-		$baseUriProperty = $reflection->getProperty( 'baseUri' );
-		$baseUriProperty->setAccessible( true );
-		$baseUriProperty->setValue( $new, $baseUri );
+		// Set baseUri via reflection
+		$this->setBaseUriOnInstance( $new, $baseUri );
 		
 		return $new;
 	}
@@ -89,7 +92,7 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 	/**
 	 * Override withHeaders to return CustomGuzzleHttpClient instance.
 	 */
-	public function withHeaders( array $headers ): CustomGuzzleHttpClient
+	public function withHeaders( array $headers ): self
 	{
 		$new = new self(
 			[ ...$this->getCustomHeaders(), ...$headers ],
@@ -100,11 +103,8 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 		);
 		
 		// Preserve baseUri
-		$reflection = new \ReflectionClass( parent::class );
-		$baseUriProperty = $reflection->getProperty( 'baseUri' );
-		$baseUriProperty->setAccessible( true );
-		$baseUri = $baseUriProperty->getValue( $this );
-		$baseUriProperty->setValue( $new, $baseUri );
+		$baseUri = $this->getBaseUri();
+		$this->setBaseUriOnInstance( $new, $baseUri );
 		
 		return $new;
 	}
@@ -112,7 +112,7 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 	/**
 	 * Override withTimeout to return CustomGuzzleHttpClient instance.
 	 */
-	public function withTimeout( float $timeout ): CustomGuzzleHttpClient
+	public function withTimeout( float $timeout ): self
 	{
 		$new = new self(
 			$this->getCustomHeaders(),
@@ -123,11 +123,8 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 		);
 		
 		// Preserve baseUri
-		$reflection = new \ReflectionClass( parent::class );
-		$baseUriProperty = $reflection->getProperty( 'baseUri' );
-		$baseUriProperty->setAccessible( true );
-		$baseUri = $baseUriProperty->getValue( $this );
-		$baseUriProperty->setValue( $new, $baseUri );
+		$baseUri = $this->getBaseUri();
+		$this->setBaseUriOnInstance( $new, $baseUri );
 		
 		return $new;
 	}
@@ -143,35 +140,55 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 		);
 	}
 
+	private function getParentReflection(): \ReflectionClass
+	{
+		static $reflection = null;
+		if ( $reflection === null ) {
+			$parentClass = get_parent_class( $this );
+			$reflection = new \ReflectionClass( $parentClass );
+		}
+		return $reflection;
+	}
+
 	private function getCustomHeaders(): array
 	{
-		$reflection = new \ReflectionClass( parent::class );
-		$property = $reflection->getProperty( 'customHeaders' );
+		$property = $this->getParentReflection()->getProperty( 'customHeaders' );
 		$property->setAccessible( true );
 		return $property->getValue( $this );
 	}
 
 	private function getTimeout(): float
 	{
-		$reflection = new \ReflectionClass( parent::class );
-		$property = $reflection->getProperty( 'timeout' );
+		$property = $this->getParentReflection()->getProperty( 'timeout' );
 		$property->setAccessible( true );
 		return $property->getValue( $this );
 	}
 
 	private function getConnectTimeout(): float
 	{
-		$reflection = new \ReflectionClass( parent::class );
-		$property = $reflection->getProperty( 'connectTimeout' );
+		$property = $this->getParentReflection()->getProperty( 'connectTimeout' );
 		$property->setAccessible( true );
 		return $property->getValue( $this );
 	}
 
 	private function getHandler(): ?HandlerStack
 	{
-		$reflection = new \ReflectionClass( parent::class );
-		$property = $reflection->getProperty( 'handler' );
+		$property = $this->getParentReflection()->getProperty( 'handler' );
 		$property->setAccessible( true );
 		return $property->getValue( $this );
+	}
+
+	private function getBaseUri(): string
+	{
+		$property = $this->getParentReflection()->getProperty( 'baseUri' );
+		$property->setAccessible( true );
+		return $property->getValue( $this );
+	}
+
+	private function setBaseUriOnInstance( self $instance, string $baseUri ): void
+	{
+		$property = $this->getParentReflection()->getProperty( 'baseUri' );
+		$property->setAccessible( true );
+		$property->setValue( $instance, $baseUri );
 	}
 }
