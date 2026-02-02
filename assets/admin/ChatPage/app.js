@@ -60,11 +60,20 @@
               <span></span><span></span><span></span>
             </div>
           </div>
+          <div class="thinking-current-step" id="thinking-current-step" data-current-step></div>
         </div>
       </div>
     `;
     messagesEl.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
+  }
+
+  function updateThinkingStep(stepText) {
+    var stepEl = document.getElementById('thinking-current-step');
+    if (stepEl && stepText) {
+      stepEl.textContent = stepText;
+      stepEl.style.display = 'block';
+    }
   }
 
   /**
@@ -270,6 +279,9 @@
                     console.log('[SSE] Received chat_id:', data.chat_id);
                     currentChatId = data.chat_id;
                     if (onChatId) onChatId(data.chat_id);
+                  } else if (currentEvent === 'step' && data.step) {
+                    console.log('[SSE] Current step:', data.step);
+                    updateThinkingStep(data.step);
                   } else if (currentEvent === 'chunk' && data.text) {
                     console.log('[SSE] Received chunk:', data.text);
                     if (onChunk) onChunk(data.text);
@@ -419,37 +431,45 @@
     currentRequestCancelled = false;
     userInput.value = '';
     addUserMessage(text);
-    
-    // Add streaming message (starts empty)
-    var time = new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    var streamingMsgId = 'streaming-msg-' + Date.now();
-    var html =
-      '<div class="message assistant streaming" id="' + streamingMsgId + '" role="listitem">' +
-      '<div class="message-avatar" aria-hidden="true">' +
-      '<span class="material-symbols-outlined">auto_awesome</span>' +
-      '</div>' +
-      '<div class="message-body">' +
-      '<div class="message-bubble">' +
-      '<div class="message-text" id="' + streamingMsgId + '-text"></div>' +
-      '<div class="message-time">' + time + '</div>' +
-      '</div>' +
-      '</div></div>';
-    messagesEl.insertAdjacentHTML('beforeend', html);
-    messagesEl.classList.add('has-messages');
-    scrollToBottom();
-
+    addThinkingMessage();
     setLoading(true);
-    var streamingTextEl = document.getElementById(streamingMsgId + '-text');
+    
     var fullText = '';
+    var hasStartedStreaming = false;
 
     sendChatMessageStream(
       text,
       function onChunk(chunk) {
         if (currentRequestCancelled) return;
+        
+        // Replace thinking with streaming message on first chunk
+        if (!hasStartedStreaming) {
+          hasStartedStreaming = true;
+          var thinkingEl = document.getElementById('thinking-msg');
+          if (thinkingEl) {
+            var time = new Date().toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            var streamingMsgId = 'streaming-msg-' + Date.now();
+            var html =
+              '<div class="message assistant streaming" id="' + streamingMsgId + '" role="listitem">' +
+              '<div class="message-avatar" aria-hidden="true">' +
+              '<span class="material-symbols-outlined">auto_awesome</span>' +
+              '</div>' +
+              '<div class="message-body">' +
+              '<div class="message-bubble">' +
+              '<div class="message-text" id="' + streamingMsgId + '-text"></div>' +
+              '<div class="message-time">' + time + '</div>' +
+              '</div>' +
+              '</div></div>';
+            thinkingEl.outerHTML = html;
+            window.currentStreamingMsgId = streamingMsgId;
+          }
+        }
+        
         fullText += chunk;
+        var streamingTextEl = document.getElementById(window.currentStreamingMsgId + '-text');
         if (streamingTextEl) {
           streamingTextEl.textContent = fullText;
           scrollToBottom();
@@ -471,7 +491,7 @@
       },
       function onDone() {
         if (currentRequestCancelled) return;
-        var streamingMsg = document.getElementById(streamingMsgId);
+        var streamingMsg = document.getElementById(window.currentStreamingMsgId);
         if (streamingMsg) {
           streamingMsg.classList.remove('streaming');
         }
@@ -481,22 +501,7 @@
       function onError(err) {
         if (currentRequestCancelled) return;
         var msg = (err && err.message) ? err.message : 'Something went wrong. Try again or check Settings.';
-        var streamingMsg = document.getElementById(streamingMsgId);
-        if (streamingMsg) {
-          streamingMsg.outerHTML =
-            '<div class="message assistant msg-error" role="listitem" data-assistant-message="" data-error-message="">' +
-            '<div class="message-avatar" aria-hidden="true">' +
-            '<span class="material-symbols-outlined">error</span>' +
-            '</div>' +
-            '<div class="message-bubble">' +
-            '<div class="error-header">' +
-            '<span class="material-symbols-outlined">error</span>' +
-            '<span class="error-title">Something went wrong</span>' +
-            '</div>' +
-            '<div class="error-body">' + escapeHtml(msg) + '</div>' +
-            '<div class="message-time">' + time + '</div>' +
-            '</div></div>';
-        }
+        replaceThinkingWithReply(msg, null, null, true);
         setLoading(false);
         userInput.focus();
       }

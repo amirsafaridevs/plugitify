@@ -184,11 +184,21 @@ class ChatService
             $history = $this->messageRepository->getByChatId( $chatId );
             $messages = $this->buildNeuronMessages( $history );
 
+            // Send processing step
+            echo "event: step\n";
+            echo 'data: ' . wp_json_encode( [ 'step' => __( 'Processing your request...', 'plugifity' ) ] ) . "\n\n";
+            $this->flushOutput();
+
             // Get response (chat instead of stream for now until we fix streaming)
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
             $handler = $agent->chat( $messages );
             $responseMessage = $handler->getMessage();
             $fullContent = $responseMessage->getContent() ?? '';
+            
+            // Send generating step
+            echo "event: step\n";
+            echo 'data: ' . wp_json_encode( [ 'step' => __( 'Generating response...', 'plugifity' ) ] ) . "\n\n";
+            $this->flushOutput();
             
             // Simulate streaming by sending content in chunks (word by word)
             $words = preg_split( '/(\s+)/u', $fullContent, -1, PREG_SPLIT_DELIM_CAPTURE );
