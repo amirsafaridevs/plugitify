@@ -609,17 +609,23 @@
         
         // If this is a new task list, create it in thinking message
         if (task.action === 'list' && task.tasks) {
+          console.log('[Task] Creating task list with', task.tasks.length, 'tasks');
           tasks = task.tasks;
           currentTaskIndex = -1;
           
           // Add task list to thinking message
           var thinkingEl = document.getElementById('thinking-msg');
+          console.log('[Task] thinking-msg element:', thinkingEl);
           if (thinkingEl) {
             var messageBody = thinkingEl.querySelector('.message-bubble');
+            console.log('[Task] message-bubble element:', messageBody);
             if (messageBody) {
               // Remove old task list if exists
               var oldList = messageBody.querySelector('.task-list');
-              if (oldList) oldList.remove();
+              if (oldList) {
+                console.log('[Task] Removing old task list');
+                oldList.remove();
+              }
               
               // Create new task list (all pending)
               var tasksHtml = '<ul class="task-list" data-task-list>';
@@ -630,8 +636,14 @@
                   '<span class="task-label">' + escapeHtml(t.label) + '</span></li>';
               });
               tasksHtml += '</ul>';
+              console.log('[Task] Inserting task list HTML:', tasksHtml.substring(0, 100) + '...');
               messageBody.insertAdjacentHTML('beforeend', tasksHtml);
+              console.log('[Task] Task list inserted successfully');
+            } else {
+              console.warn('[Task] message-bubble not found inside thinking-msg!');
             }
+          } else {
+            console.warn('[Task] thinking-msg element not found!');
           }
         }
         // If task starts, update current step and mark as running
