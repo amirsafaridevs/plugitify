@@ -278,29 +278,31 @@
                 try {
                   var data = JSON.parse(dataStr);
                   if (currentEvent === 'chat_id' && data.chat_id) {
-                    console.log('[SSE] Received chat_id:', data.chat_id);
+                    console.log('[SSE] ✅ Received chat_id:', data.chat_id);
                     currentChatId = data.chat_id;
                     if (onChatId) onChatId(data.chat_id);
                   } else if (currentEvent === 'step' && data.step) {
-                    console.log('[SSE] Current step:', data.step);
+                    console.log('[SSE] 🔄 Current step:', data.step);
                     updateThinkingStep(data.step);
                   } else if (currentEvent === 'task' && data.task) {
-                    console.log('[SSE] Task event:', data.task);
+                    console.log('[SSE] 📋 Task event:', JSON.stringify(data.task));
                     if (onTask) onTask(data.task);
                   } else if (currentEvent === 'chunk' && data.text) {
-                    console.log('[SSE] Received chunk:', data.text);
+                    console.log('[SSE] 📝 Received chunk (length=' + data.text.length + '):', data.text.substring(0, 50));
                     if (onChunk) onChunk(data.text);
                   } else if (currentEvent === 'done') {
-                    console.log('[SSE] Stream done');
+                    console.log('[SSE] ✅ Stream done');
                     streamComplete = true;
                     if (onDone) onDone();
                     return;
                   } else if (currentEvent === 'error') {
-                    console.error('[SSE] Stream error:', data);
+                    console.error('[SSE] ❌ Stream error:', data);
                     streamComplete = true;
                     var err = new Error(data.message || 'Stream error');
                     if (onError) onError(err);
                     return;
+                  } else {
+                    console.warn('[SSE] ⚠️ Unknown event:', currentEvent, 'data:', dataStr);
                   }
                 } catch (e) {
                   console.error('Failed to parse SSE data:', dataStr, e);
