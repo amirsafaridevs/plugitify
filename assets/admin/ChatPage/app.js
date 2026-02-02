@@ -521,6 +521,22 @@
         var streamingMsg = document.getElementById(window.currentStreamingMsgId);
         if (streamingMsg) {
           streamingMsg.classList.remove('streaming');
+          
+          // Add tasks if any
+          if (tasks.length > 0) {
+            var messageBody = streamingMsg.querySelector('.message-body');
+            if (messageBody) {
+              var tasksHtml = '<ul class="task-list" data-task-list>';
+              tasks.forEach(function (t) {
+                tasksHtml +=
+                  '<li class="task-item done">' +
+                  '<span class="material-symbols-outlined task-icon">check_circle</span>' +
+                  '<span class="task-label">' + escapeHtml(t.label) + '</span></li>';
+              });
+              tasksHtml += '</ul>';
+              messageBody.insertAdjacentHTML('beforeend', tasksHtml);
+            }
+          }
         }
         setLoading(false);
         userInput.focus();
