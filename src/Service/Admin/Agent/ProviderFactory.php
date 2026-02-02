@@ -11,6 +11,7 @@ use NeuronAI\Providers\Anthropic\Anthropic;
 use NeuronAI\Providers\Deepseek\Deepseek;
 use NeuronAI\Providers\Gemini\Gemini;
 use NeuronAI\Providers\OpenAI\Responses\OpenAIResponses;
+use Plugifity\Service\Admin\Agent\CustomGuzzleHttpClient;
 use Plugifity\Service\Admin\Settings;
 
 /**
@@ -34,7 +35,9 @@ class ProviderFactory
         $modelId  = $parts[1] ?? 'deepseek-chat';
         $key      = $apiKeys[ $provider ] ?? '';
 
-        return match ( $provider ) {
+        $httpClient = new CustomGuzzleHttpClient( verifySSL: false );
+
+        $provider = match ( $provider ) {
             'deepseek' => new Deepseek(
                 key: $key,
                 model: $modelId,
@@ -64,6 +67,10 @@ class ProviderFactory
                 strict_response: false
             ),
         };
+
+        $provider->setHttpClient( $httpClient );
+
+        return $provider;
     }
 
     /**
