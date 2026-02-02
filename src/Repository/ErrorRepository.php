@@ -86,7 +86,7 @@ class ErrorRepository extends AbstractRepository
     public function deleteAll(): int
     {
         global $wpdb;
-        $table = $this->getTable();
+        $table = $wpdb->prefix . $this->getTable();
         $result = $wpdb->query( "DELETE FROM `{$table}`" );
         return $result !== false ? (int) $result : 0;
     }
