@@ -167,8 +167,7 @@ class ChatService
         try {
             // Create or reuse chat
             if ( $chatId === null ) {
-                $chat   = $this->chatRepository->create( [ 'title' => 'new', 'status' => 'active' ] );
-                $chatId = $chat->getId();
+                $chatId = $this->chatRepository->create( [ 'title' => 'new', 'status' => 'active' ] );
                 
                 // Send chat_id event
                 echo "event: chat_id\n";
