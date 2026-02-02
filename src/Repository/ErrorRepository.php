@@ -40,4 +40,41 @@ class ErrorRepository extends AbstractRepository
         }
         return $result;
     }
+
+    /**
+     * Get paginated errors (newest first).
+     *
+     * @param int $limit
+     * @param int $offset
+     * @param string|null $level Filter by level (error, warning, critical, etc.)
+     * @return Error[]
+     */
+    public function getPaginated( int $limit, int $offset, ?string $level = null ): array
+    {
+        $query = $this->newQuery()->orderBy( 'created_at', 'DESC' )->limit( $limit )->offset( $offset );
+        if ( $level !== null ) {
+            $query->where( 'level', $level );
+        }
+        $rows = $query->get();
+        $result = [];
+        foreach ( $rows as $row ) {
+            $result[] = Error::fromRow( $row );
+        }
+        return $result;
+    }
+
+    /**
+     * Count total errors (optionally by level).
+     *
+     * @param string|null $level
+     * @return int
+     */
+    public function countAll( ?string $level = null ): int
+    {
+        $query = $this->newQuery();
+        if ( $level !== null ) {
+            $query->where( 'level', $level );
+        }
+        return $query->count();
+    }
 }

@@ -166,6 +166,24 @@ class Assistant extends AbstractService
             'dashicons-superhero-alt',
             3
         );
+
+        add_submenu_page(
+            'plugitify-assistant',
+            esc_html__( 'Chat', 'plugifity' ),
+            esc_html__( 'Chat', 'plugifity' ),
+            'manage_options',
+            'plugitify-assistant',
+            [ $this, 'renderPage' ]
+        );
+
+        add_submenu_page(
+            'plugitify-assistant',
+            esc_html__( 'Error Logs', 'plugifity' ),
+            esc_html__( 'Error Logs', 'plugifity' ),
+            'manage_options',
+            'plugitify-error-logs',
+            [ $this, 'renderErrorLogsPage' ]
+        );
     }
 
     public function enqueueAdminAssets( string $hook ): void
@@ -175,13 +193,15 @@ class Assistant extends AbstractService
         // Load menu CSS globally in admin
         $app->enqueueStyle( 'plugitify-admin-menu', 'admin/menu.css', [], 'admin' );
 
-        // Load ChatPage assets only on Assistant page
+        // Load Material Symbols for both Chat and Error Logs pages
         $app->enqueueExternalStyle(
             'material-symbols-outlined',
             'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0',
             [],
-            'admin_page:toplevel_page_plugitify-assistant'
+            'admin_page:toplevel_page_plugitify-assistant,admin_page:assistant_page_plugitify-error-logs'
         );
+
+        // Load ChatPage assets only on Chat page
         $app->enqueueStyle(
             'plugitify-chat',
             'admin/ChatPage/style.css',
@@ -203,6 +223,14 @@ class Assistant extends AbstractService
             'admin_page:toplevel_page_plugitify-assistant'
         );
 
+        // Load Error Logs assets only on Error Logs page
+        $app->enqueueStyle(
+            'plugitify-error-logs',
+            'admin/ErrorLogs/style.css',
+            [ 'material-symbols-outlined' ],
+            'admin_page:assistant_page_plugitify-error-logs'
+        );
+
         if ( $hook === 'toplevel_page_plugitify-assistant' ) {
             wp_localize_script( 'plugitify-chat', 'plugitifyChat', [
                 'restUrl' => rest_url( self::REST_NAMESPACE ),
@@ -215,5 +243,31 @@ class Assistant extends AbstractService
     {
         $app = $this->getApplication();
         $app->view( 'ChatPage/chat' );
+    }
+
+    public function renderErrorLogsPage(): void
+    {
+        $app = $this->getApplication();
+        $errorRepository = $this->getContainer()->get( 'error.repository' );
+        
+        // Pagination
+        $perPage = 50;
+        $currentPage = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
+        $offset = ( $currentPage - 1 ) * $perPage;
+        
+        // Filter by level if provided
+        $filterLevel = isset( $_GET['level'] ) ? sanitize_text_field( $_GET['level'] ) : null;
+        
+        $errors = $errorRepository->getPaginated( $perPage, $offset, $filterLevel );
+        $totalErrors = $errorRepository->countAll( $filterLevel );
+        $totalPages = ceil( $totalErrors / $perPage );
+        
+        $app->view( 'ErrorLogs/index', [
+            'errors'      => $errors,
+            'currentPage' => $currentPage,
+            'totalPages'  => $totalPages,
+            'totalErrors' => $totalErrors,
+            'filterLevel' => $filterLevel,
+        ] );
     }
 }
