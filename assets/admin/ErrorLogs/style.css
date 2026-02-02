@@ -1,0 +1,316 @@
+/* Error Logs Page - Material Design */
+
+.plugitify-error-logs {
+  max-width: 1400px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+
+.error-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+}
+
+.error-logs-stats {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.error-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #1e1e1e;
+}
+
+.error-stat .material-symbols-outlined {
+  font-size: 20px;
+  color: #46a9c6;
+}
+
+.button-link-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  color: #b32d2e;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.button-link-delete:hover {
+  color: #dc3232;
+  background: rgba(179, 45, 46, 0.05);
+}
+
+.button-link-delete .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.button-link-delete:disabled {
+  color: #a7aaad;
+  cursor: not-allowed;
+}
+
+.error-logs-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-logs-filter label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.filter-select {
+  padding: 6px 10px;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* Empty state */
+.error-logs-empty {
+  text-align: center;
+  padding: 60px 20px;
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+}
+
+.error-logs-empty .material-symbols-outlined {
+  font-size: 64px;
+  color: #6ef2cc;
+  margin-bottom: 16px;
+}
+
+.error-logs-empty p {
+  font-size: 1rem;
+  color: #646970;
+  margin: 0;
+}
+
+/* Error logs table */
+.error-logs-table {
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid #c3c4c7;
+}
+
+.error-logs-table th {
+  font-weight: 600;
+  background: #f6f7f7;
+  border-bottom: 2px solid #c3c4c7;
+}
+
+.error-logs-table .column-time {
+  width: 140px;
+}
+
+.error-logs-table .column-level {
+  width: 100px;
+}
+
+.error-logs-table .column-code {
+  width: 140px;
+}
+
+.error-logs-table .column-message {
+  width: auto;
+}
+
+.error-logs-table .column-location {
+  width: 180px;
+}
+
+/* Error row */
+.error-row td {
+  vertical-align: top;
+  padding: 12px 10px;
+}
+
+.error-time {
+  font-size: 0.8125rem;
+  color: #646970;
+}
+
+/* Error badges */
+.error-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.error-badge-error {
+  background: rgba(211, 47, 47, 0.12);
+  color: #c5221f;
+}
+
+.error-badge-warning {
+  background: rgba(255, 152, 0, 0.12);
+  color: #e65100;
+}
+
+.error-badge-critical {
+  background: rgba(183, 28, 28, 0.12);
+  color: #b71c1c;
+}
+
+.error-badge-unknown {
+  background: rgba(0, 0, 0, 0.08);
+  color: #646970;
+}
+
+/* Message column */
+.error-message-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-message-text {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #1e1e1e;
+}
+
+.error-toggle-context {
+  align-self: flex-start;
+  padding: 0;
+  font-size: 0.8125rem;
+  color: #46a9c6;
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.error-toggle-context:hover {
+  color: #4bb6d3;
+  text-decoration: underline;
+}
+
+.error-context {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f6f7f7;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.error-context pre {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #1e1e1e;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Location column */
+.error-location {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-file {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #1e1e1e;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.error-line {
+  font-size: 0.75rem;
+  color: #646970;
+}
+
+.no-data {
+  color: #a7aaad;
+  font-style: italic;
+}
+
+/* Pagination */
+.tablenav {
+  padding: 12px 0;
+}
+
+.tablenav-pages {
+  text-align: right;
+}
+
+.tablenav-pages .displaying-num {
+  margin-right: 16px;
+  font-size: 0.875rem;
+  color: #646970;
+}
+
+.tablenav-pages a,
+.tablenav-pages span.current {
+  padding: 6px 10px;
+  margin: 0 2px;
+  border: 1px solid #c3c4c7;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  text-decoration: none;
+  color: #2271b1;
+  background: #fff;
+}
+
+.tablenav-pages span.current {
+  background: #46a9c6;
+  color: #fff;
+  border-color: #46a9c6;
+}
+
+.tablenav-pages a:hover {
+  background: #f6f7f7;
+  border-color: #999;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+  .error-logs-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .error-logs-filter {
+    flex-wrap: wrap;
+  }
+
+  .error-logs-table .column-time,
+  .error-logs-table .column-level,
+  .error-logs-table .column-code,
+  .error-logs-table .column-location {
+    display: none;
+  }
+
+  .error-row td {
+    display: block;
+    width: 100%;
+  }
+}

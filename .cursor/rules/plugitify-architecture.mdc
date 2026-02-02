@@ -1,0 +1,37 @@
+---
+description: Plugitify architecture rules - DI, Service Provider, Model/Repository, Views, and protected files
+alwaysApply: true
+---
+
+# Plugitify Architecture Rules
+
+## DI & Service Provider
+
+- The project uses **Dependency Injection (DI)** and **Service Providers**.
+- For each distinct feature or area of work, define **dedicated Services** and **Service Providers**.
+- **Providers**: `src/Provider/` — one provider per feature/domain (e.g. `AdminServiceProvider`, `ApiServiceProvider`).
+- **Services**: `src/Service/` — group by domain in subfolders (e.g. `src/Service/Admin/Menu.php`).
+- Register services in the provider's `registerServices()` and resolve/use them in `bootServices()`.
+- Register new providers only in `src/App/App.php` via `$this->application->registerProvider(SomeProvider::class)`.
+
+## Model & Repository
+
+- When domain logic or persistence is needed, define **Models** and **Repositories**.
+- **Models**: define in `src/Model/` (one per entity).
+- **Repositories**: define in `src/Repository/` (one per model).
+- **Rule**: Every Model must have its own Repository. Do not add a model without a corresponding repository.
+
+## Views
+
+- All view files (templates, partials, HTML/PHP views) must live under **`src/View/`** (or the project’s designated view root). Do not scatter views in other directories.
+
+## Protected Files – Do Not Edit
+
+- **`plugifity.php`** (root): Must **not** be changed. Bootstrap only (e.g. `require autoload`, `App::get()`). Any plugin bootstrap or registration changes must go in **`src/App/App.php`**.
+- **`src/Core/`**: Core and framework code. Do **not** modify files under `src/Core/` unless necessary. If a change in Core is required, **ask the user first** before editing.
+
+## After Making Changes
+
+- When you finish a set of changes, create a **git commit** with:
+  - A clear, short **title** (e.g. "Add AdminServiceProvider and Menu service").
+  - A **description** that briefly lists what was changed (e.g. new files, updated registration, fixed behavior).

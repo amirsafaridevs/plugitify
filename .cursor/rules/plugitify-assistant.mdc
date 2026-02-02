@@ -1,0 +1,185 @@
+---
+description: Plugitify plugin — WordPress AI Assistant: chat flow, model/settings, tasks, queue, frontend DOM. Follow this when implementing the assistant, API, and UI.
+alwaysApply: true
+---
+
+# Plugitify — WordPress AI Assistant
+
+This rule describes how the **Plugitify** plugin works. Follow it when implementing the assistant, API endpoints, task/queue logic, and frontend integration. **Always reference [neuron-ai.mdc](.cursor/rules/neuron-ai.mdc) for Agent, AI Provider, Tools, Streaming, and Structured Output.**
+
+---
+
+## 1. Plugin purpose
+
+- **Plugitify** is a WordPress AI assistant plugin.
+- The admin selects a **model** and **API key** in the chat **Settings** modal.
+- The assistant **Agent** (NeuronAI) is connected to that chosen model and key.
+- All LLM/agent logic must follow **neuron-ai.mdc** (providers, instructions, tools, streaming, error handling).
+
+---
+
+## 2. Model selection (Settings)
+
+- Model and API key are chosen in the **Settings** modal.
+- **DOM:** Settings modal is under `#settingsOverlay` > `#settingsModal`; model select is:
+  - **Element:** `select#settingsModel.settings-select`
+  - **Location:** `div.modal-body` > `div.settings-section` > `select#settingsModel`
+
+### Supported models (must be sendable to the real provider)
+
+Only these options in `#settingsModel` may be used when calling the model. Map each `value` to the correct NeuronAI provider and model ID. Value format is `provider|modelId` (e.g. `deepseek|deepseek-chat`).
+
+| Option label       | value (provider\|model)              | Provider to use   |
+|--------------------|--------------------------------------|-------------------|
+| DeepSeek Chat      | deepseek\|deepseek-chat              | Deepseek          |
+| DeepSeek Coder     | deepseek\|deepseek-coder             | Deepseek          |
+| DeepSeek R1        | deepseek\|deepseek-r1                | Deepseek          |
+| GPT-4o             | chatgpt\|gpt-4o                      | OpenAI (Responses)|
+| GPT-4o mini        | chatgpt\|gpt-4o-mini                 | OpenAI            |
+| GPT-4 Turbo        | chatgpt\|gpt-4-turbo                 | OpenAI            |
+| GPT-3.5 Turbo     | chatgpt\|gpt-3.5-turbo               | OpenAI            |
+| o1                 | chatgpt\|o1                          | OpenAI            |
+| o1 mini            | chatgpt\|o1-mini                     | OpenAI            |
+| Gemini 1.5 Pro     | gemini\|gemini-1.5-pro               | Gemini            |
+| Gemini 1.5 Flash   | gemini\|gemini-1.5-flash             | Gemini            |
+| Gemini 1.0 Pro     | gemini\|gemini-1.0-pro               | Gemini            |
+| Claude 3.5 Sonnet   | claude\|claude-3-5-sonnet-20241022   | Anthropic         |
+| Claude 3.5 Haiku    | claude\|claude-3-5-haiku-20241022    | Anthropic         |
+| Claude 3 Opus      | claude\|claude-3-opus-20240229        | Anthropic         |
+
+- **API keys:** Stored per provider (e.g. in settings/localStorage). Inputs: `#apiKeyDeepSeek`, `#apiKeyChatGPT`, `#apiKeyGemini`, `#apiKeyClaude`; row visibility is driven by selected provider (`data-model` on `.settings-api-row`).
+- **Backend:** When handling a chat/task request, resolve provider and model from the stored settings (e.g. `model` value `provider|modelId`) and build the NeuronAI provider instance as in **neuron-ai.mdc**.
+
+---
+
+## 3. Chat flow (user sends a message)
+
+1. **User sends a message** in the chat input.
+2. **Create or reuse chat in DB:**
+   - If new conversation: create a row in `plugifity_chats` with **title = `"new"`** (or equivalent default).
+   - Use this `chat_id` for all subsequent messages and tasks of this conversation.
+3. **Persist user message** in `plugifity_messages` (role e.g. `user`, content = message text, `chat_id`).
+4. **Send to model:** Using the admin’s chosen model and API key, call the Agent (NeuronAI) with the user message and any conversation history. See **neuron-ai.mdc** for `UserMessage`, `chat()` or `stream()`.
+5. **Thinking UI:** While waiting for the model (or for task execution), the frontend shows a **thinking** state (see DOM below). Backend must **not** block indefinitely: use a **queue** and short-lived requests so the frontend can poll or request the next task without timeout.
+
+---
+
+## 4. Tasks and queue (critical)
+
+- The Agent must have a **tool** (or equivalent) that can **create tasks** when the user’s request requires multi-step work (e.g. “search codebase”, “edit files”, “run checks”).
+- **Tasks** are stored in the database:
+  - Table: `plugifity_tasks`
+  - Fields: `id`, `chat_id`, `title`, `description`, `status`, `timestamps`, soft deletes.
+  - **Initial status when creating a task:** `queued` (or `pending` if that is the project convention; the UI may show “queued”).
+- **Execution model (avoid timeout):**
+  - **Backend must NOT stay busy** for the whole chain. Use a **queue**: tasks are stored as queued; execution is **one task at a time** per request.
+  - **Flow:**
+    1. Model (or first API call) may return a **plan** (list of tasks). Backend persists these tasks with status `queued`.
+    2. **Frontend** requests “run next task” (or similar). Backend runs **only one** task, updates its status and result, then **returns immediately** with that task’s result.
+    3. Frontend displays the result and asks for the **next** task. Repeat until all tasks are done.
+  - When the frontend requests execution of the **next** task, the backend must send to the model:
+    - The **current task** to execute,
+    - **Full history** of previous tasks and their **results**,
+    so the model has full context (as in **neuron-ai.mdc** for chat/tool context).
+
+- **Instructions for the Agent and tools** must be **strict and very detailed** so the model never gets confused: clearly define when to create tasks, what each task type does, input/output format, and that it must not invent steps or do anything outside the defined behavior.
+
+---
+
+## 5. Frontend UI (DOM and behavior)
+
+### 5.1 Task list (inside assistant message)
+
+- **Location:** Inside an assistant message bubble, after the main text.
+- **DOM path (example):**  
+  `#messages` > `div.message.assistant` > `div.message-body` > `ul.task-list[data-task-list]`
+- **Structure:**
+  - `ul.task-list` with `data-task-list` (or `data-task-list=""`).
+  - Each item: `li.task-item` with optional `data-task-index`, icon (e.g. `radio_button_unchecked` → `check_circle` when done), and `span.task-label`.
+- **Behavior:** As each task is completed (backend returns result for that task), the frontend updates the corresponding item (e.g. add class `done`, change icon to `check_circle`, optionally strike through label). Task list reflects **current status** of tasks (queued → running → done).
+
+### 5.2 Thinking state
+
+- **Purpose:** Show “Thinking” and, when tasks exist, the **current step** (e.g. “Editing files”).
+- **DOM (example):**
+  - Container: `div#thinking-msg.message.assistant.thinking` inside `#messages`.
+  - Inside it: `div.message-bubble` > `div.thinking-inner`:
+    - “Thinking” text and `div.thinking-dots` (e.g. three `span` elements for animation).
+    - When tasks are present: `div.thinking-current-step[data-current-step]` showing the label of the **current** task (e.g. “Editing files”).
+- **Behavior:** Show thinking while waiting for the model or for the next task result. Update `thinking-current-step` when the frontend receives which task is running or just completed. When all tasks are done and final reply is ready, **replace** the thinking block with the final assistant message (with task list + optional summary text).
+
+---
+
+## 6. Backend responsibilities (summary)
+
+- **Resolve model from settings:** Map `#settingsModel` value (`provider|modelId`) and stored API key to the correct NeuronAI provider (see **neuron-ai.mdc**).
+- **Chat:** Create/load chat (title `"new"` for new), save user/assistant messages in `plugifity_messages`.
+- **Tasks:** Persist tasks in `plugifity_tasks` with status `queued`; provide an endpoint (or mechanism) to “run next task” that executes **one** task and returns its result.
+- **Context for model:** When executing a task, send to the model the current task plus full history of previous tasks and results.
+- **No long-held connections:** Use queue + one-task-per-request so the frontend can drive the flow and avoid timeouts. Do not block the request until all tasks are done.
+- **Error handling:** See section **Error handling** below: always log errors to `plugifity_errors` and return a clear, user-facing message so the frontend can show it in the chat immediately.
+
+---
+
+## 7. Error handling (mandatory)
+
+Error handling **must** always be done well so that if any problem occurs during chat, task execution, or API calls, it is **clear exactly where the problem is** and the user is informed **immediately** in the chat.
+
+### 7.1 Store every error in the database
+
+- **Table:** `plugifity_errors` (see migration `CreateErrorsTable.php`).
+- **Columns:** `id`, `message` (text), `context` (longText, nullable), `code` (string, nullable), `level` (string, nullable), `file` (string, nullable), `line` (integer, nullable), `timestamps`.
+- **When to write:** On **any** caught exception or error in the assistant flow (e.g. NeuronAI/ProviderException, DB errors, validation errors, task execution failures). Do not swallow errors without logging.
+- **What to store:**
+  - `message`: Short, clear error message (e.g. from `$e->getMessage()`).
+  - `context`: Optional JSON or text with extra context (e.g. `chat_id`, `task_id`, request payload, stack trace or relevant vars). Keep sensitive data (API keys, full request bodies) out or redacted.
+  - `code`: Optional error code (e.g. `NEURON_PROVIDER`, `TASK_FAILED`, `VALIDATION`) for filtering.
+  - `level`: Optional severity (e.g. `error`, `warning`, `critical`).
+  - `file` and `line`: Where the error was caught or thrown, so it is **clear exactly where the problem is**.
+
+### 7.2 Return a user-facing message to the frontend
+
+- For every error that affects the user’s request (chat reply, task run, etc.), the API response must include a **clear, safe, user-facing message** (e.g. “Could not reach the model. Please check your API key and try again.” or “Task failed: …”). Do not expose raw stack traces or internal paths to the client.
+- Use a consistent response shape (e.g. `{ success: false, error: { message: "...", code?: "..." } }`) so the frontend can always show an error in the chat.
+
+### 7.3 Show errors in the chat UI immediately
+
+- The **chat page** must display errors **at the same moment** they occur: when the frontend receives an error response (from send message, run next task, or any assistant API), it must:
+  - Replace or update the thinking state with an **error message** in the message list (e.g. an assistant or system message bubble with the user-facing text).
+  - Optionally use a distinct style (e.g. icon, color) for error messages so the user can see at a glance that something went wrong.
+- Do not leave the user with an endless “Thinking” state when the backend has already returned an error.
+
+### 7.4 Summary
+
+- **Backend:** Catch all relevant exceptions → write to `plugifity_errors` with enough detail (message, context, code, level, file, line) → return a safe, user-facing error in the API response.
+- **Frontend:** On error response → show the error message in the chat immediately (replace thinking or add error message bubble).
+
+---
+
+## 8. Instructions for Agent and tools
+
+- **Be extremely strict and detailed** in system instructions and tool descriptions so the model:
+  - Does not invent steps or tools.
+  - Creates tasks only when the user’s request clearly requires them.
+  - Uses exactly the task types and parameters you define.
+  - Returns responses in the exact format the frontend/backend expect (e.g. task list with `label`, optional `finalText`).
+- Define for each tool: name, description, parameters (with types and descriptions), and exact behavior. Prefer **Structured Output** (see **neuron-ai.mdc**) for task plans or tool results when possible.
+
+---
+
+## 9. Reference to NeuronAI
+
+- **Agent, provider, instructions:** [neuron-ai.mdc](.cursor/rules/neuron-ai.mdc) — use the chosen provider (Deepseek, OpenAI, Gemini, Anthropic) and model ID from settings.
+- **Tools:** Define tools that create tasks; implement callables and expose them to the Agent as in neuron-ai.mdc.
+- **Streaming:** If you stream the reply, use NeuronAI’s `stream()` and send chunks to the frontend; thinking UI can stay until stream (and task execution) is done.
+- **Errors:** Catch `NeuronException` / `ProviderException` (and any other relevant exceptions); log to `plugifity_errors` (see **Error handling** in this rule) and return clear, safe messages to the frontend so the chat UI can show them immediately.
+
+---
+
+## 10. File and DB reference
+
+- **View (chat UI):** `view/ChatPage/chat.php` — contains `#settingsModel`, settings modal, `#messages`, input form.
+- **Chat list / messages / task list** are rendered or updated by JS (e.g. `assets/admin/ChatPage/app.js`).
+- **Tables:** `plugifity_chats` (id, title, status, …), `plugifity_messages` (id, chat_id, role, content, …), `plugifity_tasks` (id, chat_id, title, description, status, …), **`plugifity_errors`** (id, message, context, code, level, file, line, timestamps — see `CreateErrorsTable.php`). Tasks use status `queued` (or `pending`) when created; update to appropriate status when running/done/failed. **Every caught error must be written to `plugifity_errors`** and a user-facing message returned so the chat can display it immediately.
+
+When implementing or changing the assistant, API, or task flow, follow this rule and **neuron-ai.mdc** together.
