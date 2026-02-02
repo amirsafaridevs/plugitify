@@ -391,6 +391,103 @@
     return div.innerHTML;
   }
 
+  /**
+   * Simple markdown to HTML converter
+   */
+  function markdownToHtml(text) {
+    if (!text) return '';
+    
+    // Escape HTML first
+    var html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    // Code blocks (```code```)
+    html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+    
+    // Inline code (`code`)
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Bold (**text** or __text__)
+    html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    
+    // Italic (*text* or _text_) - but not if already in bold
+    html = html.replace(/([^*])\*([^\*]+)\*([^*])/g, '$1<em>$2</em>$3');
+    html = html.replace(/([^_])_([^_]+)_([^_])/g, '$1<em>$2</em>$3');
+    
+    // Headers (### Header)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    
+    // Lists (line by line processing)
+    var lines = html.split('\n');
+    var inList = false;
+    var listType = '';
+    var result = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      
+      // Unordered list
+      if (/^[\-\*] (.+)$/.test(line)) {
+        if (!inList || listType !== 'ul') {
+          if (inList) result.push(listType === 'ol' ? '</ol>' : '</ul>');
+          result.push('<ul>');
+          inList = true;
+          listType = 'ul';
+        }
+        result.push(line.replace(/^[\-\*] (.+)$/, '<li>$1</li>'));
+      }
+      // Ordered list
+      else if (/^\d+\. (.+)$/.test(line)) {
+        if (!inList || listType !== 'ol') {
+          if (inList) result.push(listType === 'ol' ? '</ol>' : '</ul>');
+          result.push('<ol>');
+          inList = true;
+          listType = 'ol';
+        }
+        result.push(line.replace(/^\d+\. (.+)$/, '<li>$1</li>'));
+      }
+      // Not a list item
+      else {
+        if (inList) {
+          result.push(listType === 'ol' ? '</ol>' : '</ul>');
+          inList = false;
+          listType = '';
+        }
+        result.push(lines[i]); // Keep original spacing
+      }
+    }
+    if (inList) {
+      result.push(listType === 'ol' ? '</ol>' : '</ul>');
+    }
+    html = result.join('\n');
+    
+    // Links [text](url)
+    html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+    
+    return html;
+  }
+
+  /**
+   * Detect text direction (RTL for Arabic/Persian/Hebrew, LTR otherwise)
+   */
+  function detectTextDirection(text) {
+    if (!text) return 'ltr';
+    
+    // RTL Unicode ranges: Arabic (U+0600-U+06FF), Hebrew (U+0590-U+05FF), Persian extensions
+    var rtlChars = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u0590-\u05FF]/;
+    
+    // Check first 100 chars for RTL characters
+    var sample = text.substring(0, 100);
+    return rtlChars.test(sample) ? 'rtl' : 'ltr';
+  }
+
   var currentRequestCancelled = false;
 
   function setLoading(loading) {
