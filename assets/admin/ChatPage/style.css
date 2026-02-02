@@ -487,6 +487,38 @@ body {
   color: rgba(13, 17, 23, 1);
 }
 
+/* ----- RTL/LTR direction support ----- */
+.message[dir="rtl"] {
+  text-align: right;
+}
+
+.message[dir="rtl"] .message-bubble {
+  direction: rtl;
+}
+
+.message[dir="rtl"] .message-body {
+  align-items: flex-end;
+}
+
+.message[dir="ltr"] {
+  text-align: left;
+}
+
+.message[dir="ltr"] .message-bubble {
+  direction: ltr;
+}
+
+.message[dir="ltr"] .message-body {
+  align-items: flex-start;
+}
+
+/* RTL list padding */
+.message[dir="rtl"] ul,
+.message[dir="rtl"] ol {
+  padding-right: 24px;
+  padding-left: 0;
+}
+
 /* ----- Error message in chat (API/model failure, compact & elegant like Settings error) ----- */
 .message.assistant.msg-error .message-bubble {
   background: rgba(211, 47, 47, 0.08) !important;
