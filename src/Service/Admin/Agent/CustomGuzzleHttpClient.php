@@ -64,6 +64,74 @@ class CustomGuzzleHttpClient extends GuzzleHttpClient
 		return new Client( $config );
 	}
 
+	/**
+	 * Override withBaseUri to return CustomGuzzleHttpClient instance.
+	 */
+	public function withBaseUri( string $baseUri ): CustomGuzzleHttpClient
+	{
+		$new = new self(
+			$this->getCustomHeaders(),
+			$this->getTimeout(),
+			$this->getConnectTimeout(),
+			$this->getHandler(),
+			$this->verifySSL
+		);
+		
+		// Set baseUri via reflection (protected property)
+		$reflection = new \ReflectionClass( parent::class );
+		$baseUriProperty = $reflection->getProperty( 'baseUri' );
+		$baseUriProperty->setAccessible( true );
+		$baseUriProperty->setValue( $new, $baseUri );
+		
+		return $new;
+	}
+
+	/**
+	 * Override withHeaders to return CustomGuzzleHttpClient instance.
+	 */
+	public function withHeaders( array $headers ): CustomGuzzleHttpClient
+	{
+		$new = new self(
+			[ ...$this->getCustomHeaders(), ...$headers ],
+			$this->getTimeout(),
+			$this->getConnectTimeout(),
+			$this->getHandler(),
+			$this->verifySSL
+		);
+		
+		// Preserve baseUri
+		$reflection = new \ReflectionClass( parent::class );
+		$baseUriProperty = $reflection->getProperty( 'baseUri' );
+		$baseUriProperty->setAccessible( true );
+		$baseUri = $baseUriProperty->getValue( $this );
+		$baseUriProperty->setValue( $new, $baseUri );
+		
+		return $new;
+	}
+
+	/**
+	 * Override withTimeout to return CustomGuzzleHttpClient instance.
+	 */
+	public function withTimeout( float $timeout ): CustomGuzzleHttpClient
+	{
+		$new = new self(
+			$this->getCustomHeaders(),
+			$timeout,
+			$this->getConnectTimeout(),
+			$this->getHandler(),
+			$this->verifySSL
+		);
+		
+		// Preserve baseUri
+		$reflection = new \ReflectionClass( parent::class );
+		$baseUriProperty = $reflection->getProperty( 'baseUri' );
+		$baseUriProperty->setAccessible( true );
+		$baseUri = $baseUriProperty->getValue( $this );
+		$baseUriProperty->setValue( $new, $baseUri );
+		
+		return $new;
+	}
+
 	public function withSSLVerify( bool $verify ): self
 	{
 		return new self(
