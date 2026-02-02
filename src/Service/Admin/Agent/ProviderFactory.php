@@ -37,40 +37,41 @@ class ProviderFactory
 
         $httpClient = new CustomGuzzleHttpClient( verifySSL: false );
 
-        $provider = match ( $provider ) {
+        return match ( $provider ) {
             'deepseek' => new Deepseek(
                 key: $key,
                 model: $modelId,
                 parameters: [],
-                strict_response: false
+                strict_response: false,
+                httpClient: $httpClient
             ),
             'chatgpt' => new OpenAIResponses(
                 key: $key,
                 model: $modelId,
                 parameters: [],
-                strict_response: false
+                strict_response: false,
+                httpClient: $httpClient
             ),
             'gemini' => new Gemini(
                 key: $key,
                 model: $modelId,
-                parameters: []
+                parameters: [],
+                httpClient: $httpClient
             ),
             'claude' => new Anthropic(
                 key: $key,
                 model: $modelId,
-                parameters: []
+                parameters: [],
+                httpClient: $httpClient
             ),
             default => new Deepseek(
                 key: $key,
                 model: $modelId,
                 parameters: [],
-                strict_response: false
+                strict_response: false,
+                httpClient: $httpClient
             ),
         };
-
-        $provider->setHttpClient( $httpClient );
-
-        return $provider;
     }
 
     /**
