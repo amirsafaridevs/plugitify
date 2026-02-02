@@ -66,9 +66,13 @@ class ChatService
             $messages = $this->buildNeuronMessages( $history );
 
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
-            $handler = $agent->chat( $messages );
-            $responseMessage = $handler->getMessage();
-            $content = $responseMessage->getContent() ?? '';
+            $stream = $agent->stream( $messages );
+            
+            // Collect full content from stream
+            $content = '';
+            foreach ( $stream as $chunk ) {
+                $content .= $chunk;
+            }
 
             $this->messageRepository->create( [
                 'chat_id' => $chatId,
@@ -139,5 +143,108 @@ class ChatService
             'file'    => $e ? $e->getFile() : null,
             'line'    => $e ? $e->getLine() : null,
         ] );
+    }
+
+    /**
+     * Stream chat message (Server-Sent Events).
+     * 
+     * @param string   $userMessage User message text.
+     * @param int|null $chatId      Existing chat ID or null for new.
+     * @return void Outputs SSE stream and exits.
+     */
+    public function streamMessage( string $userMessage, ?int $chatId ): void
+    {
+        // Set headers for SSE
+        header( 'Content-Type: text/event-stream' );
+        header( 'Cache-Control: no-cache' );
+        header( 'X-Accel-Buffering: no' );
+        
+        // Disable output buffering
+        if ( ob_get_level() > 0 ) {
+            ob_end_clean();
+        }
+
+        try {
+            // Create or reuse chat
+            if ( $chatId === null ) {
+                $chat   = $this->chatRepository->create( [ 'title' => 'new', 'status' => 'active' ] );
+                $chatId = $chat->getId();
+                
+                // Send chat_id event
+                echo "event: chat_id\n";
+                echo 'data: ' . wp_json_encode( [ 'chat_id' => $chatId ] ) . "\n\n";
+                if ( function_exists( 'fastcgi_finish_request' ) ) {
+                    flush();
+                } else {
+                    ob_flush();
+                    flush();
+                }
+            }
+
+            // Save user message
+            $this->messageRepository->create( [
+                'chat_id' => $chatId,
+                'role'    => 'user',
+                'content' => $userMessage,
+            ] );
+
+            // Get history and build messages
+            $history = $this->messageRepository->getByChatId( $chatId );
+            $messages = $this->buildNeuronMessages( $history );
+
+            // Stream response
+            $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
+            $stream = $agent->stream( $messages );
+            
+            $fullContent = '';
+            foreach ( $stream as $chunk ) {
+                $fullContent .= $chunk;
+                
+                // Send chunk event
+                echo "event: chunk\n";
+                echo 'data: ' . wp_json_encode( [ 'text' => $chunk ] ) . "\n\n";
+                if ( function_exists( 'fastcgi_finish_request' ) ) {
+                    flush();
+                } else {
+                    ob_flush();
+                    flush();
+                }
+            }
+
+            // Save assistant message
+            $this->messageRepository->create( [
+                'chat_id' => $chatId,
+                'role'    => 'assistant',
+                'content' => $fullContent,
+            ] );
+
+            // Send done event
+            echo "event: done\n";
+            echo 'data: ' . wp_json_encode( [ 'success' => true ] ) . "\n\n";
+            if ( function_exists( 'fastcgi_finish_request' ) ) {
+                flush();
+            } else {
+                ob_flush();
+                flush();
+            }
+
+        } catch ( \Exception $e ) {
+            $this->logError( $e->getMessage(), [ 'chat_id' => $chatId ?? null, 'trace' => $e->getTraceAsString() ], 'CHAT_STREAM_ERROR', $e );
+
+            // Send error event
+            echo "event: error\n";
+            echo 'data: ' . wp_json_encode( [
+                'message' => __( 'Something went wrong. Please try again.', 'plugifity' ),
+                'details' => $e->getMessage(),
+            ] ) . "\n\n";
+            if ( function_exists( 'fastcgi_finish_request' ) ) {
+                flush();
+            } else {
+                ob_flush();
+                flush();
+            }
+        }
+
+        exit;
     }
 }

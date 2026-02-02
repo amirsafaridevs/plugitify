@@ -43,6 +43,24 @@ class Assistant extends AbstractService
                 ],
             ],
         ] );
+
+        register_rest_route( self::REST_NAMESPACE, '/chat/stream', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restChatStream' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args'                => [
+                'message' => [
+                    'type'     => 'string',
+                    'required' => true,
+                ],
+                'chat_id' => [
+                    'type'     => 'integer',
+                    'required' => false,
+                ],
+            ],
+        ] );
     }
 
     /**
@@ -78,6 +96,38 @@ class Assistant extends AbstractService
         }
 
         return new WP_REST_Response( $result, 500 );
+    }
+
+    /**
+     * REST: POST chat/stream — send user message, stream agent response (SSE).
+     *
+     * @param WP_REST_Request $request
+     * @return void (exits after streaming)
+     */
+    public function restChatStream( WP_REST_Request $request ): void
+    {
+        $body = $request->get_json_params();
+        if ( ! is_array( $body ) ) {
+            $body = [];
+        }
+        $message = isset( $body['message'] ) && is_string( $body['message'] ) ? sanitize_text_field( $body['message'] ) : '';
+        $chatId  = isset( $body['chat_id'] ) ? absint( $body['chat_id'] ) : null;
+        if ( $chatId === 0 ) {
+            $chatId = null;
+        }
+
+        if ( $message === '' ) {
+            header( 'Content-Type: text/event-stream' );
+            echo "event: error\n";
+            echo 'data: ' . wp_json_encode( [
+                'message' => __( 'Message is required.', 'plugifity' ),
+            ] ) . "\n\n";
+            flush();
+            exit;
+        }
+
+        $chatService = $this->getContainer()->get( 'admin.chat' );
+        $chatService->streamMessage( $message, $chatId );
     }
 
     public function registerSettingsRestRoutes(): void
