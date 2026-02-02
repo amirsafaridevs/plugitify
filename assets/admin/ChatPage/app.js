@@ -267,15 +267,19 @@
                 try {
                   var data = JSON.parse(dataStr);
                   if (currentEvent === 'chat_id' && data.chat_id) {
+                    console.log('[SSE] Received chat_id:', data.chat_id);
                     currentChatId = data.chat_id;
                     if (onChatId) onChatId(data.chat_id);
                   } else if (currentEvent === 'chunk' && data.text) {
+                    console.log('[SSE] Received chunk:', data.text);
                     if (onChunk) onChunk(data.text);
                   } else if (currentEvent === 'done') {
+                    console.log('[SSE] Stream done');
                     streamComplete = true;
                     if (onDone) onDone();
                     return;
                   } else if (currentEvent === 'error') {
+                    console.error('[SSE] Stream error:', data);
                     streamComplete = true;
                     var err = new Error(data.message || 'Stream error');
                     if (onError) onError(err);

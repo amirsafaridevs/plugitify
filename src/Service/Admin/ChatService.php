@@ -191,13 +191,24 @@ class ChatService
             $stream = $agent->stream( $messages );
             
             $fullContent = '';
+            $chunkCount = 0;
             foreach ( $stream as $chunk ) {
+                $chunkCount++;
                 $fullContent .= $chunk;
                 
                 // Send chunk event
                 echo "event: chunk\n";
                 echo 'data: ' . wp_json_encode( [ 'text' => $chunk ] ) . "\n\n";
                 $this->flushOutput();
+            }
+
+            // Debug: log if no chunks received
+            if ( $chunkCount === 0 ) {
+                $this->logError( 
+                    'Stream returned 0 chunks', 
+                    [ 'chat_id' => $chatId, 'message_count' => count( $messages ) ], 
+                    'STREAM_EMPTY'
+                );
             }
 
             // Save assistant message
