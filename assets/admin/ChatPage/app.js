@@ -477,7 +477,12 @@
         fullText += chunk;
         var streamingTextEl = document.getElementById(window.currentStreamingMsgId + '-text');
         if (streamingTextEl) {
-          streamingTextEl.textContent = fullText;
+          // Render markdown and detect direction
+          streamingTextEl.innerHTML = markdownToHtml(fullText);
+          var streamingMsg = document.getElementById(window.currentStreamingMsgId);
+          if (streamingMsg) {
+            streamingMsg.setAttribute('dir', detectTextDirection(fullText));
+          }
           scrollToBottom();
         }
       },
