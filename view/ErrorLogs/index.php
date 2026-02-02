@@ -192,7 +192,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                 this.disabled = true;
                 this.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> <?php echo esc_js( __( 'Clearing...', 'plugifity' ) ); ?>';
 
-                fetch('<?php echo esc_url( rest_url( 'plugitify/v1/errors/clear' ) ); ?>', {
+                fetch('<?php echo esc_url( rest_url( 'plugifity/v1/errors/clear' ) ); ?>', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
