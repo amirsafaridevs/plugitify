@@ -192,8 +192,35 @@ class ChatService
             // Get response (chat instead of stream for now until we fix streaming)
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
             $handler = $agent->chat( $messages );
-            $responseMessage = $handler->getMessage();
+            
+            // Get state to check for tool calls
+            $state = $handler->run();
+            $responseMessage = $state->getMessage();
             $fullContent = $responseMessage->getContent() ?? '';
+            
+            // Check if tools were used and send task events
+            if ( method_exists( $state, 'getChatHistory' ) ) {
+                $chatHistory = $state->getChatHistory();
+                $toolCalls = [];
+                
+                // Extract tool calls from history
+                foreach ( $chatHistory->all() as $msg ) {
+                    if ( $msg instanceof \NeuronAI\Chat\Messages\ToolCallMessage ) {
+                        foreach ( $msg->getTools() as $tool ) {
+                            $toolCalls[] = [
+                                'label' => 'Executed: ' . $tool->getName(),
+                            ];
+                        }
+                    }
+                }
+                
+                // Send task list if tools were used
+                if ( count( $toolCalls ) > 0 ) {
+                    echo "event: task\n";
+                    echo 'data: ' . wp_json_encode( [ 'task' => [ 'action' => 'list', 'tasks' => $toolCalls ] ] ) . "\n\n";
+                    $this->flushOutput();
+                }
+            }
             
             // Send generating step
             echo "event: step\n";
