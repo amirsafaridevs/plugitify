@@ -26,8 +26,7 @@ class AdminServiceProvider extends AbstractServiceProvider
     {
         // Services
         $this->container->singleton( 'admin.assistant', Assistant::class );
-        // Agent: NOT singleton - rebuild each request so provider() reads fresh Settings
-        $this->container->bind( 'admin.agent', PlugitifyAgent::class );
+        // Agent: instantiated directly in ChatService (not via container)
         $this->container->singleton( 'admin.chat', ChatService::class );
 
         // Repositories
