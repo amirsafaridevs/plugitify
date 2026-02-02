@@ -563,24 +563,41 @@
           hasStartedStreaming = true;
           var thinkingEl = document.getElementById('thinking-msg');
           if (thinkingEl) {
+            console.log('[onChunk] First chunk - converting thinking to streaming');
+            
+            // Save task list before replacing thinking
+            var existingTaskList = thinkingEl.querySelector('.task-list');
+            console.log('[onChunk] Existing task list:', existingTaskList);
+            
             var time = new Date().toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
             });
             var streamingMsgId = 'streaming-msg-' + Date.now();
-            var html =
-              '<div class="message assistant streaming" id="' + streamingMsgId + '" role="listitem">' +
-              '<div class="message-avatar" aria-hidden="true">' +
-              '<span class="material-symbols-outlined">auto_awesome</span>' +
-              '</div>' +
-              '<div class="message-body">' +
-              '<div class="message-bubble">' +
-              '<div class="message-text" id="' + streamingMsgId + '-text"></div>' +
-              '<div class="message-time">' + time + '</div>' +
-              '</div>' +
-              '</div></div>';
-            thinkingEl.outerHTML = html;
+            
+            // Remove thinking classes, keep element
+            thinkingEl.id = streamingMsgId;
+            thinkingEl.classList.remove('thinking');
+            thinkingEl.classList.add('streaming');
+            thinkingEl.removeAttribute('aria-busy');
+            
+            // Update bubble content but keep task list
+            var messageBubble = thinkingEl.querySelector('.message-bubble');
+            if (messageBubble) {
+              // Remove thinking-inner and thinking-current-step
+              var thinkingInner = messageBubble.querySelector('.thinking-inner');
+              if (thinkingInner) thinkingInner.remove();
+              var thinkingStep = messageBubble.querySelector('.thinking-current-step');
+              if (thinkingStep) thinkingStep.remove();
+              
+              // Add message-text and time (task-list stays)
+              var newContent = '<div class="message-text" id="' + streamingMsgId + '-text"></div>' +
+                '<div class="message-time">' + time + '</div>';
+              messageBubble.insertAdjacentHTML('afterbegin', newContent);
+            }
+            
             window.currentStreamingMsgId = streamingMsgId;
+            console.log('[onChunk] Converted to streaming, task list preserved');
           }
         }
         
