@@ -23,6 +23,20 @@
   --skeleton-shine: rgba(70, 169, 198, 0.08);
 }
 
+/* Streaming cursor animation */
+.message.assistant.streaming .message-text::after {
+  content: '▋';
+  color: var(--plugitify-primary);
+  animation: blink 1s step-start infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 *,
 *::before,
 *::after {
