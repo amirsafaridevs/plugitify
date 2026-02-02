@@ -541,7 +541,7 @@ body {
   gap: 4px;
   padding: 0;
   cursor: default;
-  transition: color var(--motion-duration) var(--motion-easing);
+  transition: all var(--motion-duration) var(--motion-easing);
 }
 
 .task-item.pending {
@@ -551,6 +551,15 @@ body {
 .task-item.pending .task-icon {
   color: var(--on-surface-variant);
   opacity: 0.7;
+}
+
+.task-item.running {
+  color: var(--plugitify-primary);
+}
+
+.task-item.running .task-icon {
+  color: var(--plugitify-primary);
+  animation: taskPulse 1.5s ease-in-out infinite;
 }
 
 .task-item.done {
@@ -573,6 +582,17 @@ body {
 .task-item.done .task-label {
   text-decoration: line-through;
   opacity: 0.9;
+}
+
+@keyframes taskPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
 }
 
 .message-summary {
