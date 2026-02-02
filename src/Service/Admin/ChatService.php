@@ -188,25 +188,47 @@ class ChatService
 
             // Stream response
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
-            $stream = $agent->stream( $messages );
             
+            // Use stream() generator
             $fullContent = '';
             $chunkCount = 0;
-            foreach ( $stream as $chunk ) {
-                $chunkCount++;
-                $fullContent .= $chunk;
+            
+            try {
+                $stream = $agent->stream( $messages );
                 
-                // Send chunk event
-                echo "event: chunk\n";
-                echo 'data: ' . wp_json_encode( [ 'text' => $chunk ] ) . "\n\n";
-                $this->flushOutput();
+                foreach ( $stream as $chunk ) {
+                    $chunkCount++;
+                    $fullContent .= $chunk;
+                    
+                    // Send chunk event
+                    echo "event: chunk\n";
+                    echo 'data: ' . wp_json_encode( [ 'text' => $chunk ] ) . "\n\n";
+                    $this->flushOutput();
+                }
+            } catch ( \Exception $streamException ) {
+                $this->logError(
+                    'Stream exception: ' . $streamException->getMessage(),
+                    [ 'chat_id' => $chatId, 'trace' => $streamException->getTraceAsString() ],
+                    'STREAM_EXCEPTION',
+                    $streamException
+                );
+                throw $streamException;
             }
 
             // Debug: log if no chunks received
             if ( $chunkCount === 0 ) {
                 $this->logError( 
                     'Stream returned 0 chunks', 
-                    [ 'chat_id' => $chatId, 'message_count' => count( $messages ) ], 
+                    [ 
+                        'chat_id' => $chatId, 
+                        'message_count' => count( $messages ),
+                        'messages_preview' => array_map( function( $m ) {
+                            return [
+                                'class' => get_class( $m ),
+                                'content_length' => strlen( $m->getContent() ?? '' ),
+                            ];
+                        }, $messages )
+                    ], 
                     'STREAM_EMPTY'
                 );
             }
