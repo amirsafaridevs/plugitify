@@ -70,10 +70,13 @@
   }
 
   function updateThinkingStep(stepText) {
+    console.log('[updateThinkingStep] Called with:', stepText);
     var stepEl = document.getElementById('thinking-current-step');
+    console.log('[updateThinkingStep] Element found:', !!stepEl);
     if (stepEl && stepText) {
       stepEl.textContent = stepText;
       stepEl.style.display = 'block';
+      console.log('[updateThinkingStep] Updated step text to:', stepText);
     }
   }
 
