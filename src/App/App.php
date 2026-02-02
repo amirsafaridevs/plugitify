@@ -1,6 +1,9 @@
 <?php
-
 namespace Plugifity\App;
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 use Plugifity\Contract\Abstract\AbstractSingleton;
 use Plugifity\Core\Application;
@@ -46,9 +49,18 @@ class App extends AbstractSingleton
      */
     private function init(): void
     {
+        if ( defined( 'PLUGIFITY_PLUGIN_FILE' ) ) {
+            register_activation_hook( PLUGIFITY_PLUGIN_FILE, [ $this, 'runMigrations' ] );
+        }
         $this->application->registerProvider(AdminServiceProvider::class);
         $this->application->boot();
     }
 
-    
+    /**
+     * Run migrations (e.g. on plugin activation).
+     */
+    public function runMigrations(): void
+    {
+        $this->application->runMigrations();
+    }
 }

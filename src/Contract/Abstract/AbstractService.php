@@ -2,19 +2,26 @@
 
 namespace Plugifity\Contract\Abstract;
 
+use Plugifity\Contract\Interface\ContainerInterface;
 use Plugifity\Contract\Interface\ServiceInterface;
-use Plugifity\App\App;
+use Plugifity\Core\Application;
+
 abstract class AbstractService implements ServiceInterface
 {
+    /**
+     * Container instance
+     *
+     * @var ContainerInterface
+     */
+    protected ContainerInterface $container;
     /**
      * Boot services after registration
      *
      * @param ContainerInterface $container
      * @return void
      */
-    public function boot(): void
+    public function boot(ContainerInterface $container): void
     {
-       
     }
 
     /**
@@ -36,4 +43,14 @@ abstract class AbstractService implements ServiceInterface
     {
         return $this->container;
     }
-}   
+
+    /**
+     * Get the application instance
+     *
+     * @return Application
+     */
+    protected function getApplication(): Application
+    {
+        return $this->container->get('app');
+    }
+}

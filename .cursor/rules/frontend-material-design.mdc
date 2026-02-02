@@ -1,0 +1,56 @@
+---
+description: Frontend design - Material Design, icons, animations, skeleton loading, unified color palette
+alwaysApply: true
+---
+
+# Frontend Design Rules (Material Design)
+
+Use Material Design for a consistent, unified frontend. Apply these rules to all UI work.
+
+## Design system
+
+- **Material Design**: Follow Material Design 3 (M3) patterns for layout, components, and behavior.
+- **Consistency**: Keep designs unified across the plugin (same spacing, elevation, typography scale).
+
+## Icons
+
+- **Material Design Icons**: Use Material Design Icons (Material Icons / Material Symbols) only.
+- Prefer icon font or SVG from [Material Icons](https://fonts.google.com/icons) or [Material Symbols](https://fonts.google.com/icons); avoid mixing other icon sets.
+
+## Animations
+
+- Use animations where they add clarity (e.g. transitions, micro-interactions, loading states).
+- Prefer Material motion: short durations (200–300ms), standard easing (e.g. `cubic-bezier`).
+- Use for: hover/focus feedback, page/section transitions, list reorder, dialogs open/close, loading indicators.
+
+## Loading states
+
+- **Skeleton loading**: Where content is loading (lists, cards, tables, detail views), show **skeleton** placeholders (skeleton screens / shimmer) instead of only spinners.
+- Use skeleton components that match the final layout (e.g. skeleton rows for tables, skeleton cards for grids).
+- Keep skeletons subtle; use the project color palette at low opacity or a neutral gray.
+
+## Color palette
+
+Use this palette for primary UI, accents, and states. Keep usage consistent.
+
+| Usage        | Hex       |
+|-------------|-----------|
+| Primary     | `#46a9c6` |
+| Primary alt | `#4bb6d3` |
+| Accent      | `#6ef2cc` |
+
+- **Primary** (`#46a9c6`): Main buttons, links, key actions, primary app color.
+- **Primary alt** (`#4bb6d3`): Hover/active states, secondary emphasis.
+- **Accent** (`#6ef2cc`): Success, highlights, positive actions, optional accent elements.
+
+Define these as CSS variables for reuse, e.g.:
+
+```css
+:root {
+  --plugitify-primary: #46a9c6;
+  --plugitify-primary-alt: #4bb6d3;
+  --plugitify-accent: #6ef2cc;
+}
+```
+
+Use them for backgrounds, borders, text, and focus rings so the UI stays consistent.

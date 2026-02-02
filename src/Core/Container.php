@@ -175,12 +175,40 @@ class Container implements ContainerInterface
             $object = $this->build($concrete, $parameters);
         }
 
+        // Auto-inject container into services that have setContainer(ContainerInterface)
+        $this->injectContainer($object);
+
         // Store as singleton if needed
         if (isset($this->bindings[$abstract]) && $this->bindings[$abstract]['singleton']) {
             $this->instances[$abstract] = $object;
         }
 
         return $object;
+    }
+
+    /**
+     * Inject container into object if it has setContainer(ContainerInterface)
+     *
+     * @param object $object
+     * @return void
+     */
+    private function injectContainer(object $object): void
+    {
+        if (!method_exists($object, 'setContainer')) {
+            return;
+        }
+
+        $reflection = new \ReflectionMethod($object, 'setContainer');
+        $params = $reflection->getParameters();
+
+        if ($params === [] || !$reflection->getParameters()[0]->getType()) {
+            return;
+        }
+
+        $type = $params[0]->getType();
+        if ($type && !$type->isBuiltin() && is_a($type->getName(), ContainerInterface::class, true)) {
+            $object->setContainer($this);
+        }
     }
 
     /**

@@ -15,5 +15,7 @@
     "minimum-stability": "dev",
     "type": "wordpress-plugin",
     "license": "MIT",
-    "require": {}
+    "require": {
+        "neuron-core/neuron-ai": "3.x-dev"
+    }
 }
