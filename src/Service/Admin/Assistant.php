@@ -26,6 +26,14 @@ class Assistant extends AbstractService
 
     public function registerChatRestRoutes(): void
     {
+        register_rest_route( self::REST_NAMESPACE, '/chats', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'restGetChats' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+        ] );
+
         register_rest_route( self::REST_NAMESPACE, '/chat', [
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => [ $this, 'restChat' ],
@@ -61,6 +69,78 @@ class Assistant extends AbstractService
                 ],
             ],
         ] );
+
+        register_rest_route( self::REST_NAMESPACE, '/chat/(?P<id>\d+)/messages', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'restGetChatMessages' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args'                => [
+                'id' => [
+                    'type'     => 'integer',
+                    'required' => true,
+                ],
+            ],
+        ] );
+    }
+
+    /**
+     * REST: GET chats — fetch all chats (ordered by updated_at desc).
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function restGetChats( WP_REST_Request $request ): WP_REST_Response
+    {
+        $chatRepository = $this->getContainer()->get( 'chat.repository' );
+        $chats = $chatRepository->get( 'active' );
+        
+        $result = [];
+        foreach ( $chats as $chat ) {
+            $result[] = [
+                'id'         => $chat->id,
+                'title'      => $chat->title ?? __( 'New Chat', 'plugifity' ),
+                'status'     => $chat->status ?? 'active',
+                'created_at' => $chat->created_at,
+                'updated_at' => $chat->updated_at,
+            ];
+        }
+        
+        return new WP_REST_Response( [ 'success' => true, 'chats' => $result ], 200 );
+    }
+
+    /**
+     * REST: GET chat/:id/messages — fetch all messages for a chat.
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function restGetChatMessages( WP_REST_Request $request ): WP_REST_Response
+    {
+        $chatId = absint( $request->get_param( 'id' ) );
+        if ( $chatId === 0 ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'error'   => [ 'message' => __( 'Invalid chat ID.', 'plugifity' ) ],
+            ], 400 );
+        }
+
+        $messageRepository = $this->getContainer()->get( 'message.repository' );
+        $messages = $messageRepository->getByChatId( $chatId );
+        
+        $result = [];
+        foreach ( $messages as $msg ) {
+            $result[] = [
+                'id'         => $msg->id,
+                'chat_id'    => $msg->chat_id,
+                'role'       => $msg->role,
+                'content'    => $msg->content,
+                'created_at' => $msg->created_at,
+            ];
+        }
+        
+        return new WP_REST_Response( [ 'success' => true, 'messages' => $result ], 200 );
     }
 
     /**

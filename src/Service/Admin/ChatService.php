@@ -62,6 +62,9 @@ class ChatService
                 'content' => $message,
             ] );
 
+            // Update chat timestamp
+            $this->chatRepository->touch( $chatId );
+
             $history = $this->messageRepository->getByChatId( $chatId );
             $messages = $this->buildNeuronMessages( $history );
 
@@ -77,6 +80,9 @@ class ChatService
                 'role'    => 'assistant',
                 'content' => $content,
             ] );
+
+            // Update chat timestamp
+            $this->chatRepository->touch( $chatId );
 
             return [
                 'success'  => true,
@@ -180,6 +186,9 @@ class ChatService
                 'content' => $userMessage,
             ] );
 
+            // Update chat timestamp
+            $this->chatRepository->touch( $chatId );
+
             // Get history and build messages
             $history = $this->messageRepository->getByChatId( $chatId );
             $messages = $this->buildNeuronMessages( $history );
@@ -282,6 +291,9 @@ class ChatService
                 'role'    => 'assistant',
                 'content' => $fullContent,
             ] );
+
+            // Update chat timestamp
+            $this->chatRepository->touch( $chatId );
 
             // Send done event
             echo "event: done\n";

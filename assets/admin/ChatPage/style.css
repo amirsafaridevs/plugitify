@@ -274,6 +274,33 @@ body {
   min-height: 0;
 }
 
+/* Loading messages indicator */
+.loading-messages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: var(--on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.loading-messages .material-symbols-outlined {
+  font-size: 32px;
+  color: var(--plugitify-primary);
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Subtle scrollbar â€“ no background, thin */
 .messages::-webkit-scrollbar {
   width: 6px;
@@ -454,6 +481,7 @@ body {
   font-weight: 600;
   margin: 12px 0 8px;
   line-height: 1.3;
+  color: var(--plugitify-primary);
 }
 
 .message-bubble h1 {

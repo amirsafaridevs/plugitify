@@ -528,6 +528,13 @@
     if (welcome) welcome.style.display = '';
     userInput.value = '';
     userInput.focus();
+    
+    // Remove active state from all chat items
+    if (chatItems) {
+      chatItems.querySelectorAll('.chat-item').forEach(function (el) {
+        el.classList.remove('active');
+      });
+    }
   }
 
   chatForm.addEventListener('submit', function (e) {
@@ -592,15 +599,40 @@
       function onChatId(chatId) {
         if (currentRequestCancelled) return;
         currentChatId = chatId;
-        // Add new chat to sidebar list
+        
+        // Add new chat to sidebar list if not already present
         if (chatItems && chatListPlaceholder) {
-          chatListPlaceholder.style.display = 'none';
-          var chatHtml = '<li class="chat-item active" data-chat-id="' + chatId + '">' +
-            '<div class="chat-item-content">' +
-            '<div class="chat-title">New Chat</div>' +
-            '<div class="chat-preview"></div>' +
-            '</div></li>';
-          chatItems.insertAdjacentHTML('afterbegin', chatHtml);
+          // Check if chat already exists
+          var existingChat = chatItems.querySelector('.chat-item[data-chat-id="' + chatId + '"]');
+          if (!existingChat) {
+            chatListPlaceholder.style.display = 'none';
+            chatItems.hidden = false;
+            
+            var chatHtml = '<li class="chat-item active" data-chat-id="' + chatId + '">' +
+              '<div class="chat-item-content">' +
+              '<div class="chat-title">New Chat</div>' +
+              '<div class="chat-preview"></div>' +
+              '</div></li>';
+            chatItems.insertAdjacentHTML('afterbegin', chatHtml);
+            
+            // Add click handler for the new chat
+            var newChatItem = chatItems.querySelector('.chat-item[data-chat-id="' + chatId + '"]');
+            if (newChatItem) {
+              newChatItem.addEventListener('click', function () {
+                loadChatMessages(chatId);
+                chatItems.querySelectorAll('.chat-item').forEach(function (el) {
+                  el.classList.remove('active');
+                });
+                newChatItem.classList.add('active');
+              });
+            }
+          } else {
+            // If chat exists, just make it active
+            chatItems.querySelectorAll('.chat-item').forEach(function (el) {
+              el.classList.remove('active');
+            });
+            existingChat.classList.add('active');
+          }
         }
       },
       function onTask(task) {
@@ -889,6 +921,126 @@
       });
   }
 
+  /* ----- Load existing chats on page load ----- */
+  function loadChats() {
+    if (!restUrl || !restNonce) return;
+    
+    fetch(restUrl + '/chats', {
+      method: 'GET',
+      headers: { 'X-WP-Nonce': restNonce },
+    })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        if (data && data.chats && data.chats.length > 0) {
+          renderChatList(data.chats);
+        }
+      })
+      .catch(function (err) {
+        console.error('Failed to load chats:', err);
+      });
+  }
+
+  function renderChatList(chats) {
+    if (!chatItems || !chatListPlaceholder) return;
+    
+    chatListPlaceholder.style.display = 'none';
+    chatItems.hidden = false;
+    chatItems.innerHTML = '';
+    
+    chats.forEach(function (chat) {
+      var chatHtml = '<li class="chat-item" data-chat-id="' + chat.id + '">' +
+        '<div class="chat-item-content">' +
+        '<div class="chat-title">' + escapeHtml(chat.title || 'New Chat') + '</div>' +
+        '<div class="chat-preview"></div>' +
+        '</div></li>';
+      chatItems.insertAdjacentHTML('beforeend', chatHtml);
+    });
+    
+    // Add click handlers
+    chatItems.querySelectorAll('.chat-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        var chatId = parseInt(item.getAttribute('data-chat-id'), 10);
+        loadChatMessages(chatId);
+        
+        // Update active state
+        chatItems.querySelectorAll('.chat-item').forEach(function (el) {
+          el.classList.remove('active');
+        });
+        item.classList.add('active');
+      });
+    });
+  }
+
+  function loadChatMessages(chatId) {
+    if (!restUrl || !restNonce) return;
+    
+    currentChatId = chatId;
+    
+    // Clear current messages
+    messagesEl.querySelectorAll('.message').forEach(function (el) { el.remove(); });
+    messagesEl.classList.remove('has-messages');
+    var welcome = document.getElementById('welcome');
+    if (welcome) welcome.style.display = 'none';
+    
+    // Show loading state
+    messagesEl.innerHTML = '<div class="loading-messages"><span class="material-symbols-outlined">progress_activity</span><span>Loading...</span></div>';
+    
+    fetch(restUrl + '/chat/' + chatId + '/messages', {
+      method: 'GET',
+      headers: { 'X-WP-Nonce': restNonce },
+    })
+      .then(function (res) { return res.ok ? res.json() : Promise.reject(res); })
+      .then(function (data) {
+        // Remove loading
+        var loading = messagesEl.querySelector('.loading-messages');
+        if (loading) loading.remove();
+        
+        if (data && data.messages && data.messages.length > 0) {
+          messagesEl.classList.add('has-messages');
+          data.messages.forEach(function (msg) {
+            renderMessage(msg);
+          });
+          scrollToBottom();
+        }
+      })
+      .catch(function (err) {
+        console.error('Failed to load chat messages:', err);
+        var loading = messagesEl.querySelector('.loading-messages');
+        if (loading) loading.remove();
+      });
+  }
+
+  function renderMessage(msg) {
+    var time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }) : '';
+    
+    if (msg.role === 'user') {
+      var dir = detectTextDirection(msg.content);
+      var html = '<div class="message user" role="listitem" dir="' + dir + '">' +
+        '<div class="message-avatar" aria-hidden="true">' +
+        '<span class="material-symbols-outlined">person</span>' +
+        '</div>' +
+        '<div class="message-bubble">' +
+        '<div class="message-text">' + escapeHtml(msg.content) + '</div>' +
+        '<div class="message-time">' + time + '</div>' +
+        '</div></div>';
+      messagesEl.insertAdjacentHTML('beforeend', html);
+    } else if (msg.role === 'assistant') {
+      var dir = detectTextDirection(msg.content);
+      var html = '<div class="message assistant" role="listitem" dir="' + dir + '">' +
+        '<div class="message-avatar" aria-hidden="true">' +
+        '<span class="material-symbols-outlined">auto_awesome</span>' +
+        '</div>' +
+        '<div class="message-bubble">' +
+        '<div class="message-text">' + markdownToHtml(msg.content) + '</div>' +
+        '<div class="message-time">' + time + '</div>' +
+        '</div></div>';
+      messagesEl.insertAdjacentHTML('beforeend', html);
+    }
+  }
+
   (function loadSettingsOnPageLoad() {
     if (!restUrl || !restNonce) return;
     fetch(restUrl + '/settings', {
@@ -901,6 +1053,9 @@
       })
       .catch(function () {});
   })();
+
+  // Load chats on page load
+  loadChats();
 
   if (btnSettings) btnSettings.addEventListener('click', openSettings);
   if (settingsCloseIcon) settingsCloseIcon.addEventListener('click', closeSettings);
