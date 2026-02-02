@@ -199,9 +199,9 @@ class ChatService
             $fullContent = $responseMessage->getContent() ?? '';
             
             // Check if tools were used by examining chat history
+            $toolCalls = [];
             if ( method_exists( $state, 'getChatHistory' ) ) {
                 $chatHistory = $state->getChatHistory();
-                $toolCalls = [];
                 
                 // Extract tool calls from history
                 foreach ( $chatHistory->getMessages() as $msg ) {
@@ -213,31 +213,53 @@ class ChatService
                         }
                     }
                 }
+            }
+            
+            // Send task list if tools were used (BEFORE streaming starts)
+            if ( count( $toolCalls ) > 0 ) {
+                echo "event: task\n";
+                echo 'data: ' . wp_json_encode( [ 'task' => [ 'action' => 'list', 'tasks' => $toolCalls ] ] ) . "\n\n";
+                $this->flushOutput();
                 
-                // Send task list if tools were used
-                if ( count( $toolCalls ) > 0 ) {
+                // Send each task as "start" then immediately "done"
+                for ( $i = 0; $i < count( $toolCalls ); $i++ ) {
+                    // Show task is running
                     echo "event: task\n";
-                    echo 'data: ' . wp_json_encode( [ 'task' => [ 'action' => 'list', 'tasks' => $toolCalls ] ] ) . "\n\n";
+                    echo 'data: ' . wp_json_encode( [
+                        'task' => [
+                            'action' => 'start',
+                            'index'  => $i,
+                        ],
+                    ] ) . "\n\n";
                     $this->flushOutput();
                     
-                    // Mark all as done (since they already executed)
-                    for ( $i = 0; $i < count( $toolCalls ); $i++ ) {
-                        echo "event: task\n";
-                        echo 'data: ' . wp_json_encode( [
-                            'task' => [
-                                'action' => 'done',
-                                'index'  => $i,
-                            ],
-                        ] ) . "\n\n";
-                        $this->flushOutput();
-                    }
+                    // Update step text
+                    echo "event: step\n";
+                    echo 'data: ' . wp_json_encode( [ 'step' => $toolCalls[ $i ]['label'] ] ) . "\n\n";
+                    $this->flushOutput();
+                    
+                    // Small delay to show task is processing
+                    usleep( 300000 ); // 300ms
+                    
+                    // Mark as done
+                    echo "event: task\n";
+                    echo 'data: ' . wp_json_encode( [
+                        'task' => [
+                            'action' => 'done',
+                            'index'  => $i,
+                        ],
+                    ] ) . "\n\n";
+                    $this->flushOutput();
                 }
             }
             
-            // Send generating step
+            // Send generating step (before streaming chunks)
             echo "event: step\n";
             echo 'data: ' . wp_json_encode( [ 'step' => __( 'Generating response...', 'plugifity' ) ] ) . "\n\n";
             $this->flushOutput();
+            
+            // Small delay before starting streaming
+            usleep( 200000 ); // 200ms
             
             // Simulate streaming by sending content in chunks (word by word)
             $words = preg_split( '/(\s+)/u', $fullContent, -1, PREG_SPLIT_DELIM_CAPTURE );
