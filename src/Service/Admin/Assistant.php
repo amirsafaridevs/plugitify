@@ -121,6 +121,14 @@ class Assistant extends AbstractService
                 ],
             ],
         ] );
+
+        register_rest_route( self::REST_NAMESPACE, '/errors/clear', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restClearAllErrors' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+        ] );
     }
 
     /**
@@ -268,5 +276,23 @@ class Assistant extends AbstractService
             'totalErrors' => $totalErrors,
             'filterLevel' => $filterLevel,
         ] );
+    }
+
+    /**
+     * REST: Clear all error logs.
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function restClearAllErrors( WP_REST_Request $request ): WP_REST_Response
+    {
+        $errorRepository = $this->getContainer()->get( 'error.repository' );
+        $result = $errorRepository->deleteAll();
+        
+        if ( $result ) {
+            return new WP_REST_Response( [ 'success' => true ], 200 );
+        }
+        
+        return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to clear errors', 'plugifity' ) ], 500 );
     }
 }

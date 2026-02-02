@@ -8,13 +8,21 @@
 
 .error-logs-header {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.error-logs-stats-wrapper {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 20px 0;
-  padding: 16px;
-  background: #fff;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
+  gap: 16px;
 }
 
 .error-logs-stats {
@@ -25,34 +33,121 @@
 .error-stat {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: #1e1e1e;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .error-stat .material-symbols-outlined {
-  font-size: 20px;
+  font-size: 32px;
   color: #46a9c6;
+}
+
+.error-stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.error-stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e1e1e;
+  line-height: 1;
+}
+
+.error-stat-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.button-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #dc2626;
+  color: #fff;
+  border: 1px solid #b91c1c;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.button-danger:hover {
+  background: #b91c1c;
+  border-color: #991b1b;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.25);
+}
+
+.button-danger:active {
+  transform: translateY(0);
+}
+
+.button-danger:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button-danger .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .error-logs-filter {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .error-logs-filter label {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
+  color: #374151;
   margin: 0;
 }
 
 .filter-select {
-  padding: 6px 10px;
-  border: 1px solid #c3c4c7;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
   font-size: 0.875rem;
+  color: #1e1e1e;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.filter-select:focus {
+  border-color: #46a9c6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(70, 169, 198, 0.1);
+}
+
+.error-logs-filter .button-primary {
+  background: #46a9c6;
+  border-color: #46a9c6;
+  color: #fff;
+  font-weight: 500;
+}
+
+.error-logs-filter .button-primary:hover {
+  background: #4bb6d3;
+  border-color: #4bb6d3;
 }
 
 /* Empty state */

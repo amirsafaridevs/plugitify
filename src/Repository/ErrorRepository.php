@@ -77,4 +77,14 @@ class ErrorRepository extends AbstractRepository
         }
         return $query->count();
     }
+
+    /**
+     * Delete all error logs.
+     *
+     * @return bool
+     */
+    public function deleteAll(): bool
+    {
+        return $this->newQuery()->delete();
+    }
 }

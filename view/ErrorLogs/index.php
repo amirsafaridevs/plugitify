@@ -20,29 +20,38 @@ if ( ! defined( 'ABSPATH' ) ) {
     </h1>
 
     <div class="error-logs-header">
-        <div class="error-logs-stats">
-            <span class="error-stat">
-                <span class="material-symbols-outlined">bug_report</span>
-                <?php
-                // translators: %d is the total number of errors
-                printf( esc_html__( 'Total: %d', 'plugifity' ), absint( $totalErrors ) );
-                ?>
-            </span>
+        <div class="error-logs-stats-wrapper">
+            <div class="error-logs-stats">
+                <div class="error-stat">
+                    <span class="material-symbols-outlined">bug_report</span>
+                    <div class="error-stat-info">
+                        <span class="error-stat-value"><?php echo absint( $totalErrors ); ?></span>
+                        <span class="error-stat-label"><?php esc_html_e( 'Total Errors', 'plugifity' ); ?></span>
+                    </div>
+                </div>
+            </div>
+
+            <?php if ( $totalErrors > 0 ): ?>
+                <button type="button" id="btn-clear-all-errors" class="button button-danger" data-nonce="<?php echo esc_attr( wp_create_nonce( 'plugitify_clear_errors' ) ); ?>">
+                    <span class="material-symbols-outlined">delete_sweep</span>
+                    <?php esc_html_e( 'Clear All Errors', 'plugifity' ); ?>
+                </button>
+            <?php endif; ?>
         </div>
 
         <form method="get" action="" class="error-logs-filter">
             <input type="hidden" name="page" value="plugitify-error-logs" />
-            <label for="filter-level"><?php esc_html_e( 'Filter by level:', 'plugifity' ); ?></label>
+            <label for="filter-level"><?php esc_html_e( 'Filter:', 'plugifity' ); ?></label>
             <select name="level" id="filter-level" class="filter-select">
-                <option value=""><?php esc_html_e( 'All', 'plugifity' ); ?></option>
+                <option value=""><?php esc_html_e( 'All Levels', 'plugifity' ); ?></option>
                 <option value="error" <?php selected( $filterLevel, 'error' ); ?>><?php esc_html_e( 'Error', 'plugifity' ); ?></option>
                 <option value="warning" <?php selected( $filterLevel, 'warning' ); ?>><?php esc_html_e( 'Warning', 'plugifity' ); ?></option>
                 <option value="critical" <?php selected( $filterLevel, 'critical' ); ?>><?php esc_html_e( 'Critical', 'plugifity' ); ?></option>
             </select>
-            <button type="submit" class="button"><?php esc_html_e( 'Filter', 'plugifity' ); ?></button>
+            <button type="submit" class="button button-primary"><?php esc_html_e( 'Apply', 'plugifity' ); ?></button>
             <?php if ( $filterLevel ): ?>
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=plugitify-error-logs' ) ); ?>" class="button">
-                    <?php esc_html_e( 'Clear', 'plugifity' ); ?>
+                    <?php esc_html_e( 'Reset', 'plugifity' ); ?>
                 </a>
             <?php endif; ?>
         </form>
@@ -153,6 +162,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 <script>
 (function() {
     document.addEventListener('DOMContentLoaded', function() {
+        // Toggle context
         const toggleButtons = document.querySelectorAll('.error-toggle-context');
         toggleButtons.forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -172,6 +182,45 @@ if ( ! defined( 'ABSPATH' ) ) {
                 }
             });
         });
+
+        // Clear all errors
+        const btnClearAll = document.getElementById('btn-clear-all-errors');
+        if (btnClearAll) {
+            btnClearAll.addEventListener('click', function() {
+                if (!confirm('<?php echo esc_js( __( 'Are you sure you want to delete all error logs? This action cannot be undone.', 'plugifity' ) ); ?>')) {
+                    return;
+                }
+
+                const nonce = this.dataset.nonce;
+                this.disabled = true;
+                this.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> <?php echo esc_js( __( 'Deleting...', 'plugifity' ) ); ?>';
+
+                fetch('<?php echo esc_url( rest_url( 'plugitify/v1/errors/clear' ) ); ?>', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': '<?php echo wp_create_nonce( 'wp_rest' ); ?>'
+                    }
+                })
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('<?php echo esc_js( __( 'Failed to clear errors. Please try again.', 'plugifity' ) ); ?>');
+                        btnClearAll.disabled = false;
+                        btnClearAll.innerHTML = '<span class="material-symbols-outlined">delete_sweep</span> <?php echo esc_js( __( 'Clear All Errors', 'plugifity' ) ); ?>';
+                    }
+                })
+                .catch(function(error) {
+                    alert('<?php echo esc_js( __( 'An error occurred. Please try again.', 'plugifity' ) ); ?>');
+                    btnClearAll.disabled = false;
+                    btnClearAll.innerHTML = '<span class="material-symbols-outlined">delete_sweep</span> <?php echo esc_js( __( 'Clear All Errors', 'plugifity' ) ); ?>';
+                });
+            });
+        }
     });
 })();
 </script>
