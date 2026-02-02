@@ -65,7 +65,7 @@ class ChatService
             $history = $this->messageRepository->getByChatId( $chatId );
             $messages = $this->buildNeuronMessages( $history );
 
-            $agent = $this->container->get( 'admin.agent' );
+            $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
             $handler = $agent->chat( $messages );
             $responseMessage = $handler->getMessage();
             $content = $responseMessage->getContent() ?? '';
