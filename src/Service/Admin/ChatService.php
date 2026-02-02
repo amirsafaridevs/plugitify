@@ -189,16 +189,16 @@ class ChatService
             echo 'data: ' . wp_json_encode( [ 'step' => __( 'Analyzing your request...', 'plugifity' ) ] ) . "\n\n";
             $this->flushOutput();
 
-            // Create agent and get response
+            // Create agent and get response (blocking)
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
             $handler = $agent->chat( $messages );
             
-            // Get response message (blocking - waits for completion)
-            $responseMessage = $handler->getMessage();
+            // Run workflow and get state (includes message and history)
+            $state = $handler->run();
+            $responseMessage = $state->getMessage();
             $fullContent = $responseMessage->getContent() ?? '';
             
-            // Check if tools were used by examining state
-            $state = $handler->run();
+            // Check if tools were used by examining chat history
             if ( method_exists( $state, 'getChatHistory' ) ) {
                 $chatHistory = $state->getChatHistory();
                 $toolCalls = [];
