@@ -66,13 +66,11 @@ class ChatService
             $messages = $this->buildNeuronMessages( $history );
 
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
-            $stream = $agent->stream( $messages );
             
-            // Collect full content from stream
-            $content = '';
-            foreach ( $stream as $chunk ) {
-                $content .= $chunk;
-            }
+            // For non-streaming fallback, use chat() instead of stream()
+            $handler = $agent->chat( $messages );
+            $responseMessage = $handler->getMessage();
+            $content = $responseMessage->getContent() ?? '';
 
             $this->messageRepository->create( [
                 'chat_id' => $chatId,
@@ -186,51 +184,25 @@ class ChatService
             $history = $this->messageRepository->getByChatId( $chatId );
             $messages = $this->buildNeuronMessages( $history );
 
-            // Stream response
+            // Get response (chat instead of stream for now until we fix streaming)
             $agent = new \Plugifity\Service\Admin\Agent\PlugitifyAgent();
+            $handler = $agent->chat( $messages );
+            $responseMessage = $handler->getMessage();
+            $fullContent = $responseMessage->getContent() ?? '';
             
-            // Use stream() generator
-            $fullContent = '';
-            $chunkCount = 0;
-            
-            try {
-                $stream = $agent->stream( $messages );
-                
-                foreach ( $stream as $chunk ) {
-                    $chunkCount++;
-                    $fullContent .= $chunk;
-                    
-                    // Send chunk event
-                    echo "event: chunk\n";
-                    echo 'data: ' . wp_json_encode( [ 'text' => $chunk ] ) . "\n\n";
-                    $this->flushOutput();
+            // Simulate streaming by sending content in chunks (word by word)
+            $words = preg_split( '/(\s+)/u', $fullContent, -1, PREG_SPLIT_DELIM_CAPTURE );
+            foreach ( $words as $word ) {
+                if ( $word === '' ) {
+                    continue;
                 }
-            } catch ( \Exception $streamException ) {
-                $this->logError(
-                    'Stream exception: ' . $streamException->getMessage(),
-                    [ 'chat_id' => $chatId, 'trace' => $streamException->getTraceAsString() ],
-                    'STREAM_EXCEPTION',
-                    $streamException
-                );
-                throw $streamException;
-            }
-
-            // Debug: log if no chunks received
-            if ( $chunkCount === 0 ) {
-                $this->logError( 
-                    'Stream returned 0 chunks', 
-                    [ 
-                        'chat_id' => $chatId, 
-                        'message_count' => count( $messages ),
-                        'messages_preview' => array_map( function( $m ) {
-                            return [
-                                'class' => get_class( $m ),
-                                'content_length' => strlen( $m->getContent() ?? '' ),
-                            ];
-                        }, $messages )
-                    ], 
-                    'STREAM_EMPTY'
-                );
+                
+                echo "event: chunk\n";
+                echo 'data: ' . wp_json_encode( [ 'text' => $word ] ) . "\n\n";
+                $this->flushOutput();
+                
+                // Small delay to make streaming visible (remove in production)
+                usleep( 50000 ); // 50ms
             }
 
             // Save assistant message
