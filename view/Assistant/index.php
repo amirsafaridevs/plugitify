@@ -110,25 +110,31 @@ if ( ! defined( 'ABSPATH' ) ) {
         <div class="agentify-settings-section agentify-api-keys" id="agentify-api-keys-section">
           <div class="agentify-settings-api-row" data-model="deepseek">
             <label for="agentify-api-key-deepseek" class="agentify-settings-label">DeepSeek API Key</label>
-            <input type="password" id="agentify-api-key-deepseek" class="agentify-settings-input" placeholder="sk-..." autocomplete="off" />
+            <input type="text" id="agentify-api-key-deepseek" class="agentify-settings-input" placeholder="sk-..." autocomplete="off" />
           </div>
           <div class="agentify-settings-api-row" data-model="chatgpt">
             <label for="agentify-api-key-chatgpt" class="agentify-settings-label">OpenAI API Key</label>
-            <input type="password" id="agentify-api-key-chatgpt" class="agentify-settings-input" placeholder="sk-..." autocomplete="off" />
+            <input type="text" id="agentify-api-key-chatgpt" class="agentify-settings-input" placeholder="sk-..." autocomplete="off" />
           </div>
           <div class="agentify-settings-api-row" data-model="gemini">
             <label for="agentify-api-key-gemini" class="agentify-settings-label">Google API Key</label>
-            <input type="password" id="agentify-api-key-gemini" class="agentify-settings-input" placeholder="AIza..." autocomplete="off" />
+            <input type="text" id="agentify-api-key-gemini" class="agentify-settings-input" placeholder="AIza..." autocomplete="off" />
           </div>
           <div class="agentify-settings-api-row" data-model="claude">
             <label for="agentify-api-key-claude" class="agentify-settings-label">Anthropic API Key</label>
-            <input type="password" id="agentify-api-key-claude" class="agentify-settings-input" placeholder="sk-ant-..." autocomplete="off" />
+            <input type="text" id="agentify-api-key-claude" class="agentify-settings-input" placeholder="sk-ant-..." autocomplete="off" />
           </div>
         </div>
+        <div class="agentify-settings-message" id="agentify-settings-message" role="status" aria-live="polite"></div>
       </div>
       <div class="agentify-modal-footer">
-        <button type="button" class="agentify-btn-secondary" id="agentify-settings-save">Save</button>
-        <button type="button" class="agentify-btn-primary" id="agentify-settings-close-btn">Close</button>
+        <div class="agentify-settings-actions">
+          <button type="button" class="agentify-btn-primary agentify-btn-save" id="agentify-settings-save">
+            <span class="agentify-btn-save-text">Save</span>
+            <span class="agentify-btn-save-skeleton agentify-skeleton" id="agentify-save-skeleton" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="agentify-btn-secondary" id="agentify-settings-close-btn">Close</button>
+        </div>
       </div>
     </div>
   </div>

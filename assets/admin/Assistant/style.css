@@ -813,12 +813,82 @@ textarea#agentify-user-input.agentify-input-field:active {
   border-color: var(--agentify-primary);
 }
 
+.agentify-settings-message {
+  min-height: 0;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--agentify-radius-sm);
+  font-size: 0.875rem;
+  visibility: hidden;
+}
+
+.agentify-settings-message.agentify-visible {
+  visibility: visible;
+}
+
+.agentify-settings-message.agentify-success {
+  background: rgba(110, 242, 204, 0.15);
+  color: var(--agentify-accent);
+  border: 1px solid rgba(110, 242, 204, 0.3);
+}
+
+.agentify-settings-message.agentify-error {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
 .agentify-modal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--agentify-outline);
+}
+
+.agentify-settings-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  padding: 16px 20px;
-  border-top: 1px solid var(--agentify-outline);
+}
+
+.agentify-btn-save {
+  position: relative;
+  min-width: 88px;
+}
+
+.agentify-btn-save .agentify-btn-save-text {
+  position: relative;
+  z-index: 1;
+}
+
+.agentify-btn-save .agentify-btn-save-skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--agentify-radius-sm);
+  display: none;
+  z-index: 0;
+}
+
+.agentify-btn-save.agentify-loading .agentify-btn-save-text {
+  visibility: hidden;
+}
+
+.agentify-btn-save.agentify-loading .agentify-btn-save-skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--agentify-skeleton-base) 0%,
+    var(--agentify-skeleton-shine) 50%,
+    var(--agentify-skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: agentify-skeleton-shimmer 1s ease-in-out infinite;
+}
+
+@keyframes agentify-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .agentify-btn-primary {

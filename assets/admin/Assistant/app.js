@@ -347,7 +347,10 @@
   var settingsSave = document.getElementById('agentify-settings-save');
   var settingsCloseBtn = document.getElementById('agentify-settings-close-btn');
   var settingsCloseIcon = document.getElementById('agentify-settings-close');
-  var STORAGE_KEY = 'agentify_settings';
+  var settingsMessage = document.getElementById('agentify-settings-message');
+  var saveSkeleton = document.getElementById('agentify-save-skeleton');
+  var restUrl = typeof agentifyRest !== 'undefined' ? agentifyRest.restUrl : '';
+  var restNonce = typeof agentifyRest !== 'undefined' ? agentifyRest.nonce : '';
 
   function getProviderFromModelValue(value) {
     if (!value) return 'deepseek';
@@ -355,11 +358,40 @@
     return parts[0] || 'deepseek';
   }
 
+  function setSaveLoading(loading) {
+    if (!settingsSave) return;
+    if (loading) {
+      settingsSave.classList.add('agentify-loading');
+      settingsSave.disabled = true;
+    } else {
+      settingsSave.classList.remove('agentify-loading');
+      settingsSave.disabled = false;
+    }
+  }
+
+  function showSettingsMessage(text, type) {
+    if (!settingsMessage) return;
+    settingsMessage.textContent = text || '';
+    settingsMessage.className = 'agentify-settings-message agentify-visible';
+    if (type === 'success') settingsMessage.classList.add('agentify-success');
+    else if (type === 'error') settingsMessage.classList.add('agentify-error');
+    else {
+      settingsMessage.classList.remove('agentify-success', 'agentify-error');
+    }
+  }
+
+  function clearSettingsMessage() {
+    if (!settingsMessage) return;
+    settingsMessage.textContent = '';
+    settingsMessage.className = 'agentify-settings-message';
+  }
+
   function openSettings() {
     if (!settingsOverlay) return;
     settingsOverlay.setAttribute('aria-hidden', 'false');
+    clearSettingsMessage();
+    setSaveLoading(true);
     loadSettingsIntoModal();
-    showApiKeyRow(getProviderFromModelValue(settingsModelSelect ? settingsModelSelect.value : null));
   }
 
   function closeSettings() {
@@ -377,41 +409,85 @@
   var apiKeyInputIds = { deepseek: 'agentify-api-key-deepseek', chatgpt: 'agentify-api-key-chatgpt', gemini: 'agentify-api-key-gemini', claude: 'agentify-api-key-claude' };
 
   function loadSettingsIntoModal() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      var data = raw ? JSON.parse(raw) : {};
-      if (settingsModelSelect && data.model) {
-        if (data.model.indexOf('|') >= 0) {
+    if (!restUrl) {
+      setSaveLoading(false);
+      if (settingsModelSelect) settingsModelSelect.value = 'deepseek|deepseek-chat';
+      showApiKeyRow('deepseek');
+      return;
+    }
+    fetch(restUrl + '/settings', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'X-WP-Nonce': restNonce },
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Load failed');
+        return res.json();
+      })
+      .then(function (data) {
+        if (settingsModelSelect && data.model) {
           var opt = settingsModelSelect.querySelector('option[value="' + data.model + '"]');
           settingsModelSelect.value = opt ? data.model : 'deepseek|deepseek-chat';
-        } else {
-          var firstOpt = settingsModelSelect.querySelector('option[value^="' + data.model + '|"]');
-          settingsModelSelect.value = firstOpt ? firstOpt.value : 'deepseek|deepseek-chat';
+        } else if (settingsModelSelect) {
+          settingsModelSelect.value = 'deepseek|deepseek-chat';
         }
-      } else if (settingsModelSelect) {
-        settingsModelSelect.value = 'deepseek|deepseek-chat';
-      }
-      Object.keys(apiKeyInputIds).forEach(function (key) {
-        var input = document.getElementById(apiKeyInputIds[key]);
-        if (input && data.apiKeys && data.apiKeys[key] !== undefined) input.value = data.apiKeys[key];
+        showApiKeyRow(getProviderFromModelValue(settingsModelSelect ? settingsModelSelect.value : null));
+        if (data.api_keys) {
+          Object.keys(apiKeyInputIds).forEach(function (key) {
+            var input = document.getElementById(apiKeyInputIds[key]);
+            if (input && data.api_keys[key] !== undefined) input.value = data.api_keys[key] || '';
+          });
+        }
+      })
+      .catch(function () {
+        if (settingsModelSelect) settingsModelSelect.value = 'deepseek|deepseek-chat';
+        showApiKeyRow('deepseek');
+      })
+      .finally(function () {
+        setSaveLoading(false);
       });
-    } catch (e) {}
   }
 
   function saveSettings() {
-    try {
-      var modelId = settingsModelSelect ? settingsModelSelect.value : 'deepseek|deepseek-chat';
-      var apiKeys = {};
-      if (apiKeysSection) {
-        apiKeysSection.querySelectorAll('.agentify-settings-api-row').forEach(function (row) {
-          var model = row.getAttribute('data-model');
-          var input = row.querySelector('input');
-          if (model && input) apiKeys[model] = input.value;
+    if (!restUrl) {
+      showSettingsMessage('REST URL not available.', 'error');
+      return;
+    }
+    clearSettingsMessage();
+    setSaveLoading(true);
+    var modelId = settingsModelSelect ? settingsModelSelect.value : 'deepseek|deepseek-chat';
+    var apiKeys = {};
+    if (apiKeysSection) {
+      apiKeysSection.querySelectorAll('.agentify-settings-api-row').forEach(function (row) {
+        var model = row.getAttribute('data-model');
+        var input = row.querySelector('input');
+        if (model && input) apiKeys[model] = input.value || '';
+      });
+    }
+    fetch(restUrl + '/settings', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-WP-Nonce': restNonce,
+      },
+      body: JSON.stringify({ model: modelId, api_keys: apiKeys }),
+    })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok) throw new Error(data.message || res.statusText || 'Save failed');
+          return data;
         });
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ model: modelId, apiKeys: apiKeys }));
-    } catch (e) {}
-    closeSettings();
+      })
+      .then(function (data) {
+        showSettingsMessage(data.message || 'Settings saved.', data.success !== false ? 'success' : 'error');
+      })
+      .catch(function (err) {
+        showSettingsMessage(err.message || 'Failed to save settings.', 'error');
+      })
+      .finally(function () {
+        setSaveLoading(false);
+      });
   }
 
   if (btnSettings) btnSettings.addEventListener('click', openSettings);
