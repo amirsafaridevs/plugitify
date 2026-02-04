@@ -115,6 +115,16 @@
   min-height: 0;
 }
 
+/* Only one of placeholder or list is visible at a time */
+#agentify-chat-list-placeholder[hidden],
+#agentify-chat-list-placeholder.agentify-hidden {
+  display: none !important;
+}
+#agentify-chat-items[hidden],
+#agentify-chat-items.agentify-hidden {
+  display: none !important;
+}
+
 .agentify-chat-list-placeholder {
   display: flex;
   flex-direction: column;
@@ -141,6 +151,14 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.agentify-chat-items > li {
+  margin-bottom: 4px;
+}
+
+.agentify-chat-items > li:last-child {
+  margin-bottom: 0;
 }
 
 .agentify-chat-item {
@@ -170,9 +188,128 @@
   color: var(--agentify-accent);
 }
 
+.agentify-chat-item-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 0 2px;
+}
+
+.agentify-chat-item-wrap .agentify-chat-item {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 10px;
+}
+
+.agentify-chat-item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--agentify-on-surface-variant);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--agentify-motion-duration) var(--agentify-motion-easing),
+    color var(--agentify-motion-duration) var(--agentify-motion-easing);
+}
+
+.agentify-chat-item-delete:hover {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.agentify-chat-item-delete .material-symbols-outlined {
+  font-size: 18px;
+}
+
 .agentify-chat-item .material-symbols-outlined {
   font-size: 18px;
   flex-shrink: 0;
+}
+
+/* Chat list loading skeleton */
+.agentify-chat-list-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agentify-chat-list-skeleton li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 4px;
+  border-radius: var(--agentify-radius-sm);
+}
+.agentify-chat-list-skeleton .agentify-skeleton {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--agentify-skeleton-base) 0%,
+    var(--agentify-skeleton-shine) 50%,
+    var(--agentify-skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: agentify-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+.agentify-chat-list-skeleton .agentify-skeleton-line {
+  flex: 1;
+  max-width: 80%;
+}
+@keyframes agentify-skeleton-shimmer {
+  to { background-position: -200% 0; }
+}
+
+/* Messages area loading skeleton */
+.agentify-messages-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+.agentify-messages-loading .agentify-msg-skeleton {
+  display: flex;
+  gap: 12px;
+  max-width: 85%;
+}
+.agentify-messages-loading .agentify-msg-skeleton.agentify-msg-skeleton-right {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+.agentify-messages-loading .agentify-msg-skeleton-bubble {
+  height: 48px;
+  border-radius: var(--agentify-radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--agentify-skeleton-base) 0%,
+    var(--agentify-skeleton-shine) 50%,
+    var(--agentify-skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: agentify-skeleton-shimmer 1.2s ease-in-out infinite;
+  flex: 1;
+  min-width: 120px;
+}
+.agentify-messages-loading .agentify-msg-skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    var(--agentify-skeleton-base) 0%,
+    var(--agentify-skeleton-shine) 50%,
+    var(--agentify-skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: agentify-skeleton-shimmer 1.2s ease-in-out infinite;
 }
 
 .agentify-sidebar-footer {
@@ -399,6 +536,12 @@
 
 .agentify-message.agentify-user .agentify-message-time {
   color: rgba(13, 17, 23, 0.75);
+}
+
+.agentify-message-error {
+  font-size: 0.875rem;
+  color: #f44336;
+  margin-top: 6px;
 }
 
 /* ----- Thinking (AI loading) ----- */

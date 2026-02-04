@@ -52,4 +52,15 @@ class MessageRepository extends AbstractRepository
     {
         return $this->get( $chatId );
     }
+
+    /**
+     * Delete all messages for a chat.
+     *
+     * @param int $chatId
+     * @return int|false Rows affected or false
+     */
+    public function deleteByChatId( int $chatId )
+    {
+        return $this->newQuery()->where( 'chat_id', $chatId )->delete();
+    }
 }

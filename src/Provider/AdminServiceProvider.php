@@ -4,9 +4,9 @@ namespace Plugifity\Provider;
 
 use Plugifity\Contract\Abstract\AbstractServiceProvider;
 use Plugifity\Repository\ChatRepository;
-use Plugifity\Repository\ErrorRepository;
 use Plugifity\Repository\MessageRepository;
 use Plugifity\Service\Admin\Assistant;
+use Plugifity\Service\Admin\ChatService;
 
 /**
  * Admin Service Provider
@@ -22,9 +22,10 @@ class AdminServiceProvider extends AbstractServiceProvider
      */
     protected function registerServices(): void
     {
-        // Services
+        $this->container->singleton( ChatRepository::class, ChatRepository::class );
+        $this->container->singleton( MessageRepository::class, MessageRepository::class );
+        $this->container->singleton( ChatService::class, ChatService::class );
         $this->container->singleton( 'admin.assistant', Assistant::class );
-       
     }
 
     /**

@@ -1,9 +1,13 @@
 /**
- * Plugitify Chat – AI chat logic (wire getAIResponse to your API).
+ * Plugitify Assistant – Chat list from DB, messages via REST, AI via backend.
+ * All operations are AJAX; loading states use skeletons where appropriate.
  */
 
 (function () {
   'use strict';
+
+  const restUrl = typeof agentifyRest !== 'undefined' ? agentifyRest.restUrl : '';
+  const restNonce = typeof agentifyRest !== 'undefined' ? agentifyRest.nonce : '';
 
   const messagesEl = document.getElementById('agentify-messages');
   const chatForm = document.getElementById('agentify-chat-form');
@@ -12,211 +16,33 @@
   const btnNewChat = document.getElementById('agentify-btn-new-chat');
   const chatListPlaceholder = document.getElementById('agentify-chat-list-placeholder');
   const chatItems = document.getElementById('agentify-chat-items');
+  const welcomeEl = document.getElementById('agentify-welcome');
 
   if (!messagesEl || !chatForm || !userInput) return;
 
-  function scrollToBottom() {
-    function doScroll() {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-    requestAnimationFrame(function () {
-      requestAnimationFrame(doScroll);
-    });
-    setTimeout(doScroll, 50);
-  }
+  let currentChatId = null;
 
-  function addUserMessage(text) {
-    const time = new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const html = `
-      <div class="agentify-message agentify-user" role="listitem">
-        <div class="agentify-message-avatar" aria-hidden="true">
-          <span class="material-symbols-outlined">person</span>
-        </div>
-        <div class="agentify-message-bubble">
-          <div class="agentify-message-text">${formatMessageContent(text)}</div>
-          <div class="agentify-message-time">${time}</div>
-        </div>
-      </div>
-    `;
-    messagesEl.insertAdjacentHTML('beforeend', html);
-    messagesEl.classList.add('agentify-has-messages');
-    scrollToBottom();
-  }
-
-  function addThinkingMessage() {
-    const html = `
-      <div class="agentify-message agentify-assistant agentify-thinking" id="agentify-thinking-msg" role="listitem" aria-busy="true">
-        <div class="agentify-message-avatar" aria-hidden="true">
-          <span class="material-symbols-outlined">auto_awesome</span>
-        </div>
-        <div class="agentify-message-bubble">
-          <div class="agentify-thinking-inner">
-            <span class="agentify-thinking-text">Thinking</span>
-            <div class="agentify-thinking-dots" aria-hidden="true">
-              <span></span><span></span><span></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    messagesEl.insertAdjacentHTML('beforeend', html);
-    scrollToBottom();
-  }
-
-  function replaceThinkingWithReply(text, tasks, finalText) {
-    var thinkingEl = document.getElementById('agentify-thinking-msg');
-    if (!thinkingEl) return;
-
-    var time = new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    if (tasks && tasks.length > 0) {
-      var firstLabel = tasks[0].label;
-      var tasksHtml = '<ul class="agentify-task-list" data-task-list>';
-      tasks.forEach(function (t, i) {
-        tasksHtml +=
-          '<li class="agentify-task-item agentify-pending" data-task-index="' + i + '">' +
-          '<span class="material-symbols-outlined agentify-task-icon">radio_button_unchecked</span>' +
-          '<span class="agentify-task-label">' + escapeHtml(t.label) + '</span></li>';
+  function api(endpoint, options) {
+    var url = restUrl + endpoint;
+    var headers = { 'X-WP-Nonce': restNonce };
+    if (options && (options.method === 'POST' || options.method === 'PUT')) headers['Content-Type'] = 'application/json';
+    if (options && options.headers) for (var k in options.headers) headers[k] = options.headers[k];
+    return fetch(url, {
+      credentials: 'same-origin',
+      method: (options && options.method) || 'GET',
+      body: options && options.body,
+      headers: headers,
+    })
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }).catch(function () { return { ok: res.ok, status: res.status, data: {} }; });
       });
-      tasksHtml += '</ul>';
-      var bubble = thinkingEl.querySelector('.agentify-message-bubble');
-      if (bubble) {
-        bubble.insertAdjacentHTML(
-          'beforeend',
-          '<div class="agentify-thinking-current-step" data-current-step>' + escapeHtml(firstLabel) + '</div>'
-        );
-        var body = document.createElement('div');
-        body.className = 'agentify-message-body';
-        bubble.parentNode.insertBefore(body, bubble);
-        body.appendChild(bubble);
-        body.insertAdjacentHTML('beforeend', tasksHtml);
-      }
-      scrollToBottom();
-      runTaskExecution(tasks, text, finalText, time);
-      return;
-    }
-
-    var html =
-      '<div class="agentify-message agentify-assistant" role="listitem" data-assistant-message>' +
-      '<div class="agentify-message-avatar" aria-hidden="true">' +
-      '<span class="material-symbols-outlined">auto_awesome</span>' +
-      '</div>' +
-      '<div class="agentify-message-bubble">' +
-      (text ? '<div class="agentify-message-text">' + formatMessageContent(text) + '</div>' : '') +
-      '<div class="agentify-message-time">' + time + '</div>' +
-      '</div></div>';
-    thinkingEl.outerHTML = html;
-    scrollToBottom();
   }
 
-  /**
-   * Keeps Thinking visible until all tasks are done. Updates "current step" title under Thinking.
-   * When all done, replaces Thinking with the final message.
-   */
-  function runTaskExecution(tasks, introText, finalText, time) {
-    var thinkingEl = document.getElementById('agentify-thinking-msg');
-    if (!thinkingEl) return;
-    var list = thinkingEl.querySelector('.agentify-task-list[data-task-list]');
-    var currentStepEl = thinkingEl.querySelector('.agentify-thinking-current-step[data-current-step]');
-    if (!list || !currentStepEl) return;
-    var items = list.querySelectorAll('.agentify-task-item');
-    var index = 0;
-    var stepDelay = 700;
-
-    function markNextDone() {
-      if (index >= items.length) {
-        replaceThinkingWithFinalMessage(thinkingEl, introText, tasks, finalText, time);
-        scrollToBottom();
-        return;
-      }
-      currentStepEl.textContent = tasks[index].label;
-      var el = items[index];
-      el.classList.remove('agentify-pending');
-      el.classList.add('agentify-done');
-      var icon = el.querySelector('.agentify-task-icon');
-      if (icon) icon.textContent = 'check_circle';
-      var label = el.querySelector('.agentify-task-label');
-      if (label) label.style.textDecoration = 'line-through';
-      index++;
-      scrollToBottom();
-      setTimeout(markNextDone, stepDelay);
-    }
-    setTimeout(markNextDone, stepDelay);
-  }
-
-  function replaceThinkingWithFinalMessage(thinkingEl, introText, tasks, finalText, time) {
-    var tasksHtml = '<ul class="agentify-task-list" data-task-list>';
-    tasks.forEach(function (t) {
-      tasksHtml +=
-        '<li class="agentify-task-item agentify-done">' +
-        '<span class="material-symbols-outlined agentify-task-icon">check_circle</span>' +
-        '<span class="agentify-task-label">' + escapeHtml(t.label) + '</span></li>';
-    });
-    tasksHtml += '</ul>';
-    var finalBlock = finalText ? '<div class="agentify-message-summary agentify-visible">' + formatMessageContent(finalText) + '</div>' : '';
-    var html =
-      '<div class="agentify-message agentify-assistant" role="listitem" data-assistant-message">' +
-      '<div class="agentify-message-avatar" aria-hidden="true">' +
-      '<span class="material-symbols-outlined">auto_awesome</span>' +
-      '</div>' +
-      '<div class="agentify-message-body">' +
-      '<div class="agentify-message-bubble">' +
-      (introText ? '<div class="agentify-message-text">' + formatMessageContent(introText) + '</div>' : '') +
-      '<div class="agentify-message-time">' + time + '</div>' +
-      '</div>' +
-      tasksHtml +
-      finalBlock +
-      '</div></div>';
-    thinkingEl.outerHTML = html;
-    scrollToBottom();
-  }
-
-  /**
-   * Mock AI response. Replace with your API / LLM call.
-   * The model returns a plan (tasks it will do); then you run them and call
-   * onTaskDone(index) / stream completion. Here we simulate: return plan, then
-   * runTaskExecution marks each task done in sequence.
-   * @param {string} userText
-   * @returns {Promise<string|{text: string, tasks?: Array<{label: string}>, finalText?: string}>}
-   */
-  function getAIResponse(userText) {
-    return new Promise(function (resolve) {
-      var delay = 600 + Math.random() * 400;
-      setTimeout(function () {
-        var roll = Math.random();
-        if (roll < 0.5) {
-          resolve({
-            text: "I'll do the following:",
-            tasks: [
-              { label: 'Reading your request' },
-              { label: 'Searching the codebase' },
-              { label: 'Editing files' },
-              { label: 'Running checks' },
-            ],
-            finalText: 'All set. You can wire this to your real LLM and task execution.',
-          });
-        } else if (roll < 0.8) {
-          resolve({
-            text: 'Working on it:',
-            tasks: [
-              { label: 'Analyzing the question' },
-              { label: 'Fetching context' },
-              { label: 'Generating response' },
-            ],
-            finalText: 'Done.',
-          });
-        } else {
-          resolve(
-            'No tasks this time — here’s a direct reply. When your LLM returns a task plan, the UI will show tasks and complete them one by one.'
-          );
-        }
-      }, delay);
+  function scrollToBottom() {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+      });
     });
   }
 
@@ -226,7 +52,21 @@
     return div.innerHTML;
   }
 
-  /** Format message content: escape HTML, then newlines + basic markdown (**, *, `, [text](url)) */
+  /** Detect RTL (e.g. Persian, Arabic, Hebrew) vs LTR from first strong character. */
+  function getTextDirection(text) {
+    if (!text || !String(text).trim()) return 'ltr';
+    var str = String(text);
+    var rtlRange = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    for (var i = 0; i < str.length; i++) {
+      var c = str[i];
+      var code = c.charCodeAt(0);
+      if (/\s/.test(c)) continue;
+      if (rtlRange.test(c)) return 'rtl';
+      if ((code >= 0x0041 && code <= 0x005A) || (code >= 0x0061 && code <= 0x007A) || (code >= 0x00C0 && code <= 0x024F) || (code >= 0x0400 && code <= 0x04FF)) return 'ltr';
+    }
+    return 'ltr';
+  }
+
   function formatMessageContent(text) {
     if (!text) return '';
     var s = escapeHtml(text);
@@ -241,104 +81,337 @@
     return s;
   }
 
-  var currentRequestCancelled = false;
+  function formatMessageTime(createdAt) {
+    if (!createdAt) return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    var d = new Date(createdAt);
+    if (isNaN(d.getTime())) return createdAt;
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
 
-  function setLoading(loading) {
-    userInput.disabled = loading;
-    if (loading) {
-      btnSend.type = 'button';
-      btnSend.setAttribute('aria-label', 'Stop');
-      btnSend.innerHTML = '<span class="material-symbols-outlined">stop</span>';
-      btnSend.classList.add('agentify-btn-stop');
-      btnSend.onclick = handleStopClick;
+  function addMessageToDOM(role, content, time) {
+    var timeStr = formatMessageTime(time);
+    var dir = getTextDirection(content);
+    if (role === 'user') {
+      var html = '<div class="agentify-message agentify-user" role="listitem">' +
+        '<div class="agentify-message-avatar" aria-hidden="true"><span class="material-symbols-outlined">person</span></div>' +
+        '<div class="agentify-message-bubble">' +
+        '<div class="agentify-message-text" dir="' + dir + '">' + formatMessageContent(content) + '</div>' +
+        '<div class="agentify-message-time">' + escapeHtml(timeStr) + '</div></div></div>';
+      messagesEl.insertAdjacentHTML('beforeend', html);
     } else {
-      btnSend.type = 'submit';
-      btnSend.setAttribute('aria-label', 'Send message');
-      btnSend.innerHTML = '<span class="material-symbols-outlined">send</span>';
-      btnSend.classList.remove('agentify-btn-stop');
-      btnSend.onclick = null;
+      var html = '<div class="agentify-message agentify-assistant" role="listitem">' +
+        '<div class="agentify-message-avatar" aria-hidden="true"><span class="material-symbols-outlined">auto_awesome</span></div>' +
+        '<div class="agentify-message-bubble">' +
+        '<div class="agentify-message-text" dir="' + dir + '">' + formatMessageContent(content) + '</div>' +
+        '<div class="agentify-message-time">' + timeStr + '</div></div></div>';
+      messagesEl.insertAdjacentHTML('beforeend', html);
+    }
+    messagesEl.classList.add('agentify-has-messages');
+    scrollToBottom();
+  }
+
+  function addThinkingMessage() {
+    var html = '<div class="agentify-message agentify-assistant agentify-thinking" id="agentify-thinking-msg" role="listitem" aria-busy="true">' +
+      '<div class="agentify-message-avatar" aria-hidden="true"><span class="material-symbols-outlined">auto_awesome</span></div>' +
+      '<div class="agentify-message-bubble">' +
+      '<div class="agentify-thinking-inner">' +
+      '<span class="agentify-thinking-text">Thinking</span>' +
+      '<div class="agentify-thinking-dots" aria-hidden="true"><span></span><span></span><span></span></div></div></div></div>';
+    messagesEl.insertAdjacentHTML('beforeend', html);
+    scrollToBottom();
+  }
+
+  function replaceThinkingWithReply(text, isError) {
+    var thinkingEl = document.getElementById('agentify-thinking-msg');
+    if (!thinkingEl) return;
+    var time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    var dir = getTextDirection(text || '');
+    var content = isError
+      ? '<div class="agentify-message-error" dir="' + dir + '">' + escapeHtml(text || 'Something went wrong.') + '</div>'
+      : (text ? '<div class="agentify-message-text" dir="' + dir + '">' + formatMessageContent(text) + '</div>' : '');
+    var html = '<div class="agentify-message agentify-assistant" role="listitem">' +
+      '<div class="agentify-message-avatar" aria-hidden="true"><span class="material-symbols-outlined">auto_awesome</span></div>' +
+      '<div class="agentify-message-bubble">' + content +
+      '<div class="agentify-message-time">' + time + '</div></div></div>';
+    thinkingEl.outerHTML = html;
+    scrollToBottom();
+  }
+
+  function setSendLoading(loading) {
+    if (!btnSend || !userInput) return;
+    userInput.disabled = !!loading;
+    if (loading) {
+      btnSend.disabled = true;
+      btnSend.classList.add('agentify-loading');
+    } else {
+      btnSend.disabled = false;
+      btnSend.classList.remove('agentify-loading');
     }
   }
 
-  function handleStopClick() {
-    currentRequestCancelled = true;
-    var thinkingEl = document.getElementById('agentify-thinking-msg');
-    if (thinkingEl) thinkingEl.remove();
-    setLoading(false);
-    userInput.focus();
+  function setPlaceholderVisible(visible) {
+    if (!chatListPlaceholder || !chatItems) return;
+    if (visible) {
+      chatListPlaceholder.removeAttribute('hidden');
+      chatListPlaceholder.classList.remove('agentify-hidden');
+      chatItems.setAttribute('hidden', '');
+      chatItems.classList.add('agentify-hidden');
+    } else {
+      chatListPlaceholder.setAttribute('hidden', '');
+      chatListPlaceholder.classList.add('agentify-hidden');
+      chatItems.removeAttribute('hidden');
+      chatItems.classList.remove('agentify-hidden');
+    }
+  }
+
+  function showChatListSkeleton() {
+    if (!chatItems || !chatListPlaceholder) return;
+    setPlaceholderVisible(false);
+    chatItems.className = 'agentify-chat-items agentify-chat-list-skeleton';
+    chatItems.innerHTML =
+      '<li><span class="agentify-skeleton agentify-skeleton-line"></span></li>' +
+      '<li><span class="agentify-skeleton agentify-skeleton-line"></span></li>' +
+      '<li><span class="agentify-skeleton agentify-skeleton-line"></span></li>';
+  }
+
+  function renderChatList(chats) {
+    if (!chatItems || !chatListPlaceholder) return;
+    chatItems.className = 'agentify-chat-items';
+    if (!chats || chats.length === 0) {
+      chatItems.innerHTML = '';
+      setPlaceholderVisible(true);
+      return;
+    }
+    setPlaceholderVisible(false);
+    chatItems.innerHTML = chats.map(function (c) {
+      var title = c.title && c.title.trim() ? escapeHtml(c.title) : 'Chat #' + c.id;
+      var active = currentChatId === c.id ? ' agentify-active' : '';
+      return '<li><div class="agentify-chat-item-wrap">' +
+        '<button type="button" class="agentify-chat-item' + active + '" data-chat-id="' + c.id + '" aria-label="' + escapeHtml(title) + '">' +
+        '<span class="material-symbols-outlined">forum</span><span class="agentify-chat-item-title">' + title + '</span></button>' +
+        '<button type="button" class="agentify-chat-item-delete" data-chat-id="' + c.id + '" aria-label="Delete chat">' +
+        '<span class="material-symbols-outlined">close</span></button></div></li>';
+    }).join('');
+
+    chatItems.querySelectorAll('.agentify-chat-item').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = parseInt(btn.getAttribute('data-chat-id'), 10);
+        if (!isNaN(id)) selectChat(id);
+      });
+    });
+    chatItems.querySelectorAll('.agentify-chat-item-delete').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = parseInt(btn.getAttribute('data-chat-id'), 10);
+        if (isNaN(id) || !restUrl) return;
+        if (currentChatId === id) startNewChat();
+        api('/chats/' + id, { method: 'DELETE' })
+          .then(function (res) {
+            if (res.ok) loadChats();
+          });
+      });
+    });
+  }
+
+  function loadChats() {
+    if (!restUrl) {
+      renderChatList([]);
+      return;
+    }
+    showChatListSkeleton();
+    api('/chats')
+      .then(function (res) {
+        var list = (res.data && res.data.chats) ? res.data.chats : [];
+        renderChatList(list);
+      })
+      .catch(function () {
+        renderChatList([]);
+      });
+  }
+
+  function showMessagesLoadingSkeleton() {
+    if (!welcomeEl) welcomeEl.style.display = 'none';
+    messagesEl.querySelectorAll('.agentify-message').forEach(function (el) { el.remove(); });
+    messagesEl.classList.remove('agentify-has-messages');
+    var wrap = document.createElement('div');
+    wrap.className = 'agentify-messages-loading';
+    wrap.id = 'agentify-messages-loading';
+    wrap.innerHTML = '<div class="agentify-msg-skeleton">' +
+      '<div class="agentify-msg-skeleton-avatar"></div>' +
+      '<div class="agentify-msg-skeleton-bubble"></div></div>' +
+      '<div class="agentify-msg-skeleton agentify-msg-skeleton-right">' +
+      '<div class="agentify-msg-skeleton-avatar"></div>' +
+      '<div class="agentify-msg-skeleton-bubble"></div></div>' +
+      '<div class="agentify-msg-skeleton">' +
+      '<div class="agentify-msg-skeleton-avatar"></div>' +
+      '<div class="agentify-msg-skeleton-bubble"></div></div>';
+    messagesEl.appendChild(wrap);
+  }
+
+  function clearMessagesPanel() {
+    var loading = document.getElementById('agentify-messages-loading');
+    if (loading) loading.remove();
+    messagesEl.querySelectorAll('.agentify-message').forEach(function (el) { el.remove(); });
+    messagesEl.classList.remove('agentify-has-messages');
+    if (welcomeEl) welcomeEl.style.display = '';
+  }
+
+  function renderMessages(messages) {
+    var loading = document.getElementById('agentify-messages-loading');
+    if (loading) loading.remove();
+    messagesEl.querySelectorAll('.agentify-message').forEach(function (el) { el.remove(); });
+    if (welcomeEl) welcomeEl.style.display = 'none';
+    if (!messages || messages.length === 0) {
+    } else {
+      messages.forEach(function (m) {
+        if (m.role === 'user' || m.role === 'assistant') {
+          addMessageToDOM(m.role, m.content || '', m.created_at);
+        }
+      });
+    }
+    messagesEl.classList.add('agentify-has-messages');
+    scrollToBottom();
+  }
+
+  function selectChat(chatId) {
+    currentChatId = chatId;
+    showMessagesLoadingSkeleton();
+    api('/chats/' + chatId + '/messages')
+      .then(function (res) {
+        var list = (res.data && res.data.messages) ? res.data.messages : [];
+        renderMessages(list);
+      })
+      .catch(function () {
+        renderMessages([]);
+      })
+      .finally(function () {
+        loadChats();
+      });
   }
 
   function startNewChat() {
-    var welcome = document.getElementById('agentify-welcome');
-    messagesEl.querySelectorAll('.agentify-message').forEach(function (el) { el.remove(); });
-    messagesEl.classList.remove('agentify-has-messages');
-    if (welcome) welcome.style.display = '';
+    currentChatId = null;
+    clearMessagesPanel();
     userInput.value = '';
-    resizeInput();
+    resizeTextarea();
+    if (chatItems) {
+      chatItems.querySelectorAll('.agentify-chat-item').forEach(function (b) { b.classList.remove('agentify-active'); });
+    }
     userInput.focus();
   }
 
-  /* Enter = submit, Shift+Enter = new line */
+  function ensureCurrentChat() {
+    return new Promise(function (resolve) {
+      if (currentChatId !== null) {
+        resolve(currentChatId);
+        return;
+      }
+      if (!restUrl) {
+        resolve(null);
+        return;
+      }
+      api('/chats', { method: 'POST', body: JSON.stringify({}) })
+        .then(function (res) {
+          var id = res.data && res.data.chat_id != null ? res.data.chat_id : null;
+          if (id != null) {
+            currentChatId = id;
+            loadChats();
+          }
+          resolve(id);
+        })
+        .catch(function () {
+          resolve(null);
+        });
+    });
+  }
+
+  /* Enter = send, Shift+Enter = new line */
   userInput.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') return;
-    e.preventDefault();
     if (e.shiftKey) {
+      /* Shift+Enter: insert new line, allow textarea to grow up to 3 lines then scroll */
+      e.preventDefault();
       var start = userInput.selectionStart;
       var end = userInput.selectionEnd;
       var val = userInput.value;
       userInput.value = val.substring(0, start) + '\n' + val.substring(end);
       userInput.selectionStart = userInput.selectionEnd = start + 1;
-      resizeInput();
-    } else {
-      chatForm.requestSubmit();
+      resizeTextarea();
+      return;
     }
+    /* Enter: send message */
+    e.preventDefault();
+    chatForm.requestSubmit();
   });
 
-  /* Auto-resize textarea, max ~3 lines then scroll */
   var lineHeightPx = 22;
-  var maxHeightPx = lineHeightPx * 3;
-  function resizeInput() {
+  var textareaMaxLines = 3;
+  var textareaMaxHeightPx = lineHeightPx * textareaMaxLines;
+
+  function resizeTextarea() {
     userInput.style.height = 'auto';
-    userInput.style.height = Math.min(userInput.scrollHeight, maxHeightPx) + 'px';
+    var h = userInput.scrollHeight;
+    userInput.style.overflowY = h > textareaMaxHeightPx ? 'auto' : 'hidden';
+    userInput.style.height = Math.max(lineHeightPx, Math.min(h, textareaMaxHeightPx)) + 'px';
   }
-  userInput.addEventListener('input', resizeInput);
-  resizeInput();
+
+  userInput.addEventListener('input', resizeTextarea);
+  userInput.addEventListener('focus', resizeTextarea);
 
   chatForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var text = userInput.value.trim();
     if (!text) return;
-
-    currentRequestCancelled = false;
+    if (!restUrl) {
+      addMessageToDOM('user', text);
+      replaceThinkingWithReply('Configure REST URL and API keys in Settings.', true);
+      return;
+    }
     userInput.value = '';
-    resizeInput();
-    addUserMessage(text);
-    addThinkingMessage();
-    setLoading(true);
+    resizeTextarea();
 
-    getAIResponse(text)
-      .then(function (result) {
-        if (currentRequestCancelled) return;
-        var textOut = typeof result === 'string' ? result : (result && result.text) || '';
-        var tasks = typeof result === 'string' ? null : (result && result.tasks) || null;
-        var finalText = result && result.finalText ? result.finalText : null;
-        replaceThinkingWithReply(textOut, tasks, finalText);
+    addMessageToDOM('user', text);
+    addThinkingMessage();
+    setSendLoading(true);
+
+    ensureCurrentChat().then(function (chatId) {
+      if (chatId == null) {
+        replaceThinkingWithReply('Could not create or use a chat. Try again.', true);
+        setSendLoading(false);
+        var t = document.getElementById('agentify-thinking-msg');
+        if (t) t.remove();
+        return;
+      }
+      return api('/chat', {
+        method: 'POST',
+        body: JSON.stringify({ chat_id: chatId, content: text }),
+      });
+    })
+      .then(function (res) {
+        if (!res) return;
+        if (res.ok && res.data && res.data.content != null) {
+          replaceThinkingWithReply(res.data.content, false);
+          loadChats();
+        } else {
+          replaceThinkingWithReply((res.data && res.data.message) ? res.data.message : 'Request failed.', true);
+        }
       })
       .catch(function () {
-        if (currentRequestCancelled) return;
-        replaceThinkingWithReply('Something went wrong. Try again or connect to your API later.', null, null);
+        replaceThinkingWithReply('Network or server error. Try again.', true);
       })
       .finally(function () {
-        if (!currentRequestCancelled) setLoading(false);
-        userInput.focus();
+        setSendLoading(false);
+        if (userInput) userInput.focus();
       });
   });
 
-  if (btnNewChat) {
-    btnNewChat.addEventListener('click', startNewChat);
-  }
+  if (btnNewChat) btnNewChat.addEventListener('click', startNewChat);
 
-  /* ----- Settings modal ----- */
+  // Load chat list on init
+  loadChats();
+
+  // ----- Settings modal (unchanged) -----
   var btnSettings = document.getElementById('agentify-btn-settings');
   var settingsOverlay = document.getElementById('agentify-settings-overlay');
   var settingsModal = document.getElementById('agentify-settings-modal');
@@ -349,8 +422,6 @@
   var settingsCloseIcon = document.getElementById('agentify-settings-close');
   var settingsMessage = document.getElementById('agentify-settings-message');
   var saveSkeleton = document.getElementById('agentify-save-skeleton');
-  var restUrl = typeof agentifyRest !== 'undefined' ? agentifyRest.restUrl : '';
-  var restNonce = typeof agentifyRest !== 'undefined' ? agentifyRest.nonce : '';
 
   function getProviderFromModelValue(value) {
     if (!value) return 'deepseek';
@@ -375,9 +446,7 @@
     settingsMessage.className = 'agentify-settings-message agentify-visible';
     if (type === 'success') settingsMessage.classList.add('agentify-success');
     else if (type === 'error') settingsMessage.classList.add('agentify-error');
-    else {
-      settingsMessage.classList.remove('agentify-success', 'agentify-error');
-    }
+    else settingsMessage.classList.remove('agentify-success', 'agentify-error');
   }
 
   function clearSettingsMessage() {
@@ -443,9 +512,7 @@
         if (settingsModelSelect) settingsModelSelect.value = 'deepseek|deepseek-chat';
         showApiKeyRow('deepseek');
       })
-      .finally(function () {
-        setSaveLoading(false);
-      });
+      .finally(function () { setSaveLoading(false); });
   }
 
   function saveSettings() {
@@ -467,10 +534,7 @@
     fetch(restUrl + '/settings', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-WP-Nonce': restNonce,
-      },
+      headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': restNonce },
       body: JSON.stringify({ model: modelId, api_keys: apiKeys }),
     })
       .then(function (res) {
@@ -485,9 +549,7 @@
       .catch(function (err) {
         showSettingsMessage(err.message || 'Failed to save settings.', 'error');
       })
-      .finally(function () {
-        setSaveLoading(false);
-      });
+      .finally(function () { setSaveLoading(false); });
   }
 
   if (btnSettings) btnSettings.addEventListener('click', openSettings);
@@ -505,5 +567,5 @@
     });
   }
 
-  if (btnSend) userInput.focus();
+  if (userInput) userInput.focus();
 })();
