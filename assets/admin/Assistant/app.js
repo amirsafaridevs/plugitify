@@ -133,7 +133,7 @@
       '<span class="agentify-thinking-text">Thinking</span>' +
       '<div class="agentify-thinking-dots" aria-hidden="true"><span></span><span></span><span></span></div></div>' +
       '<div class="agentify-thinking-stream" id="agentify-thinking-stream" aria-live="polite" style="display:none;"></div>' +
-      '<div class="agentify-thinking-events" id="agentify-thinking-events" aria-live="polite"></div></div></div>';
+      '<div class="agentify-thinking-events" id="agentify-thinking-events" aria-live="polite"><ul class="agentify-thinking-events-list" id="agentify-thinking-events-list"></ul></div></div></div>';
     messagesEl.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
   }
@@ -141,11 +141,15 @@
   function pushEvent(label) {
     if (!label || !String(label).trim()) return;
     recentEvents.push(String(label).trim());
-    var el = document.getElementById('agentify-thinking-events');
-    if (!el) return;
-    var last2 = recentEvents.slice(-2);
-    el.textContent = last2.join(' · ');
-    el.style.display = last2.length ? '' : 'none';
+    var listEl = document.getElementById('agentify-thinking-events-list');
+    var containerEl = document.getElementById('agentify-thinking-events');
+    if (!listEl || !containerEl) return;
+    var maxShow = 8;
+    var toShow = recentEvents.slice(-maxShow);
+    listEl.innerHTML = toShow.map(function (ev) {
+      return '<li class="agentify-thinking-event-item">' + escapeHtml(ev) + '</li>';
+    }).join('');
+    containerEl.style.display = toShow.length ? '' : 'none';
   }
 
   function showStreamAndAppendToken(token) {
@@ -199,7 +203,12 @@
       }
       return;
     }
-    if (!text && !isError) return;
+    if (!text && !isError) {
+      return;
+    }
+    if (!text && isError) {
+      text = 'An error occurred.';
+    }
     var bubble = thinkingEl.querySelector('.agentify-message-bubble');
     if (!bubble) {
       replaceThinkingWithReply(text, isError);
@@ -569,8 +578,8 @@
         }).then(function () {
           return agent.addTool({
             name: 'create_task',
-            description: 'Create a task (todo) for the user. Tasks are stored in the database and shown in the Assistant sidebar under "Tasks". Use when the user asks to remember something to do, create a todo, add a task, or schedule a follow-up.',
-            instruction: 'Use clear title and optional description. Tasks are persisted to the database and visible in the sidebar. One task per call.',
+            description: 'Create a task (todo) for the user. You MUST call this whenever the user asks to remember something, add a todo, or be reminded (e.g. "یادت باشه", "یادداشت کن", "تسک بساز", "یادم بنداز", "add a task", "remind me"). Tasks are saved to the database and shown under the chat.',
+            instruction: 'Call create_task whenever the user wants something remembered or a todo. Use a short title and optional description. One task per item; multiple items = multiple calls.',
             parameters: {
               title: { type: 'string', description: 'Short title for the task', required: true },
               description: { type: 'string', description: 'Optional longer description or notes', required: false },
@@ -689,20 +698,41 @@
             var msg = (err && err.message) ? err.message : 'An error occurred.';
             morphThinkingToReply(msg, true);
           },
-        }).then(function () {
+        }).then(function (finalResult) {
           var streamEl = document.getElementById('agentify-thinking-stream');
           if (streamEl && streamEl.textContent && streamEl.textContent.trim()) {
             var streamed = streamEl.textContent.trim();
-            if (accumulatedAssistantContent.indexOf(streamed) === -1) {
-              accumulatedAssistantContent += streamed;
+            if (!accumulatedAssistantContent || accumulatedAssistantContent.indexOf(streamed) === -1) {
+              accumulatedAssistantContent = (accumulatedAssistantContent || '') + streamed;
             }
           }
-          morphThinkingToReply(accumulatedAssistantContent, false);
-          currentChatMessages.push({ role: 'assistant', content: accumulatedAssistantContent });
-          api('/chat/messages', {
-            method: 'POST',
-            body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: accumulatedAssistantContent }),
-          }).then(function () { loadChats(); });
+          if (finalResult && finalResult.content) {
+            var finalContent = String(finalResult.content).trim();
+            if (!accumulatedAssistantContent || accumulatedAssistantContent.indexOf(finalContent) === -1) {
+              accumulatedAssistantContent = (accumulatedAssistantContent || '') + finalContent;
+            }
+          }
+          var finalContentToSave = accumulatedAssistantContent ? accumulatedAssistantContent.trim() : '';
+          var thinkingEl = document.getElementById('agentify-thinking-msg');
+          if (thinkingEl) {
+            if (finalContentToSave) {
+              morphThinkingToReply(finalContentToSave, false);
+              currentChatMessages.push({ role: 'assistant', content: finalContentToSave });
+              api('/chat/messages', {
+                method: 'POST',
+                body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: finalContentToSave }),
+              }).then(function () { loadChats(); });
+            } else {
+              thinkingEl.remove();
+            }
+          } else if (finalContentToSave) {
+            addMessageToDOM('assistant', finalContentToSave, new Date());
+            currentChatMessages.push({ role: 'assistant', content: finalContentToSave });
+            api('/chat/messages', {
+              method: 'POST',
+              body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: finalContentToSave }),
+            }).then(function () { loadChats(); });
+          }
         });
       })
       .catch(function (err) {
