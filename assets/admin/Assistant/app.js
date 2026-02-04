@@ -684,13 +684,20 @@
           onComplete: function (result) {
             var content = (result && result.content) ? result.content : '';
             accumulatedAssistantContent += content;
-            morphThinkingToReply(accumulatedAssistantContent, false);
           },
           onError: function (err) {
             var msg = (err && err.message) ? err.message : 'An error occurred.';
             morphThinkingToReply(msg, true);
           },
         }).then(function () {
+          var streamEl = document.getElementById('agentify-thinking-stream');
+          if (streamEl && streamEl.textContent && streamEl.textContent.trim()) {
+            var streamed = streamEl.textContent.trim();
+            if (accumulatedAssistantContent.indexOf(streamed) === -1) {
+              accumulatedAssistantContent += streamed;
+            }
+          }
+          morphThinkingToReply(accumulatedAssistantContent, false);
           currentChatMessages.push({ role: 'assistant', content: accumulatedAssistantContent });
           api('/chat/messages', {
             method: 'POST',

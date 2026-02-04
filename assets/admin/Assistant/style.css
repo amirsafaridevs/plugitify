@@ -363,6 +363,60 @@
   min-height: 0;
 }
 
+/* ----- Panel tasks: subtle list under messages (same chat) ----- */
+.agentify-panel-tasks {
+  flex-shrink: 0;
+  padding: 6px 24px 10px;
+  border-top: 1px solid var(--agentify-outline);
+  min-height: 0;
+}
+
+.agentify-panel-tasks:not(.agentify-panel-tasks-has) {
+  display: none;
+}
+
+.agentify-panel-tasks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.agentify-panel-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  color: var(--agentify-on-surface-variant);
+  line-height: 1.2;
+}
+
+.agentify-panel-task-icon {
+  font-size: 12px !important;
+  opacity: 0.85;
+}
+
+.agentify-panel-task[data-status="pending"] .agentify-panel-task-icon {
+  color: var(--agentify-primary);
+}
+
+.agentify-panel-task[data-status="completed"] .agentify-panel-task-icon {
+  color: var(--agentify-accent);
+}
+
+.agentify-panel-task[data-status="cancelled"] .agentify-panel-task-icon {
+  color: var(--agentify-on-surface-variant);
+}
+
+.agentify-panel-task-title {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ----- Messages (only scrollable area, subtle scrollbar) ----- */
 .agentify-messages {
   flex: 1;
@@ -587,6 +641,15 @@
   word-break: break-word;
   max-height: 200px;
   overflow-y: auto;
+}
+
+/* Last 2 events under thinking (very small) */
+.agentify-thinking-events {
+  margin-top: 6px;
+  font-size: 0.625rem;
+  line-height: 1.3;
+  color: var(--agentify-on-surface-variant);
+  opacity: 0.85;
 }
 
 .agentify-thinking-current-step {
