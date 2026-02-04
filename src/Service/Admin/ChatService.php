@@ -53,17 +53,73 @@ class ChatService extends AbstractService
     }
 
     /**
-     * Create a new chat. Returns new chat ID or false.
+     * Create a new chat. Title is set to "new #id". Returns new chat ID or false.
      *
-     * @param string|null $title
+     * @param string|null $title Ignored; title is always set to "new #id".
      * @return int|false
      */
     public function createChat( ?string $title = null )
     {
         $id = $this->chatRepository->create( [
-            'title' => $title ? sanitize_text_field( $title ) : null,
+            'title' => null,
         ] );
-        return $id === false ? false : (int) $id;
+        if ( $id === false ) {
+            return false;
+        }
+        $id = (int) $id;
+        $this->chatRepository->update( $id, [ 'title' => 'new #' . $id ] );
+        return $id;
+    }
+
+    /**
+     * Update chat title only if it is empty or "new" or "new #id".
+     *
+     * @param int $chatId
+     * @param string $title
+     * @return bool
+     */
+    public function updateChatTitleIfNew( int $chatId, string $title ): bool
+    {
+        $chat = $this->chatRepository->find( $chatId );
+        if ( ! $chat ) {
+            return false;
+        }
+        $current = $chat->title;
+        $current = $current === null ? '' : trim( (string) $current );
+        $isNew = $current === '' || strtolower( $current ) === 'new' || preg_match( '/^new\s*#?\s*\d+$/i', $current );
+        if ( ! $isNew ) {
+            return false;
+        }
+        $title = sanitize_text_field( trim( $title ) );
+        if ( $title === '' ) {
+            return false;
+        }
+        $this->chatRepository->update( $chatId, [ 'title' => $title ] );
+        return true;
+    }
+
+    /**
+     * Append a message to a chat (for frontend Agentify sync).
+     *
+     * @param int $chatId
+     * @param string $role user|assistant|system
+     * @param string $content
+     * @return bool
+     */
+    public function appendMessage( int $chatId, string $role, string $content ): bool
+    {
+        $chat = $this->chatRepository->find( $chatId );
+        if ( ! $chat ) {
+            return false;
+        }
+        $role = in_array( $role, [ 'user', 'assistant', 'system' ], true ) ? $role : 'user';
+        $this->messageRepository->create( [
+            'chat_id' => $chatId,
+            'role'    => $role,
+            'content' => $content,
+        ] );
+        $this->chatRepository->touch( $chatId );
+        return true;
     }
 
     /**

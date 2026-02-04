@@ -48,6 +48,9 @@ if ( ! defined( 'ABSPATH' ) ) {
             <p>Hi. Ask me anything.</p>
           </div>
         </div>
+        <div class="agentify-panel-tasks" id="agentify-panel-tasks" aria-label="<?php esc_attr_e( 'Tasks for this chat', 'plugifity' ); ?>">
+          <ul class="agentify-panel-tasks-list" id="agentify-panel-tasks-list"></ul>
+        </div>
 
         <form class="agentify-input-area" id="agentify-chat-form" novalidate>
           <div class="agentify-input-wrapper">
@@ -62,6 +65,9 @@ if ( ! defined( 'ABSPATH' ) ) {
             ></textarea>
             <button type="submit" class="agentify-btn-send" id="agentify-btn-send" aria-label="Send message">
               <span class="material-symbols-outlined">send</span>
+            </button>
+            <button type="button" class="agentify-btn-stop" id="agentify-btn-stop" aria-label="Stop" hidden>
+              <span class="material-symbols-outlined">stop</span>
             </button>
           </div>
         </form>
@@ -124,6 +130,13 @@ if ( ! defined( 'ABSPATH' ) ) {
             <label for="agentify-api-key-claude" class="agentify-settings-label">Anthropic API Key</label>
             <input type="text" id="agentify-api-key-claude" class="agentify-settings-input" placeholder="sk-ant-..." autocomplete="off" />
           </div>
+        </div>
+        <div class="agentify-settings-section agentify-settings-db-write">
+          <label class="agentify-settings-checkbox-wrap" for="agentify-settings-allow-db-write">
+            <input type="checkbox" id="agentify-settings-allow-db-write" class="agentify-settings-checkbox" value="1" />
+            <span class="agentify-settings-checkbox-label"><?php esc_html_e( 'Allow database changes', 'plugifity' ); ?></span>
+          </label>
+          <p class="agentify-settings-description"><?php esc_html_e( 'When enabled, the assistant can run INSERT/UPDATE/DELETE on the WordPress database. When disabled, only read-only (SELECT) queries are allowed.', 'plugifity' ); ?></p>
         </div>
         <div class="agentify-settings-message" id="agentify-settings-message" role="status" aria-live="polite"></div>
       </div>

@@ -8,6 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use Plugifity\Contract\Abstract\AbstractService;
 use Plugifity\Contract\Interface\ContainerInterface;
+use Plugifity\Model\Task;
+use Plugifity\Repository\TaskRepository;
 use Plugifity\Service\Admin\ChatService;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -60,17 +62,23 @@ class Assistant extends AbstractService
             [ 'material-symbols-outlined' ]
         );
 
-        // Load Assistant JavaScript
+        // Load Assistant JavaScript (ES module for Agentify)
         $app->enqueueScript(
             'agentify-assistant',
             'admin/Assistant/app.js',
             [],
             true
         );
+        wp_script_add_data( 'agentify-assistant', 'type', 'module' );
+
+        $agentify_base = defined( 'PLUGIFITY_PLUGIN_FILE' )
+            ? plugins_url( 'assets/Agentify/', PLUGIFITY_PLUGIN_FILE )
+            : '';
 
         wp_localize_script( 'agentify-assistant', 'agentifyRest', [
-            'restUrl' => rest_url( self::REST_NAMESPACE ),
-            'nonce'   => wp_create_nonce( 'wp_rest' ),
+            'restUrl'        => rest_url( self::REST_NAMESPACE ),
+            'nonce'          => wp_create_nonce( 'wp_rest' ),
+            'agentifyBaseUrl' => $agentify_base,
         ] );
     }
 
@@ -90,8 +98,9 @@ class Assistant extends AbstractService
                 return current_user_can( 'manage_options' );
             },
             'args' => [
-                'model'    => [ 'type' => 'string', 'required' => false ],
-                'api_keys' => [
+                'model'           => [ 'type' => 'string', 'required' => false ],
+                'allow_db_write'  => [ 'type' => 'boolean', 'required' => false ],
+                'api_keys'        => [
                     'type'       => 'object',
                     'required'   => false,
                     'properties' => [
@@ -145,6 +154,19 @@ class Assistant extends AbstractService
             ],
         ] );
         register_rest_route( self::REST_NAMESPACE, '/chats/(?P<id>\\d+)', [
+            'methods'             => WP_REST_Server::EDITABLE,
+            'callback'            => [ $this, 'restUpdateChatTitle' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'id'    => [ 'type' => 'integer', 'required' => true, 'validate_callback' => function ( $v ) {
+                    return is_numeric( $v ) && (int) $v > 0;
+                } ],
+                'title' => [ 'type' => 'string', 'required' => true ],
+            ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/chats/(?P<id>\\d+)', [
             'methods'             => WP_REST_Server::DELETABLE,
             'callback'            => [ $this, 'restDeleteChat' ],
             'permission_callback' => function () {
@@ -156,20 +178,91 @@ class Assistant extends AbstractService
                 } ],
             ],
         ] );
+        register_rest_route( self::REST_NAMESPACE, '/chat/messages', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restAppendMessage' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'chat_id' => [ 'type' => 'integer', 'required' => true ],
+                'role'    => [ 'type' => 'string', 'required' => true, 'enum' => [ 'user', 'assistant', 'system' ] ],
+                'content' => [ 'type' => 'string', 'required' => true ],
+            ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/db-query', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restDbQuery' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'query' => [ 'type' => 'string', 'required' => true ],
+            ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/db-execute', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restDbExecute' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'query' => [ 'type' => 'string', 'required' => true ],
+            ],
+        ] );
+
+        register_rest_route( self::REST_NAMESPACE, '/tasks', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'restGetTasks' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'chat_id' => [ 'type' => 'integer', 'required' => false ],
+                'status'  => [ 'type' => 'string', 'required' => false ],
+            ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tasks', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restCreateTask' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'title'       => [ 'type' => 'string', 'required' => true ],
+                'description' => [ 'type' => 'string', 'required' => false ],
+                'chat_id'     => [ 'type' => 'integer', 'required' => false ],
+            ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tasks/(?P<id>\d+)', [
+            'methods'             => WP_REST_Server::EDITABLE,
+            'callback'            => [ $this, 'restUpdateTask' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'id'     => [ 'type' => 'integer', 'required' => true ],
+                'status' => [ 'type' => 'string', 'required' => false ],
+            ],
+        ] );
     }
 
     public function restGetSettings( WP_REST_Request $request ): WP_REST_Response
     {
+        $chatService = $this->getContainer()->get( ChatService::class );
         $data = get_option( self::OPTION_SETTINGS, [] );
         $data = wp_parse_args( $data, [
-            'model'    => 'deepseek|deepseek-chat',
-            'api_keys' => [
+            'model'          => 'deepseek|deepseek-chat',
+            'api_keys'       => [
                 'deepseek' => '',
                 'chatgpt'  => '',
                 'gemini'   => '',
                 'claude'   => '',
             ],
+            'allow_db_write' => false,
         ] );
+        $data['allow_db_write'] = ! empty( $data['allow_db_write'] );
+        $data['system_instruction'] = $chatService->getSystemInstruction();
         return new WP_REST_Response( $data, 200 );
     }
 
@@ -179,11 +272,16 @@ class Assistant extends AbstractService
         $api_keys = $request->get_param( 'api_keys' );
         $current  = get_option( self::OPTION_SETTINGS, [] );
         $current  = wp_parse_args( $current, [
-            'model'    => 'deepseek|deepseek-chat',
-            'api_keys' => [ 'deepseek' => '', 'chatgpt' => '', 'gemini' => '', 'claude' => '' ],
+            'model'          => 'deepseek|deepseek-chat',
+            'api_keys'       => [ 'deepseek' => '', 'chatgpt' => '', 'gemini' => '', 'claude' => '' ],
+            'allow_db_write' => false,
         ] );
         if ( is_string( $model ) ) {
             $current['model'] = sanitize_text_field( $model );
+        }
+        $allow_db_write = $request->get_param( 'allow_db_write' );
+        if ( $allow_db_write !== null ) {
+            $current['allow_db_write'] = (bool) $allow_db_write;
         }
         if ( is_array( $api_keys ) ) {
             foreach ( [ 'deepseek', 'chatgpt', 'gemini', 'claude' ] as $key ) {
@@ -267,6 +365,21 @@ class Assistant extends AbstractService
         }
     }
 
+    public function restUpdateChatTitle( WP_REST_Request $request ): WP_REST_Response
+    {
+        $chatId = (int) $request->get_param( 'id' );
+        $title  = $request->get_param( 'title' );
+        if ( ! is_string( $title ) || trim( $title ) === '' ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Title is required.', 'plugifity' ) ], 400 );
+        }
+        $chatService = $this->getContainer()->get( ChatService::class );
+        $ok = $chatService->updateChatTitleIfNew( $chatId, $title );
+        if ( ! $ok ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Chat title can only be set when it is new or empty.', 'plugifity' ) ], 400 );
+        }
+        return new WP_REST_Response( [ 'success' => true ], 200 );
+    }
+
     public function restDeleteChat( WP_REST_Request $request ): WP_REST_Response
     {
         $chatId = (int) $request->get_param( 'id' );
@@ -276,6 +389,173 @@ class Assistant extends AbstractService
             return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to delete chat.', 'plugifity' ) ], 500 );
         }
         return new WP_REST_Response( [ 'success' => true ], 200 );
+    }
+
+    public function restAppendMessage( WP_REST_Request $request ): WP_REST_Response
+    {
+        $chatId = (int) $request->get_param( 'chat_id' );
+        $role   = $request->get_param( 'role' );
+        $content = $request->get_param( 'content' );
+        if ( ! is_string( $content ) ) {
+            $content = '';
+        }
+        $chatService = $this->getContainer()->get( ChatService::class );
+        $ok = $chatService->appendMessage( $chatId, $role, $content );
+        if ( ! $ok ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to save message.', 'plugifity' ) ], 400 );
+        }
+        return new WP_REST_Response( [ 'success' => true ], 200 );
+    }
+
+    /**
+     * Run a read-only SQL query (SELECT only). Single statement.
+     */
+    public function restDbQuery( WP_REST_Request $request ): WP_REST_Response
+    {
+        $query = $request->get_param( 'query' );
+        if ( ! is_string( $query ) || trim( $query ) === '' ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Query is required.', 'plugifity' ) ], 400 );
+        }
+        $query = trim( $query );
+        if ( strpos( $query, ';' ) !== false ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only a single statement is allowed.', 'plugifity' ) ], 400 );
+        }
+        $first = strtoupper( substr( $query, 0, 6 ) );
+        if ( $first !== 'SELECT' ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only SELECT queries are allowed. Use the write tool for changes.', 'plugifity' ) ], 400 );
+        }
+        global $wpdb;
+        $results = $wpdb->get_results( $query );
+        if ( $results === null && $wpdb->last_error ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => $wpdb->last_error,
+            ], 400 );
+        }
+        $rows = is_array( $results ) ? array_map( function ( $row ) {
+            return (array) $row;
+        }, $results ) : [];
+        return new WP_REST_Response( [ 'success' => true, 'data' => $rows, 'count' => count( $rows ) ], 200 );
+    }
+
+    /**
+     * Run a write SQL query (INSERT/UPDATE/DELETE/REPLACE). Only if allow_db_write is enabled.
+     */
+    public function restDbExecute( WP_REST_Request $request ): WP_REST_Response
+    {
+        $settings = get_option( self::OPTION_SETTINGS, [] );
+        $allow = ! empty( $settings['allow_db_write'] );
+        if ( ! $allow ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Database changes are disabled. The admin must enable "Allow database changes" in Agentify Settings to run INSERT/UPDATE/DELETE.', 'plugifity' ),
+                'code'    => 'db_write_disabled',
+            ], 403 );
+        }
+        $query = $request->get_param( 'query' );
+        if ( ! is_string( $query ) || trim( $query ) === '' ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Query is required.', 'plugifity' ) ], 400 );
+        }
+        $query = trim( $query );
+        if ( strpos( $query, ';' ) !== false ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only a single statement is allowed.', 'plugifity' ) ], 400 );
+        }
+        $upper = strtoupper( substr( $query, 0, 12 ) );
+        $allowed = ( strpos( $upper, 'INSERT' ) === 0 || strpos( $upper, 'UPDATE' ) === 0 || strpos( $upper, 'DELETE' ) === 0 || strpos( $upper, 'REPLACE' ) === 0 );
+        if ( ! $allowed ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only INSERT, UPDATE, DELETE, or REPLACE are allowed. Use the read tool for SELECT.', 'plugifity' ) ], 400 );
+        }
+        global $wpdb;
+        $affected = $wpdb->query( $query );
+        if ( $affected === false && $wpdb->last_error ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => $wpdb->last_error,
+            ], 400 );
+        }
+        return new WP_REST_Response( [
+            'success'        => true,
+            'rows_affected'  => $affected === false ? 0 : (int) $affected,
+        ], 200 );
+    }
+
+    /**
+     * List tasks (optionally by chat_id or status). Aligns with README: getTasks(options).
+     */
+    public function restGetTasks( WP_REST_Request $request ): WP_REST_Response
+    {
+        $chatId = $request->get_param( 'chat_id' );
+        $status = $request->get_param( 'status' );
+        $repo   = $this->getContainer()->get( TaskRepository::class );
+        $tasks  = $repo->get(
+            $chatId !== null ? (int) $chatId : null,
+            is_string( $status ) ? $status : null
+        );
+        $items = array_map( function ( Task $t ) {
+            return [
+                'id'          => $t->id,
+                'chat_id'     => $t->chat_id,
+                'title'       => $t->title,
+                'description' => $t->description,
+                'status'      => $t->status,
+                'created_at'  => $t->created_at,
+                'updated_at'  => $t->updated_at,
+            ];
+        }, $tasks );
+        return new WP_REST_Response( [ 'tasks' => $items ], 200 );
+    }
+
+    /**
+     * Create a task (persisted to DB). Aligns with README: task persistence.
+     */
+    public function restCreateTask( WP_REST_Request $request ): WP_REST_Response
+    {
+        $title       = $request->get_param( 'title' );
+        $description = $request->get_param( 'description' );
+        $chatId      = $request->get_param( 'chat_id' );
+        if ( ! is_string( $title ) || trim( $title ) === '' ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Title is required.', 'plugifity' ) ], 400 );
+        }
+        $repo = $this->getContainer()->get( TaskRepository::class );
+        $data = [
+            'title'       => sanitize_text_field( trim( $title ) ),
+            'description' => is_string( $description ) ? sanitize_textarea_field( $description ) : null,
+            'status'     => 'pending',
+        ];
+        if ( $chatId !== null ) {
+            $data['chat_id'] = (int) $chatId;
+        }
+        $id = $repo->create( $data );
+        if ( $id === false ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to create task.', 'plugifity' ) ], 500 );
+        }
+        return new WP_REST_Response( [
+            'success' => true,
+            'task_id' => (int) $id,
+            'message' => __( 'Task created.', 'plugifity' ),
+        ], 200 );
+    }
+
+    /**
+     * Update task (e.g. status: completed, cancelled). Aligns with README: updateTaskStatus.
+     */
+    public function restUpdateTask( WP_REST_Request $request ): WP_REST_Response
+    {
+        $id     = (int) $request->get_param( 'id' );
+        $status = $request->get_param( 'status' );
+        if ( ! is_string( $status ) || trim( $status ) === '' ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Status is required.', 'plugifity' ) ], 400 );
+        }
+        $repo   = $this->getContainer()->get( TaskRepository::class );
+        $task   = $repo->find( $id );
+        if ( $task === null ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Task not found.', 'plugifity' ) ], 404 );
+        }
+        $ok = $repo->update( $id, [ 'status' => sanitize_text_field( $status ) ] );
+        if ( $ok === false ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to update task.', 'plugifity' ) ], 500 );
+        }
+        return new WP_REST_Response( [ 'success' => true, 'message' => __( 'Task updated.', 'plugifity' ) ], 200 );
     }
 
     public function renderPage(): void

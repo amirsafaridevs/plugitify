@@ -8,24 +8,38 @@
 
   const restUrl = typeof agentifyRest !== 'undefined' ? agentifyRest.restUrl : '';
   const restNonce = typeof agentifyRest !== 'undefined' ? agentifyRest.nonce : '';
+  const agentifyBaseUrl = typeof agentifyRest !== 'undefined' ? (agentifyRest.agentifyBaseUrl || '') : '';
 
   const messagesEl = document.getElementById('agentify-messages');
   const chatForm = document.getElementById('agentify-chat-form');
   const userInput = document.getElementById('agentify-user-input');
   const btnSend = document.getElementById('agentify-btn-send');
+  const btnStop = document.getElementById('agentify-btn-stop');
   const btnNewChat = document.getElementById('agentify-btn-new-chat');
   const chatListPlaceholder = document.getElementById('agentify-chat-list-placeholder');
   const chatItems = document.getElementById('agentify-chat-items');
+  const panelTasksList = document.getElementById('agentify-panel-tasks-list');
+  const panelTasksContainer = document.getElementById('agentify-panel-tasks');
   const welcomeEl = document.getElementById('agentify-welcome');
 
   if (!messagesEl || !chatForm || !userInput) return;
 
   let currentChatId = null;
+  /** Messages for current chat (for Agentify history sync). Format: [{ role, content }] */
+  let currentChatMessages = [];
+  let agentifyAgent = null;
+  /** Current turn events (thinking steps, tool calls) – show last 2 under thinking bubble */
+  let recentEvents = [];
+  var PROVIDER_URLS = {
+    deepseek: 'https://api.deepseek.com/v1/chat/completions',
+    chatgpt: 'https://api.openai.com/v1/chat/completions',
+    openai: 'https://api.openai.com/v1/chat/completions',
+  };
 
   function api(endpoint, options) {
     var url = restUrl + endpoint;
     var headers = { 'X-WP-Nonce': restNonce };
-    if (options && (options.method === 'POST' || options.method === 'PUT')) headers['Content-Type'] = 'application/json';
+    if (options && (options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH')) headers['Content-Type'] = 'application/json';
     if (options && options.headers) for (var k in options.headers) headers[k] = options.headers[k];
     return fetch(url, {
       credentials: 'same-origin',
@@ -111,16 +125,53 @@
   }
 
   function addThinkingMessage() {
+    recentEvents = [];
     var html = '<div class="agentify-message agentify-assistant agentify-thinking" id="agentify-thinking-msg" role="listitem" aria-busy="true">' +
       '<div class="agentify-message-avatar" aria-hidden="true"><span class="material-symbols-outlined">auto_awesome</span></div>' +
       '<div class="agentify-message-bubble">' +
-      '<div class="agentify-thinking-inner">' +
+      '<div class="agentify-thinking-inner" id="agentify-thinking-inner">' +
       '<span class="agentify-thinking-text">Thinking</span>' +
-      '<div class="agentify-thinking-dots" aria-hidden="true"><span></span><span></span><span></span></div></div></div></div>';
+      '<div class="agentify-thinking-dots" aria-hidden="true"><span></span><span></span><span></span></div></div>' +
+      '<div class="agentify-thinking-stream" id="agentify-thinking-stream" aria-live="polite" style="display:none;"></div>' +
+      '<div class="agentify-thinking-events" id="agentify-thinking-events" aria-live="polite"></div></div></div>';
     messagesEl.insertAdjacentHTML('beforeend', html);
     scrollToBottom();
   }
 
+  function pushEvent(label) {
+    if (!label || !String(label).trim()) return;
+    recentEvents.push(String(label).trim());
+    var el = document.getElementById('agentify-thinking-events');
+    if (!el) return;
+    var last2 = recentEvents.slice(-2);
+    el.textContent = last2.join(' · ');
+    el.style.display = last2.length ? '' : 'none';
+  }
+
+  function showStreamAndAppendToken(token) {
+    var streamEl = document.getElementById('agentify-thinking-stream');
+    var innerEl = document.getElementById('agentify-thinking-inner');
+    if (!streamEl) return;
+    if (streamEl.style.display === 'none') {
+      streamEl.style.display = '';
+      if (innerEl) innerEl.style.display = 'none';
+      streamEl.setAttribute('dir', getTextDirection(token || ''));
+    }
+    streamEl.textContent = (streamEl.textContent || '') + token;
+    scrollToBottom();
+  }
+
+  function updateThinkingUI(statusOrText) {
+    var raw = typeof statusOrText === 'string' ? statusOrText : (statusOrText && statusOrText.currentAction) || 'Thinking';
+    pushEvent(raw);
+    var text = raw.indexOf('Using tool:') === 0 ? 'Step: ' + raw : raw;
+    var el = document.getElementById('agentify-thinking-msg');
+    if (!el) return;
+    var textEl = el.querySelector('.agentify-thinking-text');
+    if (textEl) textEl.textContent = text;
+  }
+
+  /** Replace thinking block with final reply (used when no stream occurred, e.g. error before stream). */
   function replaceThinkingWithReply(text, isError) {
     var thinkingEl = document.getElementById('agentify-thinking-msg');
     if (!thinkingEl) return;
@@ -137,16 +188,77 @@
     scrollToBottom();
   }
 
+  /** Morph the thinking block (with streamed content) into the final assistant message. If no thinking block (e.g. after a tool round), append a new assistant message so content is never lost. */
+  function morphThinkingToReply(text, isError) {
+    var thinkingEl = document.getElementById('agentify-thinking-msg');
+    if (!thinkingEl) {
+      if (text || isError) {
+        addMessageToDOM('assistant', text || (isError ? 'Something went wrong.' : ''), new Date());
+        if (messagesEl) messagesEl.classList.add('agentify-has-messages');
+        scrollToBottom();
+      }
+      return;
+    }
+    if (!text && !isError) return;
+    var bubble = thinkingEl.querySelector('.agentify-message-bubble');
+    if (!bubble) {
+      replaceThinkingWithReply(text, isError);
+      return;
+    }
+    var time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    var dir = getTextDirection(text || '');
+    thinkingEl.classList.remove('agentify-thinking');
+    thinkingEl.removeAttribute('aria-busy');
+    thinkingEl.removeAttribute('id');
+    bubble.innerHTML = '';
+    if (isError) {
+      var errEl = document.createElement('div');
+      errEl.className = 'agentify-message-error';
+      errEl.setAttribute('dir', dir);
+      errEl.textContent = text || 'Something went wrong.';
+      bubble.appendChild(errEl);
+    } else if (text) {
+      var textDiv = document.createElement('div');
+      textDiv.className = 'agentify-message-text';
+      textDiv.setAttribute('dir', dir);
+      textDiv.innerHTML = formatMessageContent(text);
+      bubble.appendChild(textDiv);
+    }
+    var timeEl = document.createElement('div');
+    timeEl.className = 'agentify-message-time';
+    timeEl.textContent = time;
+    bubble.appendChild(timeEl);
+    scrollToBottom();
+  }
+
   function setSendLoading(loading) {
     if (!btnSend || !userInput) return;
     userInput.disabled = !!loading;
     if (loading) {
       btnSend.disabled = true;
       btnSend.classList.add('agentify-loading');
+      btnSend.setAttribute('hidden', '');
+      if (btnStop) {
+        btnStop.removeAttribute('hidden');
+        btnStop.disabled = false;
+      }
     } else {
       btnSend.disabled = false;
       btnSend.classList.remove('agentify-loading');
+      btnSend.removeAttribute('hidden');
+      if (btnStop) {
+        btnStop.setAttribute('hidden', '');
+        btnStop.disabled = true;
+      }
     }
+  }
+
+  function stopGeneration() {
+    if (agentifyAgent && agentifyAgent.streamHandler && typeof agentifyAgent.streamHandler.stopStream === 'function') {
+      agentifyAgent.streamHandler.stopStream();
+    }
+    setSendLoading(false);
+    if (userInput) userInput.focus();
   }
 
   function setPlaceholderVisible(visible) {
@@ -230,6 +342,40 @@
       });
   }
 
+  function renderPanelTasks(tasks) {
+    if (!panelTasksList || !panelTasksContainer) return;
+    if (!tasks || tasks.length === 0) {
+      panelTasksList.innerHTML = '';
+      panelTasksContainer.classList.remove('agentify-panel-tasks-has');
+      return;
+    }
+    panelTasksContainer.classList.add('agentify-panel-tasks-has');
+    panelTasksList.innerHTML = tasks.map(function (t) {
+      var title = (t.title && t.title.trim()) ? escapeHtml(t.title) : '';
+      var status = (t.status && t.status.trim()) ? escapeHtml(t.status) : 'pending';
+      return '<li class="agentify-panel-task" data-status="' + status + '">' +
+        '<span class="material-symbols-outlined agentify-panel-task-icon" aria-hidden="true">' +
+        (status === 'completed' ? 'check_circle' : status === 'cancelled' ? 'cancel' : 'radio_button_unchecked') + '</span>' +
+        '<span class="agentify-panel-task-title">' + title + '</span></li>';
+    }).join('');
+  }
+
+  function loadTasks(chatId) {
+    if (!restUrl || !panelTasksList) return;
+    if (chatId == null) {
+      renderPanelTasks([]);
+      return;
+    }
+    api('/tasks?chat_id=' + chatId)
+      .then(function (res) {
+        var list = (res.data && res.data.tasks) ? res.data.tasks : [];
+        renderPanelTasks(list);
+      })
+      .catch(function () {
+        renderPanelTasks([]);
+      });
+  }
+
   function showMessagesLoadingSkeleton() {
     if (!welcomeEl) welcomeEl.style.display = 'none';
     messagesEl.querySelectorAll('.agentify-message').forEach(function (el) { el.remove(); });
@@ -277,12 +423,15 @@
   function selectChat(chatId) {
     currentChatId = chatId;
     showMessagesLoadingSkeleton();
+    loadTasks(chatId);
     api('/chats/' + chatId + '/messages')
       .then(function (res) {
         var list = (res.data && res.data.messages) ? res.data.messages : [];
+        currentChatMessages = list.map(function (m) { return { role: m.role, content: m.content || '' }; });
         renderMessages(list);
       })
       .catch(function () {
+        currentChatMessages = [];
         renderMessages([]);
       })
       .finally(function () {
@@ -292,7 +441,9 @@
 
   function startNewChat() {
     currentChatId = null;
+    currentChatMessages = [];
     clearMessagesPanel();
+    loadTasks(null);
     userInput.value = '';
     resizeTextarea();
     if (chatItems) {
@@ -316,6 +467,7 @@
           var id = res.data && res.data.chat_id != null ? res.data.chat_id : null;
           if (id != null) {
             currentChatId = id;
+            currentChatMessages = [];
             loadChats();
           }
           resolve(id);
@@ -323,6 +475,127 @@
         .catch(function () {
           resolve(null);
         });
+    });
+  }
+
+  /** Lazy-init Agentify: load module, fetch settings, create agent, add set_chat_title tool. */
+  function getAgent() {
+    if (agentifyAgent) return Promise.resolve(agentifyAgent);
+    if (!agentifyBaseUrl || !restUrl) return Promise.reject(new Error('Agentify or REST not configured'));
+    var base = agentifyBaseUrl.replace(/\/$/, '') + '/';
+    return import(base + 'agentify/index.js').then(function (mod) {
+      var Agentify = mod.Agentify;
+      return api('/settings').then(function (res) {
+        var settings = res.data || {};
+        var modelKey = settings.model || 'deepseek|deepseek-chat';
+        var parts = modelKey.split('|');
+        var providerKey = (parts[0] || 'deepseek').toLowerCase();
+        var provider = providerKey === 'chatgpt' ? 'openai' : providerKey;
+        var model = parts[1] || 'deepseek-chat';
+        var apiKey = (settings.api_keys && settings.api_keys[providerKey]) ? settings.api_keys[providerKey] : '';
+        if (!apiKey) throw new Error('API key not set for this model. Use Settings.');
+        var apiUrl = PROVIDER_URLS[providerKey] || PROVIDER_URLS[provider] || PROVIDER_URLS.deepseek;
+        var agent = new Agentify({
+          provider: provider,
+          model: model,
+          apiKey: apiKey,
+          apiUrl: apiUrl,
+          stream: true,
+          useHistory: true,
+          includeHistory: true,
+        });
+        agent.setInstruction(settings.system_instruction || '');
+        return agent.addTool({
+          name: 'set_chat_title',
+          description: 'Set the title of the current chat. Use this only when the chat has no custom title yet (title is empty or "new" or "new #id"). Call once per chat with a short, descriptive title summarizing the conversation.',
+          instruction: 'Use only when the chat title is empty or "new" or "new #id". Call exactly once per chat with a short title (e.g. one line).',
+          parameters: {
+            title: { type: 'string', description: 'Short descriptive title for the chat', required: true },
+          },
+          execute: function (params) {
+            if (!currentChatId || !restUrl) return Promise.resolve({ success: false, error: 'No chat' });
+            return api('/chats/' + currentChatId, {
+              method: 'PATCH',
+              body: JSON.stringify({ title: (params && params.title) ? String(params.title).trim() : '' }),
+            }).then(function (res) {
+              if (res.ok && res.data) return res.data;
+              return { success: false, message: (res.data && res.data.message) || 'Failed' };
+            });
+          },
+        }).then(function () {
+          return agent.addTool({
+            name: 'query_database',
+            description: 'Run a read-only SQL query (SELECT only) against the WordPress database. Use for reading data from wp_posts, wp_users, wp_options, etc. Table names usually have a prefix (e.g. wp_). Single statement only.',
+            instruction: 'Use only for SELECT queries. Run one statement at a time. Present the result to the user clearly.',
+            parameters: {
+              query: { type: 'string', description: 'The SELECT SQL query to run', required: true },
+            },
+            execute: function (params) {
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.' });
+              var q = (params && params.query) ? String(params.query).trim() : '';
+              if (!q) return Promise.resolve({ success: false, message: 'Query is required.' });
+              return api('/tools/db-query', { method: 'POST', body: JSON.stringify({ query: q }) }).then(function (res) {
+                if (res.ok && res.data && res.data.success) {
+                  return { success: true, data: res.data.data || [], count: res.data.count != null ? res.data.count : 0 };
+                }
+                return { success: false, message: (res.data && res.data.message) || 'Query failed.' };
+              });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'execute_database',
+            description: 'Run a write SQL query (INSERT, UPDATE, DELETE, REPLACE) on the WordPress database. Only works if the admin has enabled "Allow database changes" in Assistant Settings. If that setting is disabled, tell the user they must enable it in Settings to allow database changes.',
+            instruction: 'Use only for INSERT, UPDATE, DELETE, or REPLACE. One statement at a time. If the tool returns that database changes are disabled, tell the user to enable "Allow database changes" in the Assistant Settings.',
+            parameters: {
+              query: { type: 'string', description: 'The INSERT/UPDATE/DELETE/REPLACE SQL query', required: true },
+            },
+            execute: function (params) {
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.' });
+              var q = (params && params.query) ? String(params.query).trim() : '';
+              if (!q) return Promise.resolve({ success: false, message: 'Query is required.' });
+              return api('/tools/db-execute', { method: 'POST', body: JSON.stringify({ query: q }) }).then(function (res) {
+                if (res.ok && res.data && res.data.success) {
+                  return { success: true, affected_rows: res.data.affected_rows != null ? res.data.affected_rows : 0 };
+                }
+                var msg = (res.data && res.data.message) ? res.data.message : 'Execution failed.';
+                if (res.data && res.data.code === 'db_write_disabled') {
+                  return { success: false, db_write_disabled: true, message: msg };
+                }
+                return { success: false, message: msg };
+              });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'create_task',
+            description: 'Create a task (todo) for the user. Tasks are stored in the database and shown in the Assistant sidebar under "Tasks". Use when the user asks to remember something to do, create a todo, add a task, or schedule a follow-up.',
+            instruction: 'Use clear title and optional description. Tasks are persisted to the database and visible in the sidebar. One task per call.',
+            parameters: {
+              title: { type: 'string', description: 'Short title for the task', required: true },
+              description: { type: 'string', description: 'Optional longer description or notes', required: false },
+            },
+            execute: function (params) {
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.' });
+              var title = (params && params.title) ? String(params.title).trim() : '';
+              if (!title) return Promise.resolve({ success: false, message: 'Title is required.' });
+              var body = { title: title };
+              if (params && params.description && String(params.description).trim()) body.description = String(params.description).trim();
+              if (currentChatId != null) body.chat_id = currentChatId;
+              return api('/tasks', { method: 'POST', body: JSON.stringify(body) }).then(function (res) {
+                if (res.ok && res.data && res.data.success) {
+                  if (currentChatId != null) loadTasks(currentChatId);
+                  return { success: true, task_id: res.data.task_id, message: res.data.message || 'Task created.' };
+                }
+                return { success: false, message: (res.data && res.data.message) || 'Failed to create task.' };
+              });
+            },
+          });
+        }).then(function () {
+          agentifyAgent = agent;
+          return agent;
+        });
+      });
     });
   }
 
@@ -370,35 +643,63 @@
     }
     userInput.value = '';
     resizeTextarea();
-
     addMessageToDOM('user', text);
+    currentChatMessages.push({ role: 'user', content: text });
     addThinkingMessage();
     setSendLoading(true);
 
-    ensureCurrentChat().then(function (chatId) {
-      if (chatId == null) {
-        replaceThinkingWithReply('Could not create or use a chat. Try again.', true);
-        setSendLoading(false);
-        var t = document.getElementById('agentify-thinking-msg');
-        if (t) t.remove();
-        return;
-      }
-      return api('/chat', {
-        method: 'POST',
-        body: JSON.stringify({ chat_id: chatId, content: text }),
-      });
-    })
-      .then(function (res) {
-        if (!res) return;
-        if (res.ok && res.data && res.data.content != null) {
-          replaceThinkingWithReply(res.data.content, false);
-          loadChats();
-        } else {
-          replaceThinkingWithReply((res.data && res.data.message) ? res.data.message : 'Request failed.', true);
+    ensureCurrentChat()
+      .then(function (chatId) {
+        if (chatId == null) {
+          replaceThinkingWithReply('Could not create or use a chat. Try again.', true);
+          setSendLoading(false);
+          return Promise.reject();
         }
+        return getAgent().then(function (agent) {
+          var chatIdStr = String(chatId);
+          agent.chatHistoryManager.updateChatHistory(chatIdStr, currentChatMessages);
+          return api('/chat/messages', {
+            method: 'POST',
+            body: JSON.stringify({ chat_id: chatId, role: 'user', content: text }),
+          }).then(function () { return { agent: agent, chatId: chatId }; });
+        });
       })
-      .catch(function () {
-        replaceThinkingWithReply('Network or server error. Try again.', true);
+      .then(function (ctx) {
+        if (!ctx) return;
+        var agent = ctx.agent;
+        var chatId = ctx.chatId;
+        var accumulatedAssistantContent = '';
+        return agent.chat(text, {
+          chatId: String(chatId),
+          onThinkingChange: updateThinkingUI,
+          onToolCall: function (toolCall) {
+            var label = 'Using tool: ' + (toolCall && toolCall.name ? toolCall.name : 'tool');
+            pushEvent(label);
+            updateThinkingUI(label);
+          },
+          onToken: function (token) {
+            if (typeof token !== 'string') return;
+            showStreamAndAppendToken(token);
+          },
+          onComplete: function (result) {
+            var content = (result && result.content) ? result.content : '';
+            accumulatedAssistantContent += content;
+            morphThinkingToReply(accumulatedAssistantContent, false);
+          },
+          onError: function (err) {
+            var msg = (err && err.message) ? err.message : 'An error occurred.';
+            morphThinkingToReply(msg, true);
+          },
+        }).then(function () {
+          currentChatMessages.push({ role: 'assistant', content: accumulatedAssistantContent });
+          api('/chat/messages', {
+            method: 'POST',
+            body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: accumulatedAssistantContent }),
+          }).then(function () { loadChats(); });
+        });
+      })
+      .catch(function (err) {
+        if (err && err.message) replaceThinkingWithReply(err.message, true);
       })
       .finally(function () {
         setSendLoading(false);
@@ -407,6 +708,7 @@
   });
 
   if (btnNewChat) btnNewChat.addEventListener('click', startNewChat);
+  if (btnStop) btnStop.addEventListener('click', stopGeneration);
 
   // Load chat list on init
   loadChats();
@@ -422,6 +724,7 @@
   var settingsCloseIcon = document.getElementById('agentify-settings-close');
   var settingsMessage = document.getElementById('agentify-settings-message');
   var saveSkeleton = document.getElementById('agentify-save-skeleton');
+  var settingsAllowDbWrite = document.getElementById('agentify-settings-allow-db-write');
 
   function getProviderFromModelValue(value) {
     if (!value) return 'deepseek';
@@ -507,10 +810,12 @@
             if (input && data.api_keys[key] !== undefined) input.value = data.api_keys[key] || '';
           });
         }
+        if (settingsAllowDbWrite) settingsAllowDbWrite.checked = !!data.allow_db_write;
       })
       .catch(function () {
         if (settingsModelSelect) settingsModelSelect.value = 'deepseek|deepseek-chat';
         showApiKeyRow('deepseek');
+        if (settingsAllowDbWrite) settingsAllowDbWrite.checked = false;
       })
       .finally(function () { setSaveLoading(false); });
   }
@@ -531,11 +836,12 @@
         if (model && input) apiKeys[model] = input.value || '';
       });
     }
+    var allowDbWrite = settingsAllowDbWrite ? settingsAllowDbWrite.checked : false;
     fetch(restUrl + '/settings', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': restNonce },
-      body: JSON.stringify({ model: modelId, api_keys: apiKeys }),
+      body: JSON.stringify({ model: modelId, api_keys: apiKeys, allow_db_write: allowDbWrite }),
     })
       .then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (data) {

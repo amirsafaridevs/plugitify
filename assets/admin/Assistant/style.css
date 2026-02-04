@@ -580,6 +580,15 @@
   animation-delay: 0.2s;
 }
 
+.agentify-thinking-stream {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 .agentify-thinking-current-step {
   margin-top: 8px;
   font-size: 0.8125rem;
@@ -812,13 +821,46 @@ textarea#agentify-user-input.agentify-input-field:active {
   font-size: 22px;
 }
 
-.agentify-btn-send.agentify-btn-stop {
-  background: #fff;
-  color: #1a1c1e;
+/* Stop: only visible while waiting for model response (Send is hidden then) */
+#agentify-btn-stop[hidden] {
+  display: none !important;
 }
 
-.agentify-btn-send.agentify-btn-stop:hover {
-  background: #e8eaed;
+#agentify-btn-send[hidden] {
+  display: none !important;
+}
+
+.agentify-btn-stop {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--agentify-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--agentify-motion-duration) var(--agentify-motion-easing),
+    transform 200ms var(--agentify-motion-easing);
+}
+
+.agentify-btn-stop:hover {
+  background: var(--agentify-on-surface-variant);
+  color: #fff;
+}
+
+.agentify-btn-stop:active {
+  transform: scale(0.96);
+}
+
+.agentify-btn-stop:focus-visible {
+  outline: 2px solid var(--agentify-accent);
+  outline-offset: 2px;
+}
+
+.agentify-btn-stop .material-symbols-outlined {
+  font-size: 22px;
 }
 
 .agentify-messages.agentify-has-messages .agentify-welcome {
@@ -954,6 +996,41 @@ textarea#agentify-user-input.agentify-input-field:active {
 .agentify-settings-input:focus {
   outline: none;
   border-color: var(--agentify-primary);
+}
+
+.agentify-settings-db-write {
+  padding-top: 8px;
+  border-top: 1px solid var(--agentify-outline);
+}
+
+.agentify-settings-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--agentify-on-surface);
+  margin-bottom: 6px;
+}
+
+.agentify-settings-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--agentify-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.agentify-settings-checkbox-label {
+  font-weight: 500;
+}
+
+.agentify-settings-description {
+  font-size: 0.8125rem;
+  color: var(--agentify-on-surface-variant);
+  margin: 0 0 0 30px;
+  line-height: 1.45;
+  max-width: 100%;
 }
 
 .agentify-settings-message {
