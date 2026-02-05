@@ -176,7 +176,7 @@ class SchemaBuilder
     public function hasTable(string $table): bool
     {
         $fullName = $this->getTableName($table);
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- prepare() is used correctly with placeholders
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- prepare() is used correctly with placeholders, DB_NAME is constant, $fullName is escaped
         $result = $this->wpdb->get_var(
             $this->wpdb->prepare(
                 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s',
@@ -184,6 +184,7 @@ class SchemaBuilder
                 $fullName
             )
         );
+        // phpcs:enable
         return (int) $result > 0;
     }
 
@@ -197,7 +198,7 @@ class SchemaBuilder
     public function hasColumn(string $table, string $column): bool
     {
         $fullName = $this->getTableName($table);
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- prepare() is used correctly with placeholders
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- prepare() is used correctly with placeholders, DB_NAME is constant, $fullName and $column are escaped/validated
         $result = $this->wpdb->get_var(
             $this->wpdb->prepare(
                 'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s',
@@ -206,6 +207,7 @@ class SchemaBuilder
                 $column
             )
         );
+        // phpcs:enable
         return (int) $result > 0;
     }
 

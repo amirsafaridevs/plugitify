@@ -670,19 +670,10 @@
     var existing = messagesEl.querySelector('.agentify-message-tasks');
     if (existing) existing.remove();
     
-    // Find the LAST assistant message (not thinking) - iterate backwards through all messages
+    // Always attach tasks under the last assistant message in DOM (including thinking = message being streamed)
+    // so tasks stay under the current/last visible message at all times
     var allMessages = messagesEl.querySelectorAll('.agentify-message.agentify-assistant');
-    var lastAssistant = null;
-    for (var i = allMessages.length - 1; i >= 0; i--) {
-      if (!allMessages[i].classList.contains('agentify-thinking')) {
-        lastAssistant = allMessages[i];
-        break;
-      }
-    }
-    // Fallback: if no non-thinking assistant found, use the last assistant (even if thinking)
-    if (!lastAssistant && allMessages.length > 0) {
-      lastAssistant = allMessages[allMessages.length - 1];
-    }
+    var lastAssistant = allMessages.length > 0 ? allMessages[allMessages.length - 1] : null;
     
     if (isLoading) {
       if (lastAssistant) {
