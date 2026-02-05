@@ -61,7 +61,9 @@
   function api(endpoint, options) {
     var url = restUrl + endpoint;
     var headers = { 'X-WP-Nonce': restNonce };
-    if (options && (options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH')) headers['Content-Type'] = 'application/json';
+    if (options && (options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH') && !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
     if (options && options.headers) for (var k in options.headers) headers[k] = options.headers[k];
     return fetch(url, {
       credentials: 'same-origin',
@@ -164,7 +166,8 @@
       if (openTagStart > i) parts.push({ type: 'text', value: s.substring(i, openTagStart) });
       var endClose = findMatchingClosingDiv(s, openTagStart);
       if (endClose === -1) {
-        parts.push({ type: 'text', value: s.substring(openTagStart) });
+        /* Incomplete block (e.g. during streaming): render as HTML so table/button appear progressively */
+        parts.push({ type: 'html', value: s.substring(openTagStart) });
         break;
       }
       parts.push({ type: 'html', value: s.substring(openTagStart, endClose + 6) });
@@ -965,6 +968,22 @@
           });
         }).then(function () {
           return agent.addTool({
+            name: 'get_plugins',
+            description: 'Get the list of plugins installed on the WordPress site. Returns each plugin with its name, status (active or inactive), directory (plugin slug/folder), and version. Use when the user asks for installed plugins, plugin list, or which plugins are active.',
+            instruction: 'Call with no parameters. Use the result to show the user the list of plugins and their status.',
+            parameters: {},
+            execute: function () {
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.' });
+              return api('/tools/plugins').then(function (res) {
+                if (res.ok && res.data && res.data.success) {
+                  return { success: true, plugins: res.data.plugins || [], count: res.data.count != null ? res.data.count : 0 };
+                }
+                return { success: false, message: (res.data && res.data.message) || 'Failed to get plugins.' };
+              });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
             name: 'create_task',
             description: 'Create a task (todo) for the user. You MUST call this whenever the user asks to remember something, add a todo, or for any work item (e.g. "یادت باشه", "تسک بساز", "add a task"). Tasks are displayed to the user under your message. You MUST always provide a clear, short title (required): the title is what the user sees in the task list. Without a title the task appears empty. Use a descriptive title for each task (e.g. "Get plugin list", "Run database query", "Set chat title").',
             instruction: 'Always call create_task with a clear, short title. The title is required and is shown to the user—never leave it empty. Use one task per work item. Example: create_task({ title: "Fetch user list from database", description: "optional details" }).',
@@ -1128,6 +1147,44 @@
               if (path) base = base.replace(/\/?$/, '') + '/' + path.replace(/^\//, '');
               var url = base.replace(/\s/g, '');
               return Promise.resolve({ success: true, url: url });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'create_zip_and_upload',
+            description: 'Create a ZIP file from a list of files (name + content) and upload it to the WordPress media library. Returns the download URL. Use when the user wants to export data as a ZIP, bundle files for download, or save multiple files as one downloadable archive.',
+            instruction: 'Call with files: array of { name: string, content: string }. Optionally filename: string for the ZIP (e.g. "export.zip"). The ZIP is built in the browser, uploaded to WordPress media, and you get back the download URL to give to the user.',
+            parameters: {
+              files: { type: 'array', description: 'Array of objects with name (file path/name inside ZIP) and content (string). At least one file required.', required: true },
+              filename: { type: 'string', description: 'Optional. Name for the ZIP file (e.g. "export.zip", "backup.zip").', required: false },
+            },
+            execute: function (params) {
+              if (!window.JSZip) return Promise.resolve({ success: false, message: 'JSZip not loaded. Cannot create ZIP.' });
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.' });
+              var list = params && params.files && Array.isArray(params.files) ? params.files : [];
+              if (list.length === 0) return Promise.resolve({ success: false, message: 'At least one file (name + content) is required.' });
+              var zip = new window.JSZip();
+              for (var i = 0; i < list.length; i++) {
+                var f = list[i];
+                var name = (f && f.name != null) ? String(f.name).trim() : '';
+                if (!name) continue;
+                var content = (f && f.content != null) ? f.content : '';
+                zip.file(name, content);
+              }
+              var zipFilename = (params && params.filename && String(params.filename).trim()) ? String(params.filename).trim() : 'archive.zip';
+              if (!/\.zip$/i.test(zipFilename)) zipFilename = zipFilename + '.zip';
+              return zip.generateAsync({ type: 'blob' }).then(function (blob) {
+                var formData = new FormData();
+                formData.append('file', blob, zipFilename);
+                return api('/tools/upload-zip', { method: 'POST', body: formData });
+              }).then(function (res) {
+                if (res.ok && res.data && res.data.success && res.data.url) {
+                  return { success: true, url: res.data.url, id: res.data.id, message: res.data.message || 'ZIP uploaded.' };
+                }
+                return { success: false, message: (res.data && res.data.message) || 'Upload failed.', url: '' };
+              }).catch(function (err) {
+                return { success: false, message: (err && err.message) || 'Failed to create or upload ZIP.', url: '' };
+              });
             },
           });
         }).then(function () {

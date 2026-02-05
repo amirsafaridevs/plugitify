@@ -62,11 +62,18 @@ class Assistant extends AbstractService
             [ 'material-symbols-outlined' ]
         );
 
+        wp_enqueue_script(
+            'jszip',
+            'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js',
+            [],
+            '3.10.1',
+            true
+        );
         // Load Assistant JavaScript (ES module for Agentify)
         $app->enqueueScript(
             'agentify-assistant',
             'admin/Assistant/app.js',
-            [],
+            [ 'jszip' ],
             true
         );
         wp_script_add_data( 'agentify-assistant', 'type', 'module' );
@@ -211,6 +218,22 @@ class Assistant extends AbstractService
             'args' => [
                 'query' => [ 'type' => 'string', 'required' => true ],
             ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/plugins', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'restGetPlugins' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/upload-zip', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restUploadZip' ],
+            'permission_callback' => function () {
+                return current_user_can( 'upload_files' ) && current_user_can( 'manage_options' );
+            },
+            'args' => [],
         ] );
 
         register_rest_route( self::REST_NAMESPACE, '/tasks', [
@@ -486,6 +509,84 @@ class Assistant extends AbstractService
         return new WP_REST_Response( [
             'success'        => true,
             'rows_affected'  => $affected === false ? 0 : (int) $affected,
+        ], 200 );
+    }
+
+    /**
+     * Return list of installed plugins with name, status (active/inactive), and directory (slug).
+     */
+    public function restGetPlugins( WP_REST_Request $request ): WP_REST_Response
+    {
+        if ( ! function_exists( 'get_plugins' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        $all_plugins = get_plugins();
+        $items = [];
+        foreach ( $all_plugins as $plugin_file => $plugin_data ) {
+            $directory = dirname( $plugin_file );
+            if ( $directory === '.' ) {
+                $directory = basename( $plugin_file, '.php' );
+            }
+            $items[] = [
+                'name'      => isset( $plugin_data['Name'] ) ? (string) $plugin_data['Name'] : '',
+                'status'    => is_plugin_active( $plugin_file ) ? 'active' : 'inactive',
+                'directory' => $directory,
+                'version'   => isset( $plugin_data['Version'] ) ? (string) $plugin_data['Version'] : '',
+            ];
+        }
+        return new WP_REST_Response( [ 'success' => true, 'plugins' => $items, 'count' => count( $items ) ], 200 );
+    }
+
+    /**
+     * Accept a ZIP file upload (multipart/form-data, field "file"), add to media library, return download URL.
+     */
+    public function restUploadZip( WP_REST_Request $request ): WP_REST_Response
+    {
+        if ( ! function_exists( 'wp_handle_sideload' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+        $files = $request->get_file_params();
+        if ( empty( $files['file'] ) || empty( $files['file']['tmp_name'] ) ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'No file uploaded or invalid upload.', 'plugifity' ) ], 400 );
+        }
+        $file = $files['file'];
+        $ext = strtolower( pathinfo( isset( $file['name'] ) ? $file['name'] : '', PATHINFO_EXTENSION ) );
+        if ( $ext !== 'zip' ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only ZIP files are allowed.', 'plugifity' ) ], 400 );
+        }
+        $file_data = [
+            'name'     => isset( $file['name'] ) ? sanitize_file_name( $file['name'] ) : 'upload.zip',
+            'type'     => isset( $file['type'] ) ? $file['type'] : 'application/zip',
+            'tmp_name' => $file['tmp_name'],
+            'error'    => isset( $file['error'] ) ? (int) $file['error'] : 0,
+            'size'     => isset( $file['size'] ) ? (int) $file['size'] : 0,
+        ];
+        $sideload = wp_handle_sideload( $file_data, [ 'test_form' => false ] );
+        if ( ! empty( $sideload['error'] ) ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => $sideload['error'] ], 400 );
+        }
+        $file_path = $sideload['file'];
+        $url       = $sideload['url'];
+        $attachment = [
+            'post_mime_type' => $sideload['type'],
+            'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $file_path ) ),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ];
+        $id = wp_insert_attachment( $attachment, $file_path, 0 );
+        if ( is_wp_error( $id ) ) {
+            @unlink( $file_path );
+            return new WP_REST_Response( [ 'success' => false, 'message' => $id->get_error_message() ], 500 );
+        }
+        wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file_path ) );
+        $attachment_url = wp_get_attachment_url( $id );
+        return new WP_REST_Response( [
+            'success' => true,
+            'url'     => $attachment_url ?: $url,
+            'id'      => (int) $id,
+            'message' => __( 'ZIP uploaded to media library.', 'plugifity' ),
         ], 200 );
     }
 
