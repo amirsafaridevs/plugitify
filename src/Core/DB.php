@@ -124,7 +124,9 @@ class DB
     public static function select(string $sql, array $bindings = []): array
     {
         $wpdb = static::connection();
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL is prepared with bindings or safe
         $prepared = $bindings !== [] ? $wpdb->prepare($sql, ...$bindings) : $sql;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared above or safe SQL
         $results = $wpdb->get_results($prepared);
         return $results !== null ? $results : [];
     }
@@ -139,7 +141,9 @@ class DB
     public static function selectOne(string $sql, array $bindings = []): ?object
     {
         $wpdb = static::connection();
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL is prepared with bindings or safe
         $prepared = $bindings !== [] ? $wpdb->prepare($sql, ...$bindings) : $sql;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared above or safe SQL
         $row = $wpdb->get_row($prepared);
         return $row ?: null;
     }

@@ -4,9 +4,7 @@ namespace Plugifity\Provider;
 
 use Plugifity\Contract\Abstract\AbstractServiceProvider;
 use Plugifity\Repository\ChatRepository;
-use Plugifity\Repository\ErrorRepository;
 use Plugifity\Repository\MessageRepository;
-use Plugifity\Service\Admin\Agent\PlugitifyAgent;
 use Plugifity\Service\Admin\Assistant;
 use Plugifity\Service\Admin\ChatService;
 
@@ -24,20 +22,10 @@ class AdminServiceProvider extends AbstractServiceProvider
      */
     protected function registerServices(): void
     {
-        // Services
+        $this->container->singleton( ChatRepository::class, ChatRepository::class );
+        $this->container->singleton( MessageRepository::class, MessageRepository::class );
+        $this->container->singleton( ChatService::class, ChatService::class );
         $this->container->singleton( 'admin.assistant', Assistant::class );
-        // Agent: instantiated directly in ChatService (not via container)
-        $this->container->singleton( 'admin.chat', ChatService::class );
-
-        // Repositories
-        $this->container->singleton( 'chat.repository', ChatRepository::class );
-        $this->container->singleton( 'message.repository', MessageRepository::class );
-        $this->container->singleton( 'error.repository', ErrorRepository::class );
-
-        // Aliases: Resolve by type (Container will inject these when building services by class type-hint)
-        $this->container->alias( ChatRepository::class, 'chat.repository' );
-        $this->container->alias( MessageRepository::class, 'message.repository' );
-        $this->container->alias( ErrorRepository::class, 'error.repository' );
     }
 
     /**

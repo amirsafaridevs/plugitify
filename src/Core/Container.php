@@ -248,12 +248,14 @@ class Container implements ContainerInterface
     private function build(string $concrete, array $parameters = []): object
     {
         if (!class_exists($concrete)) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception message
             throw new \Exception("Class {$concrete} does not exist.");
         }
 
         $reflector = new ReflectionClass($concrete);
 
         if (!$reflector->isInstantiable()) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception message
             throw new \Exception("Class {$concrete} is not instantiable.");
         }
 
@@ -299,6 +301,7 @@ class Container implements ContainerInterface
                     // If it's not optional, throw exception
                     if (!$parameter->isOptional()) {
                         throw new \Exception(
+                            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception message, not user-facing output
                             "Unable to resolve dependency [{$typeName}] for parameter [{$parameter->getName()}]"
                         );
                     }
@@ -318,6 +321,7 @@ class Container implements ContainerInterface
             }
 
             throw new \Exception(
+                // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception message, not user-facing output
                 "Unable to resolve dependency [{$parameter->getName()}]"
             );
         }

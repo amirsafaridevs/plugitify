@@ -87,6 +87,7 @@ class ErrorRepository extends AbstractRepository
     {
         global $wpdb;
         $table = $wpdb->prefix . $this->getTable();
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is from getTable() method, safe
         $result = $wpdb->query( "DELETE FROM `{$table}`" );
         return $result !== false ? (int) $result : 0;
     }

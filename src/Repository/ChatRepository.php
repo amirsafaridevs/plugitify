@@ -20,6 +20,14 @@ class ChatRepository extends AbstractRepository
     }
 
     /**
+     * Order chats by updated_at (most recent first).
+     */
+    protected function getOrderColumn(): string
+    {
+        return 'updated_at';
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
@@ -47,5 +55,18 @@ class ChatRepository extends AbstractRepository
             $result[] = Chat::fromRow( $row );
         }
         return $result;
+    }
+
+    /**
+     * Touch a chat (update updated_at timestamp).
+     *
+     * @param int $chatId
+     * @return bool
+     */
+    public function touch( int $chatId ): bool
+    {
+        return $this->update( $chatId, [
+            'updated_at' => current_time( 'mysql' ),
+        ] );
     }
 }
