@@ -640,6 +640,71 @@ body.folded .agentify-app {
   color: rgba(0, 0, 0, 0.9);
 }
 
+/* Markdown blocks (message + thinking stream) */
+.agentify-message-text .agentify-code-block,
+.agentify-thinking-stream .agentify-code-block {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: var(--agentify-radius-sm);
+  background: var(--agentify-outline);
+  font-size: 0.8125rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.agentify-message-text .agentify-code-block code,
+.agentify-thinking-stream .agentify-code-block code {
+  font-family: ui-monospace, monospace;
+}
+
+.agentify-message-text .agentify-md-h1,
+.agentify-message-text .agentify-md-h2,
+.agentify-message-text .agentify-md-h3,
+.agentify-thinking-stream .agentify-md-h1,
+.agentify-thinking-stream .agentify-md-h2,
+.agentify-thinking-stream .agentify-md-h3 {
+  margin: 10px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.agentify-message-text .agentify-md-h1,
+.agentify-thinking-stream .agentify-md-h1 { font-size: 1.25rem; }
+.agentify-message-text .agentify-md-h2,
+.agentify-thinking-stream .agentify-md-h2 { font-size: 1.125rem; }
+.agentify-message-text .agentify-md-h3,
+.agentify-thinking-stream .agentify-md-h3 { font-size: 1rem; }
+.agentify-message-text .agentify-md-h4,
+.agentify-thinking-stream .agentify-md-h4 { font-size: 0.9375rem; }
+.agentify-message-text .agentify-md-h5,
+.agentify-thinking-stream .agentify-md-h5 { font-size: 0.875rem; }
+.agentify-message-text .agentify-md-h6,
+.agentify-thinking-stream .agentify-md-h6 { font-size: 0.8125rem; }
+
+.agentify-message-text .agentify-md-blockquote,
+.agentify-thinking-stream .agentify-md-blockquote {
+  margin: 8px 0;
+  padding: 6px 0 6px 12px;
+  border-left: 3px solid var(--plugitify-primary, #46a9c6);
+  color: var(--agentify-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.agentify-message-text .agentify-md-ul,
+.agentify-message-text .agentify-md-ol,
+.agentify-thinking-stream .agentify-md-ul,
+.agentify-thinking-stream .agentify-md-ol {
+  margin: 6px 0;
+  padding-left: 1.25rem;
+}
+
+.agentify-message-text .agentify-md-ul li,
+.agentify-message-text .agentify-md-ol li,
+.agentify-thinking-stream .agentify-md-ul li,
+.agentify-thinking-stream .agentify-md-ol li {
+  margin: 2px 0;
+}
+
 .agentify-message-body {
   display: flex;
   flex-direction: column;

@@ -126,6 +126,112 @@
     return -1;
   }
 
+  /**
+   * Convert a plain-text segment to HTML with full Markdown support.
+   * Used for message/stream text only; block HTML (tables, buttons) is handled separately.
+   * Order: code blocks → headers → blockquotes → lists → escape + inline (** * ` links).
+   */
+  function textSegmentToMarkdownHtml(str) {
+    if (!str || !String(str).trim()) return '';
+    var s = String(str);
+    var lines = s.split('\n');
+    var out = [];
+    var i = 0;
+    var inCodeBlock = false;
+    var codeBuf = [];
+    var codeLang = '';
+
+    function flushCode() {
+      if (codeBuf.length) {
+        var codeContent = codeBuf.join('\n');
+        var cls = codeLang ? ' class="language-' + escapeHtml(codeLang) + '"' : '';
+        out.push('<pre class="agentify-code-block"><code' + cls + '>' + escapeHtml(codeContent) + '</code></pre>');
+        codeBuf = [];
+        codeLang = '';
+      }
+    }
+
+    function applyInlineMarkdown(plain) {
+      if (!plain) return '';
+      var t = escapeHtml(plain);
+      t = t.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
+      t = t.replace(/__([\s\S]+?)__/g, '<strong>$1</strong>');
+      t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      t = t.replace(/_([^_]+)_/g, '<em>$1</em>');
+      t = t.replace(/`([^`]+)`/g, '<code class="agentify-inline-code">$1</code>');
+      t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
+        var safeUrl = url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="agentify-msg-link">' + label + '</a>';
+      });
+      return t;
+    }
+
+    while (i < lines.length) {
+      var line = lines[i];
+
+      if (inCodeBlock) {
+        if (line === '```') {
+          flushCode();
+          inCodeBlock = false;
+          i++;
+          continue;
+        }
+        codeBuf.push(line);
+        i++;
+        continue;
+      }
+
+      if (line === '```' || /^```\w*$/.test(line)) {
+        inCodeBlock = true;
+        codeLang = (line.match(/^```(\w*)$/) || [])[1] || '';
+        i++;
+        continue;
+      }
+
+      var headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (headerMatch) {
+        var hLevel = headerMatch[1].length;
+        out.push('<h' + hLevel + ' class="agentify-md-h' + hLevel + '">' + applyInlineMarkdown(headerMatch[2].trim()) + '</h' + hLevel + '>');
+        i++;
+        continue;
+      }
+
+      if (/^>\s?(.*)$/.test(line)) {
+        var bqContent = line.replace(/^>\s?/, '');
+        out.push('<blockquote class="agentify-md-blockquote">' + applyInlineMarkdown(bqContent) + '</blockquote>');
+        i++;
+        continue;
+      }
+
+      if (/^[-*]\s+(.+)$/.test(line)) {
+        var ulItems = [];
+        while (i < lines.length && /^[-*]\s+(.+)$/.test(lines[i])) {
+          ulItems.push('<li>' + applyInlineMarkdown(lines[i].replace(/^[-*]\s+/, '')) + '</li>');
+          i++;
+        }
+        out.push('<ul class="agentify-md-ul">' + ulItems.join('') + '</ul>');
+        continue;
+      }
+
+      if (/^\d+\.\s+(.+)$/.test(line)) {
+        var olItems = [];
+        while (i < lines.length && /^\d+\.\s+(.+)$/.test(lines[i])) {
+          olItems.push('<li>' + applyInlineMarkdown(lines[i].replace(/^\d+\.\s+/, '')) + '</li>');
+          i++;
+        }
+        out.push('<ol class="agentify-md-ol">' + olItems.join('') + '</ol>');
+        continue;
+      }
+
+      out.push(applyInlineMarkdown(line));
+      i++;
+    }
+
+    flushCode();
+
+    return out.join('<br>\n');
+  }
+
   /** Split text into segments; extract known tool HTML blocks (table, button, mc) so they can be rendered as HTML. */
   function splitKnownHtmlBlocks(str) {
     var parts = [];
@@ -207,16 +313,7 @@
           if (subParts[j].type === 'html') {
             out += subParts[j].value;
           } else {
-            var s = escapeHtml(subParts[j].value);
-            s = s.replace(/\n/g, '<br>');
-            s = s.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
-            s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-            s = s.replace(/`([^`]+)`/g, '<code class="agentify-inline-code">$1</code>');
-            s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
-              var safeUrl = url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-              return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="agentify-msg-link">' + label + '</a>';
-            });
-            out += s;
+            out += textSegmentToMarkdownHtml(subParts[j].value);
           }
         }
       }
