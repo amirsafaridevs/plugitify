@@ -9,6 +9,8 @@
   const restUrl = typeof agentifyRest !== 'undefined' ? agentifyRest.restUrl : '';
   const restNonce = typeof agentifyRest !== 'undefined' ? agentifyRest.nonce : '';
   const agentifyBaseUrl = typeof agentifyRest !== 'undefined' ? (agentifyRest.agentifyBaseUrl || '') : '';
+  const siteUrl = typeof agentifyRest !== 'undefined' ? (agentifyRest.siteUrl || '') : '';
+  const adminUrl = typeof agentifyRest !== 'undefined' ? (agentifyRest.adminUrl || '') : '';
 
   const messagesEl = document.getElementById('agentify-messages');
   const chatForm = document.getElementById('agentify-chat-form');
@@ -18,8 +20,8 @@
   const btnNewChat = document.getElementById('agentify-btn-new-chat');
   const chatListPlaceholder = document.getElementById('agentify-chat-list-placeholder');
   const chatItems = document.getElementById('agentify-chat-items');
-  const panelTasksList = document.getElementById('agentify-panel-tasks-list');
-  const panelTasksContainer = document.getElementById('agentify-panel-tasks');
+  /** Last tasks list for current chat (so we can re-render under message after renderMessages). */
+  var currentTasksList = [];
   const welcomeEl = document.getElementById('agentify-welcome');
 
   if (!messagesEl || !chatForm || !userInput) return;
@@ -28,8 +30,28 @@
   /** Messages for current chat (for Agentify history sync). Format: [{ role, content }] */
   let currentChatMessages = [];
   let agentifyAgent = null;
-  /** Current turn events (thinking steps, tool calls) – show last 2 under thinking bubble */
+  /** Last user message text, for Try again after error */
+  let lastUserMessageForRetry = null;
+  /** Current turn events (thinking steps, tool calls) – show last 8 under thinking bubble */
   let recentEvents = [];
+  /** Raw stream content for current thinking reply (so we can render HTML and still have raw for save). */
+  let currentStreamRawContent = '';
+  /** Event type → human-readable description (README event types table) */
+  var EVENT_TYPE_DESCRIPTIONS = {
+    user_message_sent: 'User sends a message',
+    assistant_message_started: 'Assistant starts responding',
+    assistant_message_completed: 'Assistant completes response',
+    assistant_token_received: 'Token received (streaming)',
+    tool_call_initiated: 'Tool execution starts',
+    tool_call_completed: 'Tool execution succeeds',
+    tool_call_failed: 'Tool execution fails',
+    thinking_started: 'Thinking mode starts',
+    api_request_sent: 'API request sent',
+    api_response_received: 'API response received',
+    api_request_failed: 'API request fails',
+    error_occurred: 'Error occurs',
+    stream_started: 'Streaming starts'
+  };
   var PROVIDER_URLS = {
     deepseek: 'https://api.deepseek.com/v1/chat/completions',
     chatgpt: 'https://api.openai.com/v1/chat/completions',
@@ -81,18 +103,122 @@
     return 'ltr';
   }
 
+  /** Find matching closing </div> from start of an opening <div> (handles nesting). */
+  function findMatchingClosingDiv(html, startIndex) {
+    var i = startIndex;
+    var depth = 1;
+    var len = html.length;
+    while (i < len) {
+      var open = html.indexOf('<div', i);
+      var close = html.indexOf('</div>', i);
+      if (close === -1) return -1;
+      if (open !== -1 && open < close) {
+        depth++;
+        i = open + 4;
+        continue;
+      }
+      depth--;
+      if (depth === 0) return close;
+      i = close + 6;
+    }
+    return -1;
+  }
+
+  /** Split text into segments; extract known tool HTML blocks (table, button, mc) so they can be rendered as HTML. */
+  function splitKnownHtmlBlocks(str) {
+    var parts = [];
+    var s = String(str);
+    var safeStarts = [
+      'agentify-data-table-wrap',
+      'agentify-msg-button-wrap',
+      'agentify-mc-block'
+    ];
+    var i = 0;
+    while (i < s.length) {
+      var found = -1;
+      var which = -1;
+      for (var w = 0; w < safeStarts.length; w++) {
+        var needle = 'class="' + safeStarts[w] + '"';
+        var idx = s.indexOf(needle, i);
+        if (idx !== -1 && (found === -1 || idx < found)) {
+          found = idx;
+          which = w;
+        }
+        var needle2 = "class='" + safeStarts[w] + "'";
+        idx = s.indexOf(needle2, i);
+        if (idx !== -1 && (found === -1 || idx < found)) {
+          found = idx;
+          which = w;
+        }
+      }
+      if (found === -1) {
+        parts.push({ type: 'text', value: s.substring(i) });
+        break;
+      }
+      var openTagStart = s.lastIndexOf('<div', found);
+      if (openTagStart === -1 || openTagStart < i) {
+        parts.push({ type: 'text', value: s.substring(i, found) });
+        i = found;
+        continue;
+      }
+      if (openTagStart > i) parts.push({ type: 'text', value: s.substring(i, openTagStart) });
+      var endClose = findMatchingClosingDiv(s, openTagStart);
+      if (endClose === -1) {
+        parts.push({ type: 'text', value: s.substring(openTagStart) });
+        break;
+      }
+      parts.push({ type: 'html', value: s.substring(openTagStart, endClose + 6) });
+      i = endClose + 6;
+    }
+    return parts;
+  }
+
+  /** Format text for display; supports comment blocks and raw tool HTML (table, button, mc). */
   function formatMessageContent(text) {
     if (!text) return '';
-    var s = escapeHtml(text);
-    s = s.replace(/\n/g, '<br>');
-    s = s.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
-    s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    s = s.replace(/`([^`]+)`/g, '<code class="agentify-inline-code">$1</code>');
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
-      var safeUrl = url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="agentify-msg-link">' + label + '</a>';
-    });
-    return s;
+    var blockStart = '<!-- agentify-block -->';
+    var blockEnd = '<!-- /agentify-block -->';
+    var parts = [];
+    var remaining = String(text);
+    var idx;
+    while ((idx = remaining.indexOf(blockStart)) !== -1) {
+      parts.push({ type: 'text', value: remaining.substring(0, idx) });
+      remaining = remaining.substring(idx + blockStart.length);
+      var endIdx = remaining.indexOf(blockEnd);
+      if (endIdx === -1) {
+        parts.push({ type: 'text', value: remaining });
+        remaining = '';
+        break;
+      }
+      parts.push({ type: 'html', value: remaining.substring(0, endIdx).trim() });
+      remaining = remaining.substring(endIdx + blockEnd.length);
+    }
+    if (remaining) parts.push({ type: 'text', value: remaining });
+    var out = '';
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'html') {
+        out += parts[i].value;
+      } else {
+        var subParts = splitKnownHtmlBlocks(parts[i].value);
+        for (var j = 0; j < subParts.length; j++) {
+          if (subParts[j].type === 'html') {
+            out += subParts[j].value;
+          } else {
+            var s = escapeHtml(subParts[j].value);
+            s = s.replace(/\n/g, '<br>');
+            s = s.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            s = s.replace(/`([^`]+)`/g, '<code class="agentify-inline-code">$1</code>');
+            s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
+              var safeUrl = url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="agentify-msg-link">' + label + '</a>';
+            });
+            out += s;
+          }
+        }
+      }
+    }
+    return out;
   }
 
   function formatMessageTime(createdAt) {
@@ -125,7 +251,8 @@
   }
 
   function addThinkingMessage() {
-    recentEvents = [];
+    clearAllEvents();
+    currentStreamRawContent = '';
     var html = '<div class="agentify-message agentify-assistant agentify-thinking" id="agentify-thinking-msg" role="listitem" aria-busy="true">' +
       '<div class="agentify-message-avatar" aria-hidden="true"><span class="material-symbols-outlined">auto_awesome</span></div>' +
       '<div class="agentify-message-bubble">' +
@@ -138,18 +265,42 @@
     scrollToBottom();
   }
 
-  function pushEvent(label) {
-    if (!label || !String(label).trim()) return;
-    recentEvents.push(String(label).trim());
+  /** Show event in thinking panel: use description for known types, otherwise show label as-is */
+  function getEventDisplayLabel(labelOrType) {
+    if (!labelOrType) return '';
+    var s = String(labelOrType).trim();
+    return EVENT_TYPE_DESCRIPTIONS[s] || s;
+  }
+
+  function pushEvent(labelOrType) {
+    if (!labelOrType || !String(labelOrType).trim()) return;
+    var label = getEventDisplayLabel(labelOrType);
+    if (recentEvents.length && recentEvents[recentEvents.length - 1] === label) return;
+    recentEvents.push(label);
+    renderThinkingEvents();
+  }
+
+  function renderThinkingEvents() {
     var listEl = document.getElementById('agentify-thinking-events-list');
     var containerEl = document.getElementById('agentify-thinking-events');
     if (!listEl || !containerEl) return;
-    var maxShow = 8;
+    var maxShow = 1; // Only show the last event
     var toShow = recentEvents.slice(-maxShow);
     listEl.innerHTML = toShow.map(function (ev) {
       return '<li class="agentify-thinking-event-item">' + escapeHtml(ev) + '</li>';
-    }).join('');
+    }).join('') +
+      '<li class="agentify-thinking-event-item agentify-thinking-event-loading" aria-hidden="true">' +
+      '<span class="agentify-thinking-event-skeleton"></span></li>';
     containerEl.style.display = toShow.length ? '' : 'none';
+  }
+
+  /** Clear all events: reset array and hide container. */
+  function clearAllEvents() {
+    recentEvents = [];
+    var listEl = document.getElementById('agentify-thinking-events-list');
+    var containerEl = document.getElementById('agentify-thinking-events');
+    if (listEl) listEl.innerHTML = '';
+    if (containerEl) containerEl.style.display = 'none';
   }
 
   function showStreamAndAppendToken(token) {
@@ -161,8 +312,16 @@
       if (innerEl) innerEl.style.display = 'none';
       streamEl.setAttribute('dir', getTextDirection(token || ''));
     }
-    streamEl.textContent = (streamEl.textContent || '') + token;
+    currentStreamRawContent = (currentStreamRawContent || '') + (typeof token === 'string' ? token : '');
+    streamEl.innerHTML = formatMessageContent(currentStreamRawContent);
     scrollToBottom();
+  }
+
+  /** Get raw stream text (for final save/morph). Prefers currentStreamRawContent so HTML is preserved. */
+  function getStreamRawContent() {
+    if (currentStreamRawContent != null && String(currentStreamRawContent).trim()) return currentStreamRawContent.trim();
+    var streamEl = document.getElementById('agentify-thinking-stream');
+    return (streamEl && streamEl.textContent && streamEl.textContent.trim()) ? streamEl.textContent.trim() : '';
   }
 
   function updateThinkingUI(statusOrText) {
@@ -170,73 +329,223 @@
     pushEvent(raw);
     var text = raw.indexOf('Using tool:') === 0 ? 'Step: ' + raw : raw;
     var el = document.getElementById('agentify-thinking-msg');
-    if (!el) return;
-    var textEl = el.querySelector('.agentify-thinking-text');
-    if (textEl) textEl.textContent = text;
+    if (!el) {
+      // If thinking element doesn't exist, try to find it in any assistant message
+      var allMessages = messagesEl ? messagesEl.querySelectorAll('.agentify-message.agentify-assistant') : [];
+      for (var i = allMessages.length - 1; i >= 0; i--) {
+        var msg = allMessages[i];
+        var bubble = msg.querySelector('.agentify-message-bubble');
+        if (bubble) {
+          var existingTextEl = bubble.querySelector('.agentify-thinking-text');
+          if (existingTextEl) {
+            existingTextEl.textContent = text || 'Thinking';
+            return;
+          }
+        }
+      }
+      return;
+    }
+    var bubble = el.querySelector('.agentify-message-bubble');
+    if (!bubble) return;
+    var textEl = bubble.querySelector('.agentify-thinking-text');
+    if (textEl) {
+      textEl.textContent = text || 'Thinking';
+    } else {
+      // Create thinking-text if it doesn't exist (shouldn't happen, but safety check)
+      textEl = document.createElement('span');
+      textEl.className = 'agentify-thinking-text';
+      textEl.textContent = text || 'Thinking';
+      bubble.insertBefore(textEl, bubble.firstChild);
+    }
+  }
+
+  /** Show error strip below thinking content (small div + Try again). Does not replace thinking with a full message. */
+  function showThinkingError(msg) {
+    var thinkingEl = document.getElementById('agentify-thinking-msg');
+    if (!thinkingEl) return;
+    var bubble = thinkingEl.querySelector('.agentify-message-bubble');
+    if (!bubble) return;
+    var existing = bubble.querySelector('.agentify-thinking-error-wrap');
+    if (existing) existing.remove();
+    var wrap = document.createElement('div');
+    wrap.className = 'agentify-thinking-error-wrap';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'agentify-try-again-btn';
+    btn.textContent = 'Try again';
+    var span = document.createElement('span');
+    span.className = 'agentify-thinking-error-text';
+    span.textContent = msg || 'An error occurred.';
+    wrap.appendChild(btn);
+    wrap.appendChild(span);
+    bubble.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  /** Split assistant content: "…text…I encountered an error: …" → { messageContent, errorMessage }. */
+  function parseAssistantContentWithError(content) {
+    if (!content || typeof content !== 'string') return { messageContent: '', errorMessage: null };
+    var prefix = 'I encountered an error:';
+    var idx = content.indexOf(prefix);
+    if (idx === -1) return { messageContent: content.trim(), errorMessage: null };
+    var messageContent = content.substring(0, idx).trim();
+    var errorMessage = content.substring(idx + prefix.length).trim();
+    return { messageContent: messageContent, errorMessage: errorMessage || 'An error occurred.' };
+  }
+
+  /** Build error box HTML (small box under message + Try again). */
+  function buildMessageErrorBoxHtml(errorMsg) {
+    return '<div class="agentify-message-error-wrap">' +
+      '<button type="button" class="agentify-try-again-btn">Try again</button>' +
+      '<span class="agentify-message-error-text">' + escapeHtml(errorMsg || 'An error occurred.') + '</span></div>';
   }
 
   /** Replace thinking block with final reply (used when no stream occurred, e.g. error before stream). */
   function replaceThinkingWithReply(text, isError) {
     var thinkingEl = document.getElementById('agentify-thinking-msg');
     if (!thinkingEl) return;
-    var time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    var dir = getTextDirection(text || '');
-    var content = isError
-      ? '<div class="agentify-message-error" dir="' + dir + '">' + escapeHtml(text || 'Something went wrong.') + '</div>'
-      : (text ? '<div class="agentify-message-text" dir="' + dir + '">' + formatMessageContent(text) + '</div>' : '');
-    var html = '<div class="agentify-message agentify-assistant" role="listitem">' +
-      '<div class="agentify-message-avatar" aria-hidden="true"><span class="material-symbols-outlined">auto_awesome</span></div>' +
-      '<div class="agentify-message-bubble">' + content +
-      '<div class="agentify-message-time">' + time + '</div></div></div>';
-    thinkingEl.outerHTML = html;
-    scrollToBottom();
-  }
-
-  /** Morph the thinking block (with streamed content) into the final assistant message. If no thinking block (e.g. after a tool round), append a new assistant message so content is never lost. */
-  function morphThinkingToReply(text, isError) {
-    var thinkingEl = document.getElementById('agentify-thinking-msg');
-    if (!thinkingEl) {
-      if (text || isError) {
-        addMessageToDOM('assistant', text || (isError ? 'Something went wrong.' : ''), new Date());
-        if (messagesEl) messagesEl.classList.add('agentify-has-messages');
-        scrollToBottom();
-      }
-      return;
-    }
-    if (!text && !isError) {
-      return;
-    }
-    if (!text && isError) {
-      text = 'An error occurred.';
-    }
     var bubble = thinkingEl.querySelector('.agentify-message-bubble');
-    if (!bubble) {
-      replaceThinkingWithReply(text, isError);
-      return;
-    }
+    if (!bubble) return;
+    
+    // Preserve agentify-thinking-text - get current text or default to "Thinking"
+    var existingThinkingText = bubble.querySelector('.agentify-thinking-text');
+    var thinkingTextValue = existingThinkingText ? existingThinkingText.textContent.trim() : 'Thinking';
+    
     var time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    var dir = getTextDirection(text || '');
+    var parsed = parseAssistantContentWithError(text || '');
+    var errorMsg = parsed.errorMessage || (isError ? (text || 'Something went wrong.') : null);
+    var mainContent = parsed.messageContent || (!isError && text ? text : '');
+    
+    // Remove thinking inner, stream, and events, but keep structure
+    var innerEl = bubble.querySelector('.agentify-thinking-inner');
+    var streamEl = bubble.querySelector('.agentify-thinking-stream');
+    var eventsEl = bubble.querySelector('.agentify-thinking-events');
+    var errorWrapEl = bubble.querySelector('.agentify-thinking-error-wrap');
+    if (innerEl) innerEl.remove();
+    if (streamEl) streamEl.remove();
+    if (eventsEl) eventsEl.remove();
+    if (errorWrapEl) errorWrapEl.remove();
+    
+    // Update element classes
     thinkingEl.classList.remove('agentify-thinking');
     thinkingEl.removeAttribute('aria-busy');
     thinkingEl.removeAttribute('id');
-    bubble.innerHTML = '';
-    if (isError) {
-      var errEl = document.createElement('div');
-      errEl.className = 'agentify-message-error';
-      errEl.setAttribute('dir', dir);
-      errEl.textContent = text || 'Something went wrong.';
-      bubble.appendChild(errEl);
-    } else if (text) {
+    
+    // Create and add thinking-text at the top
+    var thinkingTextEl = document.createElement('span');
+    thinkingTextEl.className = 'agentify-thinking-text';
+    thinkingTextEl.textContent = thinkingTextValue || 'Thinking';
+    bubble.insertBefore(thinkingTextEl, bubble.firstChild);
+    
+    if (mainContent) {
       var textDiv = document.createElement('div');
       textDiv.className = 'agentify-message-text';
-      textDiv.setAttribute('dir', dir);
-      textDiv.innerHTML = formatMessageContent(text);
+      textDiv.setAttribute('dir', getTextDirection(mainContent));
+      textDiv.innerHTML = formatMessageContent(mainContent);
       bubble.appendChild(textDiv);
     }
     var timeEl = document.createElement('div');
     timeEl.className = 'agentify-message-time';
     timeEl.textContent = time;
     bubble.appendChild(timeEl);
+    if (errorMsg) {
+      var wrap = document.createElement('div');
+      wrap.className = 'agentify-message-error-wrap';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'agentify-try-again-btn';
+      btn.textContent = 'Try again';
+      var span = document.createElement('span');
+      span.className = 'agentify-message-error-text';
+      span.textContent = errorMsg;
+      wrap.appendChild(btn);
+      wrap.appendChild(span);
+      bubble.appendChild(wrap);
+    }
+    clearAllEvents();
+    scrollToBottom();
+  }
+
+  /** Morph the thinking block (with streamed content) into the final assistant message. Errors go in a small box below with Try again. */
+  function morphThinkingToReply(text, isError) {
+    var thinkingEl = document.getElementById('agentify-thinking-msg');
+    if (!thinkingEl) {
+      if (text || isError) {
+        var parsed = parseAssistantContentWithError(text || '');
+        var errMsg = parsed.errorMessage || (isError ? 'Something went wrong.' : null);
+        var main = parsed.messageContent || (isError ? '' : (text || ''));
+        addMessageToDOM('assistant', main, new Date());
+        if (errMsg && messagesEl && messagesEl.lastElementChild) {
+          var bubble = messagesEl.lastElementChild.querySelector('.agentify-message-bubble');
+          if (bubble) bubble.insertAdjacentHTML('beforeend', buildMessageErrorBoxHtml(errMsg));
+        }
+        if (messagesEl) messagesEl.classList.add('agentify-has-messages');
+        scrollToBottom();
+      }
+      return;
+    }
+    if (!text && !isError) return;
+    if (!text && isError) text = 'An error occurred.';
+    var bubble = thinkingEl.querySelector('.agentify-message-bubble');
+    if (!bubble) {
+      replaceThinkingWithReply(text, isError);
+      return;
+    }
+    var parsed = parseAssistantContentWithError(text);
+    var errorMsg = parsed.errorMessage || (isError ? (text || 'An error occurred.') : null);
+    var mainContent = parsed.messageContent;
+
+    var time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    thinkingEl.classList.remove('agentify-thinking');
+    thinkingEl.removeAttribute('aria-busy');
+    thinkingEl.removeAttribute('id');
+    
+    // Preserve agentify-thinking-text - get current text or default to "Thinking"
+    var existingThinkingText = bubble.querySelector('.agentify-thinking-text');
+    var thinkingTextValue = existingThinkingText ? existingThinkingText.textContent.trim() : 'Thinking';
+    
+    // Remove thinking inner, stream, and events, but keep structure
+    var innerEl = bubble.querySelector('.agentify-thinking-inner');
+    var streamEl = bubble.querySelector('.agentify-thinking-stream');
+    var eventsEl = bubble.querySelector('.agentify-thinking-events');
+    var errorWrapEl = bubble.querySelector('.agentify-thinking-error-wrap');
+    if (innerEl) innerEl.remove();
+    if (streamEl) streamEl.remove();
+    if (eventsEl) eventsEl.remove();
+    if (errorWrapEl) errorWrapEl.remove();
+    
+    // Create and add thinking-text at the top
+    var thinkingTextEl = document.createElement('span');
+    thinkingTextEl.className = 'agentify-thinking-text';
+    thinkingTextEl.textContent = thinkingTextValue || 'Thinking';
+    bubble.insertBefore(thinkingTextEl, bubble.firstChild);
+    
+    if (mainContent) {
+      var textDiv = document.createElement('div');
+      textDiv.className = 'agentify-message-text';
+      textDiv.setAttribute('dir', getTextDirection(mainContent));
+      textDiv.innerHTML = formatMessageContent(mainContent);
+      bubble.appendChild(textDiv);
+    }
+    var timeEl = document.createElement('div');
+    timeEl.className = 'agentify-message-time';
+    timeEl.textContent = time;
+    bubble.appendChild(timeEl);
+    if (errorMsg) {
+      var wrap = document.createElement('div');
+      wrap.className = 'agentify-message-error-wrap';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'agentify-try-again-btn';
+      btn.textContent = 'Try again';
+      var span = document.createElement('span');
+      span.className = 'agentify-message-error-text';
+      span.textContent = errorMsg;
+      wrap.appendChild(btn);
+      wrap.appendChild(span);
+      bubble.appendChild(wrap);
+    }
+    clearAllEvents();
     scrollToBottom();
   }
 
@@ -351,37 +660,92 @@
       });
   }
 
-  function renderPanelTasks(tasks) {
-    if (!panelTasksList || !panelTasksContainer) return;
-    if (!tasks || tasks.length === 0) {
-      panelTasksList.innerHTML = '';
-      panelTasksContainer.classList.remove('agentify-panel-tasks-has');
+  /** Render tasks under the last assistant message (outside bubble). No label, no "no tasks" text. Loading skeleton when loading. */
+  function renderTasksUnderMessage(tasks, isLoading) {
+    if (!messagesEl) return;
+    var list = Array.isArray(tasks) ? tasks : [];
+    var existing = messagesEl.querySelector('.agentify-message-tasks');
+    if (existing) existing.remove();
+    if (isLoading) {
+      var lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant:not(.agentify-thinking)');
+      if (!lastAssistant) lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant');
+      if (lastAssistant) {
+        var wrap = document.createElement('div');
+        wrap.className = 'agentify-message-tasks agentify-message-tasks-loading';
+        wrap.setAttribute('aria-hidden', 'true');
+        wrap.innerHTML = '<ul class="agentify-message-tasks-list">' +
+          '<li class="agentify-message-task-skeleton"><span class="agentify-task-skeleton-line"></span></li>' +
+          '<li class="agentify-message-task-skeleton"><span class="agentify-task-skeleton-line"></span></li>' +
+          '</ul>';
+        lastAssistant.appendChild(wrap);
+      }
       return;
     }
-    panelTasksContainer.classList.add('agentify-panel-tasks-has');
-    panelTasksList.innerHTML = tasks.map(function (t) {
-      var title = (t.title && t.title.trim()) ? escapeHtml(t.title) : '';
-      var status = (t.status && t.status.trim()) ? escapeHtml(t.status) : 'pending';
-      return '<li class="agentify-panel-task" data-status="' + status + '">' +
-        '<span class="material-symbols-outlined agentify-panel-task-icon" aria-hidden="true">' +
+    if (list.length === 0) return;
+    var lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant:not(.agentify-thinking)');
+    if (!lastAssistant) lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant');
+    if (!lastAssistant) return;
+    var lastFour = list.slice(-4);
+    var wrap = document.createElement('div');
+    wrap.className = 'agentify-message-tasks';
+    var title = function (t) {
+      var s = (t && (t.title != null || t.name != null)) ? String(t.title != null ? t.title : t.name).trim() : '';
+      return s || '\u2014';
+    };
+    wrap.innerHTML = '<ul class="agentify-message-tasks-list">' + lastFour.map(function (t) {
+      var taskTitle = escapeHtml(title(t));
+      var status = (t.status && String(t.status).trim()) ? escapeHtml(String(t.status).trim()) : 'pending';
+      return '<li class="agentify-message-task" data-status="' + status + '">' +
+        '<span class="material-symbols-outlined agentify-message-task-icon" aria-hidden="true">' +
         (status === 'completed' ? 'check_circle' : status === 'cancelled' ? 'cancel' : 'radio_button_unchecked') + '</span>' +
-        '<span class="agentify-panel-task-title">' + title + '</span></li>';
-    }).join('');
+        '<span class="agentify-message-task-title">' + taskTitle + '</span></li>';
+    }).join('') + '</ul>';
+    lastAssistant.appendChild(wrap);
   }
 
   function loadTasks(chatId) {
-    if (!restUrl || !panelTasksList) return;
     if (chatId == null) {
-      renderPanelTasks([]);
+      currentTasksList = [];
+      renderTasksUnderMessage([], false);
+      return;
+    }
+    renderTasksUnderMessage([], true);
+    function applyList(apiTasks) {
+      var list = Array.isArray(apiTasks) ? apiTasks : [];
+      if (agentifyAgent && list.length === 0) {
+        try {
+          var fromAgent = agentifyAgent.getTasks({ chat_id: String(chatId) });
+          if (fromAgent && fromAgent.length > 0) {
+            var normalized = fromAgent.map(function (t) {
+              return {
+                id: t.id,
+                title: (t && t.title != null) ? String(t.title) : (t && t.name != null ? String(t.name) : ''),
+                status: (t && t.status) ? t.status : 'pending',
+                description: t && t.description ? t.description : null,
+              };
+            }).filter(function (t) {
+              var titleStr = (t.title || '').trim();
+              return titleStr.indexOf('chat:') !== 0 && titleStr.indexOf('tool_followup:') !== 0;
+            });
+            list = normalized.slice(-4);
+          }
+        } catch (e) {}
+      }
+      currentTasksList = list;
+      renderTasksUnderMessage(list, false);
+    }
+    if (!restUrl) {
+      applyList([]);
       return;
     }
     api('/tasks?chat_id=' + chatId)
       .then(function (res) {
         var list = (res.data && res.data.tasks) ? res.data.tasks : [];
-        renderPanelTasks(list);
+        applyList(list);
       })
       .catch(function () {
-        renderPanelTasks([]);
+        currentTasksList = [];
+        applyList([]);
       });
   }
 
@@ -420,8 +784,16 @@
     if (!messages || messages.length === 0) {
     } else {
       messages.forEach(function (m) {
-        if (m.role === 'user' || m.role === 'assistant') {
-          addMessageToDOM(m.role, m.content || '', m.created_at);
+        if (m.role === 'user') {
+          addMessageToDOM('user', m.content || '', m.created_at);
+        } else if (m.role === 'assistant') {
+          var parsed = parseAssistantContentWithError(m.content || '');
+          var displayContent = parsed.errorMessage ? parsed.messageContent : (m.content || '');
+          addMessageToDOM('assistant', displayContent, m.created_at);
+          if (parsed.errorMessage && messagesEl && messagesEl.lastElementChild) {
+            var bubble = messagesEl.lastElementChild.querySelector('.agentify-message-bubble');
+            if (bubble) bubble.insertAdjacentHTML('beforeend', buildMessageErrorBoxHtml(parsed.errorMessage));
+          }
         }
       });
     }
@@ -438,6 +810,10 @@
         var list = (res.data && res.data.messages) ? res.data.messages : [];
         currentChatMessages = list.map(function (m) { return { role: m.role, content: m.content || '' }; });
         renderMessages(list);
+        if (agentifyAgent && currentChatMessages.length) {
+          agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+        }
+        renderTasksUnderMessage(currentTasksList, false);
       })
       .catch(function () {
         currentChatMessages = [];
@@ -487,7 +863,7 @@
     });
   }
 
-  /** Lazy-init Agentify: load module, fetch settings, create agent, add set_chat_title tool. */
+  /** Lazy-init Agentify: load module, fetch settings, create agent, add tools. Agent is exposed on window.agent. */
   function getAgent() {
     if (agentifyAgent) return Promise.resolve(agentifyAgent);
     if (!agentifyBaseUrl || !restUrl) return Promise.reject(new Error('Agentify or REST not configured'));
@@ -504,20 +880,32 @@
         var apiKey = (settings.api_keys && settings.api_keys[providerKey]) ? settings.api_keys[providerKey] : '';
         if (!apiKey) throw new Error('API key not set for this model. Use Settings.');
         var apiUrl = PROVIDER_URLS[providerKey] || PROVIDER_URLS[provider] || PROVIDER_URLS.deepseek;
+        var streamEnabled = typeof window.ReadableStream !== 'undefined';
+        if (!streamEnabled) {
+          try { if (window.console && window.console.warn) window.console.warn('Agentify: ReadableStream not supported, streaming disabled.'); } catch (_) {}
+        }
         var agent = new Agentify({
           provider: provider,
           model: model,
           apiKey: apiKey,
           apiUrl: apiUrl,
-          stream: true,
+          stream: streamEnabled,
           useHistory: true,
           includeHistory: true,
         });
-        agent.setInstruction(settings.system_instruction || '');
+        var baseInstruction = settings.system_instruction || '';
+        var titleInstruction = '\n\nIMPORTANT: For every new chat conversation, you MUST call the set_chat_title tool exactly once to set a descriptive title for the chat. This helps users organize and find their conversations. Call set_chat_title early in the conversation, ideally after understanding the user\'s main request or topic.';
+        var taskInstruction = '\n\nTASKS: When the user asks you to do something (e.g. check plugins, run a query, create or change something), you MUST create a task for it using the create_task tool. Work through tasks one by one: use get_tasks to see the list, do each task, then mark it completed with complete_task and continue. Always create a task for the work the user wants done, update progress by completing tasks as you finish them, and use the task tools (create_task, get_tasks, complete_task) consistently.';
+        agent.setInstruction(baseInstruction + titleInstruction + taskInstruction);
+        agent.onThinkingChange(function (status) {
+          if (status && status.currentAction) pushEvent(status.currentAction);
+          updateThinkingUI(status);
+        });
+        window.agent = agent;
         return agent.addTool({
           name: 'set_chat_title',
-          description: 'Set the title of the current chat. Use this only when the chat has no custom title yet (title is empty or "new" or "new #id"). Call once per chat with a short, descriptive title summarizing the conversation.',
-          instruction: 'Use only when the chat title is empty or "new" or "new #id". Call exactly once per chat with a short title (e.g. one line).',
+          description: 'Set the title of the current chat. You MUST call this tool exactly once for every new chat conversation to give it a descriptive title. Use this when the chat has no custom title yet (title is empty or "new" or "new #id"). Create a short, descriptive title that summarizes the main topic or purpose of the conversation.',
+          instruction: 'You MUST call this tool exactly once for every new chat. Use when the chat title is empty or "new" or "new #id". Call early in the conversation after understanding the user\'s main request. Create a short, descriptive title (one line, 3-8 words) that captures the essence of the conversation.',
           parameters: {
             title: { type: 'string', description: 'Short descriptive title for the chat', required: true },
           },
@@ -578,26 +966,168 @@
         }).then(function () {
           return agent.addTool({
             name: 'create_task',
-            description: 'Create a task (todo) for the user. You MUST call this whenever the user asks to remember something, add a todo, or be reminded (e.g. "یادت باشه", "یادداشت کن", "تسک بساز", "یادم بنداز", "add a task", "remind me"). Tasks are saved to the database and shown under the chat.',
-            instruction: 'Call create_task whenever the user wants something remembered or a todo. Use a short title and optional description. One task per item; multiple items = multiple calls.',
+            description: 'Create a task (todo) for the user. You MUST call this whenever the user asks to remember something, add a todo, or for any work item (e.g. "یادت باشه", "تسک بساز", "add a task"). Tasks are displayed to the user under your message. You MUST always provide a clear, short title (required): the title is what the user sees in the task list. Without a title the task appears empty. Use a descriptive title for each task (e.g. "Get plugin list", "Run database query", "Set chat title").',
+            instruction: 'Always call create_task with a clear, short title. The title is required and is shown to the user—never leave it empty. Use one task per work item. Example: create_task({ title: "Fetch user list from database", description: "optional details" }).',
             parameters: {
-              title: { type: 'string', description: 'Short title for the task', required: true },
+              title: { type: 'string', description: 'Required. Short, clear title shown to the user in the task list (e.g. "Get plugin list", "Run query"). Never omit.', required: true },
               description: { type: 'string', description: 'Optional longer description or notes', required: false },
             },
             execute: function (params) {
-              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.' });
-              var title = (params && params.title) ? String(params.title).trim() : '';
-              if (!title) return Promise.resolve({ success: false, message: 'Title is required.' });
-              var body = { title: title };
-              if (params && params.description && String(params.description).trim()) body.description = String(params.description).trim();
-              if (currentChatId != null) body.chat_id = currentChatId;
-              return api('/tasks', { method: 'POST', body: JSON.stringify(body) }).then(function (res) {
-                if (res.ok && res.data && res.data.success) {
-                  if (currentChatId != null) loadTasks(currentChatId);
-                  return { success: true, task_id: res.data.task_id, message: res.data.message || 'Task created.' };
+              try {
+                var title = (params && params.title) ? String(params.title).trim() : '';
+                if (!title) return Promise.resolve({ success: false, message: 'Title is required.' });
+                var taskData = { title: title, status: 'pending' };
+                if (params && params.description && String(params.description).trim()) taskData.description = String(params.description).trim();
+                if (currentChatId != null) taskData.chat_id = String(currentChatId);
+                var task = agent.createTask(taskData);
+                if (restUrl && currentChatId != null) {
+                  api('/tasks', { method: 'POST', body: JSON.stringify({ title: task.title, description: task.description, chat_id: currentChatId }) })
+                    .then(function () { loadTasks(currentChatId); })
+                    .catch(function () {});
                 }
-                return { success: false, message: (res.data && res.data.message) || 'Failed to create task.' };
-              });
+                return Promise.resolve({ success: true, task_id: task.id, title: task.title, message: 'Task created.' });
+              } catch (err) {
+                return Promise.resolve({ success: false, message: err.message || 'Failed to create task.' });
+              }
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'get_tasks',
+            description: 'Get list of tasks for the current chat. Use this when user asks about tasks, todos, or what needs to be done.',
+            instruction: 'Use this tool to show the user their tasks. Returns tasks for the current chat.',
+            parameters: {
+              status: { type: 'string', description: 'Filter by status: "pending" or "completed". Leave empty to get all tasks.', required: false },
+            },
+            execute: function (params) {
+              try {
+                var filter = {};
+                if (currentChatId != null) filter.chat_id = String(currentChatId);
+                if (params && params.status && (params.status === 'pending' || params.status === 'completed')) {
+                  filter.status = params.status;
+                }
+                var tasks = agent.getTasks(filter);
+                return Promise.resolve({ success: true, tasks: tasks, count: tasks.length });
+              } catch (err) {
+                return Promise.resolve({ success: false, message: err.message || 'Failed to get tasks.' });
+              }
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'complete_task',
+            description: 'Mark a task as completed. Use this when the user says a task is done, finished, or completed.',
+            instruction: 'Use this tool to mark a task as completed. You need the task ID from get_tasks.',
+            parameters: {
+              task_id: { type: 'string', description: 'The ID of the task to mark as completed', required: true },
+            },
+            execute: function (params) {
+              try {
+                var taskId = (params && params.task_id) ? String(params.task_id).trim() : '';
+                if (!taskId) return Promise.resolve({ success: false, message: 'Task ID is required.' });
+                agent.taskManager.updateTaskStatus(taskId, 'completed');
+                if (restUrl && currentChatId != null) {
+                  api('/tasks/' + taskId, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) })
+                    .then(function () { loadTasks(currentChatId); })
+                    .catch(function () {});
+                }
+                return Promise.resolve({ success: true, task_id: taskId, message: 'Task marked as completed.' });
+              } catch (err) {
+                return Promise.resolve({ success: false, message: err.message || 'Failed to complete task.' });
+              }
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'render_data_table',
+            description: 'Build an HTML table from headers and row data. Use when you have tabular data to show. No backend call. Return the HTML wrapped in <!-- agentify-block --> ... <!-- /agentify-block --> in your response so the UI renders it.',
+            instruction: 'Call with headers array and rows (array of arrays). Include the returned HTML in your reply inside <!-- agentify-block --> ... <!-- /agentify-block -->.',
+            parameters: {
+              headers: { type: 'array', description: 'Array of column header strings', required: true },
+              rows: { type: 'array', description: 'Array of rows; each row is an array of cell values (strings or numbers)', required: true },
+            },
+            execute: function (params) {
+              var headers = params && Array.isArray(params.headers) ? params.headers : [];
+              var rows = params && Array.isArray(params.rows) ? params.rows : [];
+              var esc = function (v) {
+                if (v == null) return '';
+                var div = document.createElement('div');
+                div.textContent = String(v);
+                return div.innerHTML;
+              };
+              var ths = headers.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('');
+              var trs = rows.map(function (row) {
+                var cells = (Array.isArray(row) ? row : []).map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('');
+                return '<tr>' + cells + '</tr>';
+              }).join('');
+              var html = '<div class="agentify-data-table-wrap"><table class="agentify-data-table"><thead><tr>' + ths + '</tr></thead><tbody>' + trs + '</tbody></table></div>';
+              return Promise.resolve({ success: true, html: html });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'multiple_choice_question',
+            description: 'Show a 4-option multiple choice question with a confirm button. When the user clicks confirm, their answer is sent to you with conversation history. Use for quizzes, choices, or when you need the user to pick one option. No backend.',
+            instruction: 'Call with question and options (array of 4 option strings). Return the html in your response inside <!-- agentify-block --> ... <!-- /agentify-block -->. After user confirms, you will receive their choice as a new message.',
+            parameters: {
+              question: { type: 'string', description: 'The question text', required: true },
+              options: { type: 'array', description: 'Exactly 4 option strings (e.g. ["A) ...", "B) ...", "C) ...", "D) ..."]', required: true },
+            },
+            execute: function (params) {
+              var question = (params && params.question) ? String(params.question).trim() : '';
+              var opts = (params && params.options && Array.isArray(params.options)) ? params.options.slice(0, 4) : [];
+              var esc = function (v) {
+                if (v == null) return '';
+                var div = document.createElement('div');
+                div.textContent = String(v);
+                return div.innerHTML;
+              };
+              var name = 'agentify-mc-' + Date.now();
+              var radios = opts.map(function (opt, i) {
+                return '<label class="agentify-mc-option"><input type="radio" name="' + name + '" value="' + esc(opt) + '" data-option-text="' + esc(opt) + '"> <span>' + esc(opt) + '</span></label>';
+              }).join('');
+              var html = '<div class="agentify-mc-block"><p class="agentify-mc-question">' + esc(question) + '</p><div class="agentify-mc-options">' + radios + '</div><button type="button" class="agentify-mc-confirm agentify-btn">Confirm</button></div>';
+              return Promise.resolve({ success: true, html: html });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'render_button',
+            description: 'Create a link button to show in the chat. Input: URL and button title. No backend. Return HTML to include in your response inside <!-- agentify-block --> ... <!-- /agentify-block -->.',
+            instruction: 'Call with url and title. Include the returned HTML in your reply inside <!-- agentify-block --> ... <!-- /agentify-block -->.',
+            parameters: {
+              url: { type: 'string', description: 'The link URL', required: true },
+              title: { type: 'string', description: 'Button label text', required: true },
+            },
+            execute: function (params) {
+              var url = (params && params.url) ? String(params.url).trim() : '#';
+              var title = (params && params.title) ? String(params.title).trim() : 'Link';
+              var div = document.createElement('div');
+              div.textContent = url;
+              var safeUrl = div.innerHTML;
+              div.textContent = title;
+              var safeTitle = div.innerHTML;
+              var html = '<div class="agentify-msg-button-wrap"><a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="agentify-msg-button">' + safeTitle + '</a></div>';
+              return Promise.resolve({ success: true, html: html });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'build_site_link',
+            description: 'Build a full URL for this WordPress site. Use when user needs a link to the front or admin. No backend. Input: type (front or admin) and path (e.g. "wp-admin/post.php?post=123" or "my-page/"). Returns the full URL.',
+            instruction: 'Call with type "front" or "admin" and path. Returns full URL. Use this to give users correct links.',
+            parameters: {
+              type: { type: 'string', description: 'Either "front" or "admin"', required: true },
+              path: { type: 'string', description: 'Path part (e.g. "wp-admin/post.php?post=123" or "contact/"). For front use path like "my-page/".', required: true },
+            },
+            execute: function (params) {
+              var type = (params && params.type) ? String(params.type).trim().toLowerCase() : 'front';
+              var path = (params && params.path) ? String(params.path).trim() : '';
+              var base = type === 'admin' ? (adminUrl || '') : (siteUrl || '');
+              if (!base) return Promise.resolve({ success: false, message: 'Site URL not configured.', url: '' });
+              if (path) base = base.replace(/\/?$/, '') + '/' + path.replace(/^\//, '');
+              var url = base.replace(/\s/g, '');
+              return Promise.resolve({ success: true, url: url });
             },
           });
         }).then(function () {
@@ -652,6 +1182,9 @@
     }
     userInput.value = '';
     resizeTextarea();
+    var oldThinkingEl = document.getElementById('agentify-thinking-msg');
+    if (oldThinkingEl) oldThinkingEl.remove();
+    clearAllEvents();
     addMessageToDOM('user', text);
     currentChatMessages.push({ role: 'user', content: text });
     addThinkingMessage();
@@ -666,6 +1199,7 @@
         }
         return getAgent().then(function (agent) {
           var chatIdStr = String(chatId);
+          agent.setChatId(chatIdStr);
           agent.chatHistoryManager.updateChatHistory(chatIdStr, currentChatMessages);
           return api('/chat/messages', {
             method: 'POST',
@@ -677,14 +1211,17 @@
         if (!ctx) return;
         var agent = ctx.agent;
         var chatId = ctx.chatId;
+        lastUserMessageForRetry = text;
         var accumulatedAssistantContent = '';
         return agent.chat(text, {
           chatId: String(chatId),
-          onThinkingChange: updateThinkingUI,
           onToolCall: function (toolCall) {
+            pushEvent('tool_call_initiated');
             var label = 'Using tool: ' + (toolCall && toolCall.name ? toolCall.name : 'tool');
             pushEvent(label);
-            updateThinkingUI(label);
+          },
+          onThinking: function (thought) {
+            if (thought && String(thought).trim()) pushEvent('thinking_started');
           },
           onToken: function (token) {
             if (typeof token !== 'string') return;
@@ -693,45 +1230,88 @@
           onComplete: function (result) {
             var content = (result && result.content) ? result.content : '';
             accumulatedAssistantContent += content;
-          },
-          onError: function (err) {
-            var msg = (err && err.message) ? err.message : 'An error occurred.';
-            morphThinkingToReply(msg, true);
-          },
-        }).then(function (finalResult) {
-          var streamEl = document.getElementById('agentify-thinking-stream');
-          if (streamEl && streamEl.textContent && streamEl.textContent.trim()) {
-            var streamed = streamEl.textContent.trim();
-            if (!accumulatedAssistantContent || accumulatedAssistantContent.indexOf(streamed) === -1) {
+            var streamed = getStreamRawContent();
+            if (streamed && (!accumulatedAssistantContent || accumulatedAssistantContent.indexOf(streamed) === -1)) {
               accumulatedAssistantContent = (accumulatedAssistantContent || '') + streamed;
             }
-          }
-          if (finalResult && finalResult.content) {
-            var finalContent = String(finalResult.content).trim();
-            if (!accumulatedAssistantContent || accumulatedAssistantContent.indexOf(finalContent) === -1) {
-              accumulatedAssistantContent = (accumulatedAssistantContent || '') + finalContent;
+            var hasToolCalls = (result && result.toolCalls && result.toolCalls.length > 0) || 
+                              (result && result.toolResults && result.toolResults.length > 0);
+            var finishReason = result && result.finishReason;
+            var isToolFollowUp = finishReason === 'tool_calls' || hasToolCalls;
+            if (!isToolFollowUp) {
+              var finalContentToSave = accumulatedAssistantContent ? accumulatedAssistantContent.trim() : '';
+              var thinkingEl = document.getElementById('agentify-thinking-msg');
+              if (thinkingEl && finalContentToSave) {
+                var parsed = parseAssistantContentWithError(finalContentToSave);
+                var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContentToSave;
+                morphThinkingToReply(finalContentToSave, false);
+                if (contentToSave) {
+                  currentChatMessages.push({ role: 'assistant', content: contentToSave });
+                  if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+                  api('/chat/messages', {
+                    method: 'POST',
+                    body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }),
+                  }).then(function () { loadChats(); });
+                }
+              } else if (thinkingEl && !finalContentToSave) {
+                thinkingEl.remove();
+              }
             }
-          }
-          var finalContentToSave = accumulatedAssistantContent ? accumulatedAssistantContent.trim() : '';
+            if (currentChatId != null) loadTasks(currentChatId);
+          },
+          onError: function (err) {
+            if (err && typeof err.toConsole === 'function') {
+              try { console.error(err.toConsole()); } catch (_) {}
+            }
+            var msg = (err && err.message) ? err.message : 'An error occurred.';
+            showThinkingError(msg);
+            setSendLoading(false);
+          },
+        }).then(function (finalResult) {
           var thinkingEl = document.getElementById('agentify-thinking-msg');
           if (thinkingEl) {
-            if (finalContentToSave) {
-              morphThinkingToReply(finalContentToSave, false);
-              currentChatMessages.push({ role: 'assistant', content: finalContentToSave });
-              api('/chat/messages', {
-                method: 'POST',
-                body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: finalContentToSave }),
-              }).then(function () { loadChats(); });
-            } else {
-              thinkingEl.remove();
+            var finalContent = getStreamRawContent() || (finalResult && finalResult.content ? String(finalResult.content).trim() : '');
+            var hasToolCalls = (finalResult && finalResult.toolCalls && finalResult.toolCalls.length > 0) || 
+                              (finalResult && finalResult.toolResults && finalResult.toolResults.length > 0);
+            var finishReason = finalResult && finalResult.finishReason;
+            var isToolFollowUp = finishReason === 'tool_calls' || hasToolCalls;
+            if (!isToolFollowUp && finalContent) {
+              var parsed = parseAssistantContentWithError(finalContent);
+              var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContent;
+              morphThinkingToReply(finalContent, false);
+              if (contentToSave) {
+                currentChatMessages.push({ role: 'assistant', content: contentToSave });
+                if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+                api('/chat/messages', {
+                  method: 'POST',
+                  body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }),
+                }).then(function () { loadChats(); });
+              }
             }
-          } else if (finalContentToSave) {
-            addMessageToDOM('assistant', finalContentToSave, new Date());
-            currentChatMessages.push({ role: 'assistant', content: finalContentToSave });
-            api('/chat/messages', {
-              method: 'POST',
-              body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: finalContentToSave }),
-            }).then(function () { loadChats(); });
+          } else {
+            /* thinkingEl is null: usually already morphed in onComplete (id was removed). Do not add a second message. Only add/save if the last message is not an assistant (edge case). */
+            var lastMsg = messagesEl && messagesEl.lastElementChild;
+            var lastIsAssistant = lastMsg && lastMsg.classList.contains('agentify-assistant') && !lastMsg.classList.contains('agentify-thinking');
+            if (lastIsAssistant) return;
+            var finalContent = getStreamRawContent() || (finalResult && finalResult.content ? String(finalResult.content).trim() : '');
+            if (finalContent) {
+              var parsed = parseAssistantContentWithError(finalContent);
+              var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContent;
+              var displayContent = parsed.errorMessage ? parsed.messageContent : finalContent;
+              addMessageToDOM('assistant', displayContent, new Date());
+              if (parsed.errorMessage && messagesEl && messagesEl.lastElementChild) {
+                var bubble = messagesEl.lastElementChild.querySelector('.agentify-message-bubble');
+                if (bubble) bubble.insertAdjacentHTML('beforeend', buildMessageErrorBoxHtml(parsed.errorMessage));
+              }
+              if (contentToSave) {
+                currentChatMessages.push({ role: 'assistant', content: contentToSave });
+                if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+                api('/chat/messages', {
+                  method: 'POST',
+                  body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }),
+                }).then(function () { loadChats(); });
+              }
+            }
           }
         });
       })
@@ -747,8 +1327,322 @@
   if (btnNewChat) btnNewChat.addEventListener('click', startNewChat);
   if (btnStop) btnStop.addEventListener('click', stopGeneration);
 
+  messagesEl.addEventListener('click', function (e) {
+    var mcBtn = e.target && e.target.closest && e.target.closest('.agentify-mc-confirm');
+    if (mcBtn) {
+      e.preventDefault();
+      var block = mcBtn.closest('.agentify-mc-block');
+      if (!block) return;
+      var checked = block.querySelector('input[type="radio"]:checked');
+      if (!checked) return;
+      var text = (checked.value || checked.getAttribute('data-option-text') || '').trim();
+      if (!text) return;
+      if (!restUrl) {
+        addMessageToDOM('user', text);
+        replaceThinkingWithReply('Configure REST URL and API keys in Settings.', true);
+        return;
+      }
+      var oldThinkingEl = document.getElementById('agentify-thinking-msg');
+      if (oldThinkingEl) oldThinkingEl.remove();
+      clearAllEvents();
+      addMessageToDOM('user', text);
+      currentChatMessages.push({ role: 'user', content: text });
+      addThinkingMessage();
+      setSendLoading(true);
+      lastUserMessageForRetry = text;
+      var accumulatedAssistantContent = '';
+      ensureCurrentChat()
+        .then(function (chatId) {
+          if (chatId == null) {
+            replaceThinkingWithReply('Could not create or use a chat. Try again.', true);
+            setSendLoading(false);
+            return Promise.reject();
+          }
+          return getAgent().then(function (agent) {
+            var chatIdStr = String(chatId);
+            agent.setChatId(chatIdStr);
+            agent.chatHistoryManager.updateChatHistory(chatIdStr, currentChatMessages);
+            return api('/chat/messages', {
+              method: 'POST',
+              body: JSON.stringify({ chat_id: chatId, role: 'user', content: text }),
+            }).then(function () { return { agent: agent, chatId: chatId }; });
+          });
+        })
+        .then(function (ctx) {
+          if (!ctx) return;
+          var agent = ctx.agent;
+          var chatId = ctx.chatId;
+          return agent.chat(text, {
+            chatId: String(chatId),
+            onToolCall: function (toolCall) {
+              pushEvent('tool_call_initiated');
+              pushEvent('Using tool: ' + (toolCall && toolCall.name ? toolCall.name : 'tool'));
+            },
+            onThinking: function (thought) {
+              if (thought && String(thought).trim()) pushEvent('thinking_started');
+            },
+            onToken: function (token) {
+              if (typeof token !== 'string') return;
+              showStreamAndAppendToken(token);
+            },
+            onComplete: function (result) {
+              var content = (result && result.content) ? result.content : '';
+              accumulatedAssistantContent += content;
+              var streamed = getStreamRawContent();
+              if (streamed && (!accumulatedAssistantContent || accumulatedAssistantContent.indexOf(streamed) === -1)) {
+                accumulatedAssistantContent = (accumulatedAssistantContent || '') + streamed;
+              }
+              var hasToolCalls = (result && result.toolCalls && result.toolCalls.length > 0) || (result && result.toolResults && result.toolResults.length > 0);
+              var finishReason = result && result.finishReason;
+              var isToolFollowUp = finishReason === 'tool_calls' || hasToolCalls;
+              if (!isToolFollowUp) {
+                var finalContentToSave = accumulatedAssistantContent ? accumulatedAssistantContent.trim() : '';
+                var thinkingEl = document.getElementById('agentify-thinking-msg');
+                if (thinkingEl && finalContentToSave) {
+                  var parsed = parseAssistantContentWithError(finalContentToSave);
+                  var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContentToSave;
+                  morphThinkingToReply(finalContentToSave, false);
+                  if (contentToSave) {
+                    currentChatMessages.push({ role: 'assistant', content: contentToSave });
+                    if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+                    api('/chat/messages', { method: 'POST', body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }) }).then(function () { loadChats(); });
+                  }
+                } else if (thinkingEl && !finalContentToSave) {
+                  thinkingEl.remove();
+                }
+              }
+              if (currentChatId != null) loadTasks(currentChatId);
+            },
+            onError: function (err) {
+              if (err && typeof err.toConsole === 'function') { try { console.error(err.toConsole()); } catch (_) {} }
+              showThinkingError((err && err.message) ? err.message : 'An error occurred.');
+              setSendLoading(false);
+            },
+          }).then(function (finalResult) {
+            var thinkingEl = document.getElementById('agentify-thinking-msg');
+            if (thinkingEl) {
+              var finalContent = getStreamRawContent() || (finalResult && finalResult.content ? String(finalResult.content).trim() : '');
+              var hasToolCalls = (finalResult && finalResult.toolCalls && finalResult.toolCalls.length > 0) || (finalResult && finalResult.toolResults && finalResult.toolResults.length > 0);
+              var isToolFollowUp = (finalResult && finalResult.finishReason === 'tool_calls') || hasToolCalls;
+              if (!isToolFollowUp && finalContent) {
+                var parsed = parseAssistantContentWithError(finalContent);
+                var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContent;
+                morphThinkingToReply(finalContent, false);
+                if (contentToSave) {
+                  currentChatMessages.push({ role: 'assistant', content: contentToSave });
+                  if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+                  api('/chat/messages', { method: 'POST', body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }) }).then(function () { loadChats(); });
+                }
+              }
+            } else {
+              var lastMsg = messagesEl && messagesEl.lastElementChild;
+              var lastIsAssistant = lastMsg && lastMsg.classList.contains('agentify-assistant') && !lastMsg.classList.contains('agentify-thinking');
+              if (lastIsAssistant) return;
+              var finalContent = getStreamRawContent() || (finalResult && finalResult.content ? String(finalResult.content).trim() : '');
+              if (finalContent) {
+                var parsed = parseAssistantContentWithError(finalContent);
+                var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContent;
+                addMessageToDOM('assistant', contentToSave, new Date());
+                if (parsed.errorMessage && messagesEl && messagesEl.lastElementChild) {
+                  var bubble = messagesEl.lastElementChild.querySelector('.agentify-message-bubble');
+                  if (bubble) bubble.insertAdjacentHTML('beforeend', buildMessageErrorBoxHtml(parsed.errorMessage));
+                }
+                if (contentToSave) {
+                  currentChatMessages.push({ role: 'assistant', content: contentToSave });
+                  if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+                  api('/chat/messages', { method: 'POST', body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }) }).then(function () { loadChats(); });
+                }
+              }
+            }
+          });
+        })
+        .catch(function () {})
+        .finally(function () {
+          setSendLoading(false);
+          if (userInput) userInput.focus();
+        });
+      return;
+    }
+
+    var tryBtn = e.target && e.target.closest && e.target.closest('.agentify-try-again-btn');
+    if (!tryBtn || !lastUserMessageForRetry || currentChatId == null) return;
+    e.preventDefault();
+    var thinkingEl = document.getElementById('agentify-thinking-msg');
+    if (thinkingEl) thinkingEl.remove();
+    clearAllEvents();
+    var errorWrap = tryBtn.closest('.agentify-message-error-wrap');
+    var shouldRemoveMessage = false;
+    if (errorWrap) {
+      var messageEl = errorWrap.closest('.agentify-message');
+      if (messageEl && messageEl.classList.contains('agentify-assistant')) {
+        var bubble = messageEl.querySelector('.agentify-message-bubble');
+        if (bubble) {
+          var errorBox = bubble.querySelector('.agentify-message-error-wrap');
+          if (errorBox) errorBox.remove();
+          var messageText = bubble.querySelector('.agentify-message-text');
+          if (messageText && !messageText.textContent.trim()) {
+            messageEl.remove();
+            shouldRemoveMessage = true;
+          }
+        }
+      }
+    }
+    if (shouldRemoveMessage && currentChatMessages.length > 0 && currentChatMessages[currentChatMessages.length - 1].role === 'assistant') {
+      currentChatMessages.pop();
+      if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(currentChatId), currentChatMessages);
+    }
+    addThinkingMessage();
+    setSendLoading(true);
+    var chatId = currentChatId;
+    var text = lastUserMessageForRetry;
+    var accumulatedAssistantContent = '';
+    getAgent()
+      .then(function (agent) {
+        agentifyAgent = agent;
+        agent.setChatId(String(chatId));
+        agent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+        return agent.chat(text, {
+          chatId: String(chatId),
+          onToolCall: function (toolCall) {
+            pushEvent('tool_call_initiated');
+            pushEvent('Using tool: ' + (toolCall && toolCall.name ? toolCall.name : 'tool'));
+          },
+          onThinking: function (thought) {
+            if (thought && String(thought).trim()) pushEvent('thinking_started');
+          },
+          onToken: function (token) {
+            if (typeof token !== 'string') return;
+            showStreamAndAppendToken(token);
+          },
+          onComplete: function (result) {
+            var content = (result && result.content) ? result.content : '';
+            accumulatedAssistantContent += content;
+            var streamed = getStreamRawContent();
+            if (streamed && (!accumulatedAssistantContent || accumulatedAssistantContent.indexOf(streamed) === -1)) {
+              accumulatedAssistantContent = (accumulatedAssistantContent || '') + streamed;
+            }
+            var hasToolCalls = (result && result.toolCalls && result.toolCalls.length > 0) || 
+                              (result && result.toolResults && result.toolResults.length > 0);
+            var finishReason = result && result.finishReason;
+            var isToolFollowUp = finishReason === 'tool_calls' || hasToolCalls;
+            if (!isToolFollowUp) {
+              var finalContentToSave = accumulatedAssistantContent ? accumulatedAssistantContent.trim() : '';
+              var thinkingEl = document.getElementById('agentify-thinking-msg');
+              if (thinkingEl && finalContentToSave) {
+                var parsed = parseAssistantContentWithError(finalContentToSave);
+                var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContentToSave;
+                morphThinkingToReply(finalContentToSave, false);
+                if (contentToSave) {
+                  currentChatMessages.push({ role: 'assistant', content: contentToSave });
+                  if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+                  api('/chat/messages', {
+                    method: 'POST',
+                    body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }),
+                  }).then(function () { loadChats(); });
+                }
+              } else if (thinkingEl && !finalContentToSave) {
+                thinkingEl.remove();
+              }
+            }
+            if (currentChatId != null) loadTasks(currentChatId);
+          },
+          onError: function (err) {
+            if (err && typeof err.toConsole === 'function') {
+              try { console.error(err.toConsole()); } catch (_) {}
+            }
+            var msg = (err && err.message) ? err.message : 'An error occurred.';
+            showThinkingError(msg);
+            setSendLoading(false);
+          },
+        });
+      })
+      .then(function (finalResult) {
+        var thinkingEl = document.getElementById('agentify-thinking-msg');
+        if (thinkingEl) {
+          var finalContent = getStreamRawContent() || (finalResult && finalResult.content ? String(finalResult.content).trim() : '');
+          var hasToolCalls = (finalResult && finalResult.toolCalls && finalResult.toolCalls.length > 0) ||
+                            (finalResult && finalResult.toolResults && finalResult.toolResults.length > 0);
+          var finishReason = finalResult && finalResult.finishReason;
+          var isToolFollowUp = finishReason === 'tool_calls' || hasToolCalls;
+          if (!isToolFollowUp && finalContent) {
+            var parsed = parseAssistantContentWithError(finalContent);
+            var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContent;
+            morphThinkingToReply(finalContent, false);
+            if (contentToSave) {
+              currentChatMessages.push({ role: 'assistant', content: contentToSave });
+              if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+              api('/chat/messages', {
+                method: 'POST',
+                body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }),
+              }).then(function () { loadChats(); });
+            }
+          }
+        } else {
+          var lastMsg = messagesEl && messagesEl.lastElementChild;
+          var lastIsAssistant = lastMsg && lastMsg.classList.contains('agentify-assistant') && !lastMsg.classList.contains('agentify-thinking');
+          if (lastIsAssistant) return;
+          var finalContent = getStreamRawContent() || (finalResult && finalResult.content ? String(finalResult.content).trim() : '');
+          if (finalContent) {
+            var parsed = parseAssistantContentWithError(finalContent);
+            var contentToSave = parsed.errorMessage ? parsed.messageContent : finalContent;
+            var displayContent = parsed.errorMessage ? parsed.messageContent : finalContent;
+            addMessageToDOM('assistant', displayContent, new Date());
+            if (parsed.errorMessage && messagesEl && messagesEl.lastElementChild) {
+              var bubble = messagesEl.lastElementChild.querySelector('.agentify-message-bubble');
+              if (bubble) bubble.insertAdjacentHTML('beforeend', buildMessageErrorBoxHtml(parsed.errorMessage));
+            }
+            if (contentToSave) {
+              currentChatMessages.push({ role: 'assistant', content: contentToSave });
+              if (agentifyAgent) agentifyAgent.chatHistoryManager.updateChatHistory(String(chatId), currentChatMessages);
+              api('/chat/messages', {
+                method: 'POST',
+                body: JSON.stringify({ chat_id: chatId, role: 'assistant', content: contentToSave }),
+              }).then(function () { loadChats(); });
+            }
+          }
+        }
+      })
+      .catch(function (err) {
+        if (err && err.message) showThinkingError(err.message);
+      })
+      .finally(function () {
+        setSendLoading(false);
+        if (userInput) userInput.focus();
+      });
+  });
+
   // Load chat list on init
   loadChats();
+
+  // // Debug: every 3s log agent state (only when agent is ready)
+  // setInterval(function () {
+  //   getAgent()
+  //     .then(function (agent) {
+  //       var tasks = agent.getTasks();
+  //       var events = agent.getEvents();
+  //       var timeline = currentChatId != null ? agent.getChatTimeline(String(currentChatId)) : [];
+  //       var thinkingStatus = agent.getThinkingStatus();
+  //       var history = agent.getHistory();
+  //       var errorLog = agent.getErrorLog();
+  //       var storageInfo = agent.getStorageInfo();
+  //       var status = agent.getStatus();
+  //       var chatHistory = currentChatId != null ? agent.getChatHistory(String(currentChatId)) : null;
+  //       console.log('Interval: ' + new Date().toISOString() + ' | currentChatId: ' + currentChatId);
+  //       console.log('Tasks:', tasks);
+  //       console.log('Events:', events);
+  //       console.log('Timeline:', timeline);
+  //       console.log('ThinkingStatus:', thinkingStatus);
+  //       console.log('History (session):', history);
+  //       console.log('ChatHistory (current):', chatHistory);
+  //       console.log('ErrorLog:', errorLog);
+  //       console.log('StorageInfo:', storageInfo);
+  //       console.log('Status:', status);
+  //       console.log('--------------------------------------------------------------------------------------');
+  //     })
+  //     .catch(function () {
+  //       console.log('Interval: agent not ready yet');
+  //     });
+  // }, 3000);
 
   // ----- Settings modal (unchanged) -----
   var btnSettings = document.getElementById('agentify-btn-settings');

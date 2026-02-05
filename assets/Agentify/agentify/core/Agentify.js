@@ -166,10 +166,48 @@ export class Agentify {
   }
 
   /**
-   * Get tasks from storage
+   * Create a new task (model-created tasks with title, description, status, chat_id)
    */
-  getTasks(filter) {
+  createTask(task) {
+    const chatId = task.chat_id || this.eventManager.getChatId();
+    return this.taskManager.createTask({
+      title: task.title,
+      description: task.description,
+      status: task.status || 'pending',
+      chat_id: chatId
+    });
+  }
+
+  /**
+   * Get tasks from storage (with optional filters: chat_id, status, limit)
+   */
+  getTasks(filter = {}) {
+    // If chatId not provided, use current chat ID
+    if (!filter.chat_id && filter.chatId) {
+      filter.chat_id = filter.chatId;
+      delete filter.chatId;
+    }
+    if (!filter.chat_id) {
+      const currentChatId = this.eventManager.getChatId();
+      if (currentChatId) {
+        filter.chat_id = currentChatId;
+      }
+    }
     return this.taskManager.getTasks(filter);
+  }
+
+  /**
+   * Get a single task by ID
+   */
+  getTask(taskId) {
+    return this.taskManager.getTask(taskId);
+  }
+
+  /**
+   * Delete a specific task by ID
+   */
+  deleteTask(taskId) {
+    return this.taskManager.deleteTask(taskId);
   }
 
   /**
@@ -180,7 +218,7 @@ export class Agentify {
   }
 
   /**
-   * Clear tasks
+   * Clear all tasks
    */
   clearTasks() {
     return this.taskManager.clearTasks();
@@ -262,13 +300,6 @@ export class Agentify {
       this.eventManager.logUserMessage(message, { chatId });
     }
 
-    // Create task
-    const task = this.taskManager.addTask({
-      type: options._isToolFollowUp ? 'tool_followup' : 'chat',
-      status: 'pending',
-      input: typeof message === 'string' ? message : JSON.stringify(message)
-    });
-
     const startTime = Date.now();
 
     try {
@@ -333,11 +364,6 @@ export class Agentify {
       const config = this.configManager.getAll();
       const requestBody = this.adapter.formatRequest(formattedMessages, tools, config);
 
-      // Update task status
-      this.taskManager.updateTaskStatus(task.id, 'running', {
-        startTime: new Date().toISOString()
-      });
-
       // Log API request
       this.eventManager.logApiRequest(
         config.apiUrl,
@@ -364,12 +390,6 @@ export class Agentify {
     } catch (error) {
       // Log error
       this.eventManager.logError(error, 'chat', { chatId });
-
-      // Update task with error
-      this.taskManager.updateTaskStatus(task.id, 'failed', {
-        error: error.toJSON ? error.toJSON() : { message: error.message },
-        endTime: new Date().toISOString()
-      });
 
       // Stop thinking
       this.thinkingTracker.stopThinking();
@@ -546,15 +566,9 @@ export class Agentify {
           { chatId }
         );
 
-        // Update task
-        this.taskManager.updateTaskStatus(task.id, 'completed', {
-          output: result.content,
-          endTime: new Date().toISOString(),
-          duration: Date.now() - new Date(task.timestamp).getTime()
-        });
-
-        // Stop thinking
-        this.thinkingTracker.stopThinking();
+        // Don't stop thinking here - we'll check for tool calls after stream completes
+        // If there are tool calls, thinking will continue in the follow-up chat call
+        // If no tool calls, we'll stop thinking after checking
 
         if (options.onComplete) {
           options.onComplete(result);
@@ -608,6 +622,7 @@ export class Agentify {
       
       // Continue conversation with tool results
       // Model may call more tools or provide final answer
+      // Thinking will continue in the follow-up chat call
       return await this.chat('', {
         ...options,
         chatId,
@@ -617,6 +632,8 @@ export class Agentify {
     }
     
     // No tool calls - this is final answer
+    // Stop thinking now that we're sure there are no more tool calls
+    this.thinkingTracker.stopThinking();
     return streamResult;
   }
 
@@ -629,6 +646,7 @@ export class Agentify {
     const data = await response.json();
     const result = this.adapter.parseResponse(data);
     const duration = Date.now() - startTime;
+    const currentRound = options._toolRound || 0;
 
     // Log API response
     this.eventManager.logApiResponse(
@@ -662,6 +680,7 @@ export class Agentify {
     );
 
     // Handle tool calls if present
+    const toolResults = [];
     if (result.toolCalls && result.toolCalls.length > 0) {
       this.thinkingTracker.setAction('Processing tool calls');
       
@@ -690,6 +709,8 @@ export class Agentify {
               Date.now() - toolStartTime,
               { chatId }
             );
+            
+            toolResults.push({ toolCall, result: toolResult });
           } catch (error) {
             // Log tool call failed
             this.eventManager.logToolCallFailed(
@@ -700,19 +721,70 @@ export class Agentify {
             );
             
             console.error('Tool execution error:', error);
+            
+            toolResults.push({ toolCall, result: { success: false, error: error.message } });
           }
         }
       }
     }
 
-    // Update task
-    this.taskManager.updateTaskStatus(task.id, 'completed', {
-      output: result.content,
-      endTime: new Date().toISOString(),
-      duration: Date.now() - new Date(task.timestamp).getTime()
-    });
+    // If we have tool results, send them back to model for continuation
+    if (toolResults.length > 0) {
+      this.thinkingTracker.setAction('Sending tool results to model');
+      
+      // Add assistant message with tool_calls
+      const assistantWithTools = {
+        role: 'assistant',
+        content: result.content || null,
+        tool_calls: result.toolCalls.map((tc, i) => ({
+          id: tc.id || `call_${i}`,
+          type: 'function',
+          function: {
+            name: tc.name,
+            arguments: typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments)
+          }
+        }))
+      };
+      this.messages.push(assistantWithTools);
+      if (this.useHistory) {
+        this.chatHistoryManager.addMessage(chatId, assistantWithTools);
+      }
+      
+      // Add tool results
+      for (const { toolCall, result: toolResult } of toolResults) {
+        const toolMessage = {
+          role: 'tool',
+          tool_call_id: toolCall.id || `call_${toolResults.indexOf({ toolCall, result: toolResult })}`,
+          content: JSON.stringify(toolResult.success !== false ? toolResult.result : { error: toolResult.error })
+        };
+        this.messages.push(toolMessage);
+        if (this.useHistory) {
+          this.chatHistoryManager.addMessage(chatId, toolMessage);
+        }
+      }
+      
+      // Continue conversation with tool results
+      // Model may call more tools or provide final answer
+      // Thinking will continue in the follow-up chat call
+      return await this.chat('', {
+        ...options,
+        chatId,
+        _isToolFollowUp: true,
+        _toolRound: currentRound + 1
+      });
+    }
 
-    // Stop thinking
+    // Update task
+    if (task) {
+      this.taskManager.updateTaskStatus(task.id, 'completed', {
+        output: result.content,
+        endTime: new Date().toISOString(),
+        duration: Date.now() - new Date(task.timestamp).getTime()
+      });
+    }
+
+    // No tool calls - this is final answer
+    // Stop thinking now that we're sure there are no more tool calls
     this.thinkingTracker.stopThinking();
 
     if (options.onComplete) {

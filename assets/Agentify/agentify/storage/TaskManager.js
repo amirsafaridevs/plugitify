@@ -39,22 +39,29 @@ export class TaskManager {
   }
 
   /**
-   * Add a new task
+   * Create a new task (model-created tasks with title, description, status, chat_id)
    */
-  addTask(task) {
+  createTask(task) {
     try {
+      if (!task.title || typeof task.title !== 'string' || !task.title.trim()) {
+        throw this.errorManager.createSystemError(
+          'Task title is required',
+          'SYS_INVALID_PARAMETER',
+          { task }
+        );
+      }
+
       const taskId = task.id || this.generateTaskId();
+      const now = new Date().toISOString();
       
       const taskData = {
         id: taskId,
-        type: task.type || 'chat',
-        status: task.status || 'pending',
-        input: task.input || null,
-        output: task.output || null,
-        error: task.error || null,
-        timestamp: task.timestamp || new Date().toISOString(),
-        duration: task.duration || null,
-        metadata: task.metadata || {}
+        title: String(task.title).trim(),
+        description: task.description ? String(task.description).trim() : null,
+        status: task.status === 'completed' ? 'completed' : 'pending',
+        chat_id: task.chat_id || null,
+        created_at: task.created_at || now,
+        updated_at: now
       };
 
       const tasks = this.getTasks();
@@ -69,11 +76,11 @@ export class TaskManager {
       
       return taskData;
     } catch (error) {
-      if (error instanceof StorageError) {
+      if (error instanceof StorageError || error.name === 'SystemError') {
         throw error;
       }
       throw this.errorManager.createStorageError(
-        'Failed to add task',
+        'Failed to create task',
         StorageError.codes.WRITE_FAILED,
         { task, originalError: error.message }
       );
@@ -81,10 +88,31 @@ export class TaskManager {
   }
 
   /**
-   * Update task status and data
+   * Add a new task (legacy method - kept for backward compatibility, but use createTask instead)
+   * @deprecated Use createTask() instead
+   */
+  addTask(task) {
+    return this.createTask({
+      title: task.input || task.type || 'Task',
+      description: task.output || null,
+      status: task.status || 'pending',
+      chat_id: task.chat_id || null
+    });
+  }
+
+  /**
+   * Update task status (pending or completed)
    */
   updateTaskStatus(taskId, status, data = {}) {
     try {
+      if (status !== 'pending' && status !== 'completed') {
+        throw this.errorManager.createSystemError(
+          'Task status must be "pending" or "completed"',
+          'SYS_INVALID_PARAMETER',
+          { taskId, status }
+        );
+      }
+
       const tasks = this.getTasks();
       const taskIndex = tasks.findIndex(t => t.id === taskId);
 
@@ -96,18 +124,19 @@ export class TaskManager {
         );
       }
 
+      const now = new Date().toISOString();
       tasks[taskIndex] = {
         ...tasks[taskIndex],
         status,
         ...data,
-        updatedAt: new Date().toISOString()
+        updated_at: now
       };
 
       this.saveTasks(tasks);
       
       return tasks[taskIndex];
     } catch (error) {
-      if (error instanceof StorageError) {
+      if (error instanceof StorageError || error.name === 'SystemError') {
         throw error;
       }
       throw this.errorManager.createStorageError(
@@ -119,7 +148,7 @@ export class TaskManager {
   }
 
   /**
-   * Get tasks with optional filtering
+   * Get tasks with optional filtering (by chat_id, status, limit)
    */
   getTasks(filter = {}) {
     try {
@@ -132,22 +161,32 @@ export class TaskManager {
       let tasks = JSON.parse(tasksJson);
 
       // Apply filters
+      if (filter.chat_id) {
+        tasks = tasks.filter(t => t.chat_id === filter.chat_id);
+      }
+
       if (filter.status) {
         tasks = tasks.filter(t => t.status === filter.status);
       }
 
-      if (filter.type) {
-        tasks = tasks.filter(t => t.type === filter.type);
-      }
-
       if (filter.since) {
         const sinceDate = new Date(filter.since);
-        tasks = tasks.filter(t => new Date(t.timestamp) >= sinceDate);
+        tasks = tasks.filter(t => {
+          const taskDate = t.created_at || t.timestamp || t.updated_at;
+          return taskDate && new Date(taskDate) >= sinceDate;
+        });
       }
 
       if (filter.limit) {
         tasks = tasks.slice(-filter.limit);
       }
+
+      // Sort by created_at descending (newest first)
+      tasks.sort((a, b) => {
+        const dateA = new Date(a.created_at || a.timestamp || 0);
+        const dateB = new Date(b.created_at || b.timestamp || 0);
+        return dateB - dateA;
+      });
 
       return tasks;
     } catch (error) {
@@ -262,18 +301,20 @@ export class TaskManager {
    */
   tasksToCSV(tasks) {
     if (tasks.length === 0) {
-      return 'id,type,status,timestamp,duration';
+      return 'id,title,description,status,chat_id,created_at,updated_at';
     }
 
-    const headers = 'id,type,status,timestamp,duration';
+    const headers = 'id,title,description,status,chat_id,created_at,updated_at';
     const rows = tasks.map(task => {
       return [
         task.id,
-        task.type,
-        task.status,
-        task.timestamp,
-        task.duration || ''
-      ].join(',');
+        (task.title || '').replace(/"/g, '""'),
+        (task.description || '').replace(/"/g, '""'),
+        task.status || 'pending',
+        task.chat_id || '',
+        task.created_at || task.timestamp || '',
+        task.updated_at || ''
+      ].map(v => `"${v}"`).join(',');
     });
 
     return [headers, ...rows].join('\n');
@@ -284,13 +325,16 @@ export class TaskManager {
    */
   tasksToText(tasks) {
     return tasks.map(task => {
+      const createdAt = task.created_at || task.timestamp || '';
+      const updatedAt = task.updated_at || createdAt;
       return `
 Task: ${task.id}
-Type: ${task.type}
-Status: ${task.status}
-Time: ${task.timestamp} (${formatRelativeTime(task.timestamp)})
-Duration: ${task.duration ? task.duration + 'ms' : 'N/A'}
-${task.error ? `Error: ${JSON.stringify(task.error)}` : ''}
+Title: ${task.title || 'N/A'}
+Description: ${task.description || 'N/A'}
+Status: ${task.status || 'pending'}
+Chat ID: ${task.chat_id || 'N/A'}
+Created: ${createdAt}${createdAt ? ` (${formatRelativeTime(createdAt)})` : ''}
+Updated: ${updatedAt}${updatedAt && updatedAt !== createdAt ? ` (${formatRelativeTime(updatedAt)})` : ''}
 ${'='.repeat(60)}
       `.trim();
     }).join('\n\n');
@@ -335,23 +379,36 @@ ${'='.repeat(60)}
     const tasksJson = JSON.stringify(tasks);
     
     const statusCounts = tasks.reduce((acc, task) => {
-      acc[task.status] = (acc[task.status] || 0) + 1;
+      const status = task.status || 'pending';
+      acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
 
-    const typeCounts = tasks.reduce((acc, task) => {
-      acc[task.type] = (acc[task.type] || 0) + 1;
+    const chatIdCounts = tasks.reduce((acc, task) => {
+      const chatId = task.chat_id || 'none';
+      acc[chatId] = (acc[chatId] || 0) + 1;
       return acc;
     }, {});
+
+    const getTaskDate = (task) => task.created_at || task.timestamp || task.updated_at || null;
+    const sortedByDate = [...tasks].sort((a, b) => {
+      const dateA = getTaskDate(a);
+      const dateB = getTaskDate(b);
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return new Date(dateA) - new Date(dateB);
+    });
 
     return {
       totalTasks: tasks.length,
       storageUsed: tasksJson.length,
       storageUsedFormatted: formatBytes(tasksJson.length),
       statusCounts,
-      typeCounts,
-      oldestTask: tasks.length > 0 ? tasks[0].timestamp : null,
-      newestTask: tasks.length > 0 ? tasks[tasks.length - 1].timestamp : null
+      byStatus: statusCounts,
+      chatIdCounts,
+      oldestTask: sortedByDate.length > 0 ? getTaskDate(sortedByDate[0]) : null,
+      newestTask: sortedByDate.length > 0 ? getTaskDate(sortedByDate[sortedByDate.length - 1]) : null
     };
   }
 

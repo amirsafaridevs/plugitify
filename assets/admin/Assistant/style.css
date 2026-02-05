@@ -363,55 +363,84 @@
   min-height: 0;
 }
 
-/* ----- Panel tasks: subtle list under messages (same chat) ----- */
-.agentify-panel-tasks {
-  flex-shrink: 0;
-  padding: 6px 24px 10px;
-  border-top: 1px solid var(--agentify-outline);
+/* ----- Tasks under last assistant message (no label, no "no tasks" text) ----- */
+.agentify-message-tasks {
+  flex-basis: 100%;
+  margin-top: 8px;
+  margin-left: 48px; /* align with bubble: avatar 36px + gap 12px */
+  padding-left: 0;
   min-height: 0;
 }
 
-.agentify-panel-tasks:not(.agentify-panel-tasks-has) {
-  display: none;
-}
-
-.agentify-panel-tasks-list {
+.agentify-message-tasks-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.agentify-panel-task {
-  display: inline-flex;
+.agentify-message-task {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.6875rem;
+  gap: 6px;
+  font-size: 0.8125rem;
   color: var(--agentify-on-surface-variant);
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
-.agentify-panel-task-icon {
-  font-size: 12px !important;
-  opacity: 0.85;
+.agentify-message-task-icon {
+  font-size: 14px !important;
+  opacity: 0.9;
+  flex-shrink: 0;
 }
 
-.agentify-panel-task[data-status="pending"] .agentify-panel-task-icon {
+.agentify-message-task[data-status="pending"] .agentify-message-task-icon {
   color: var(--agentify-primary);
 }
 
-.agentify-panel-task[data-status="completed"] .agentify-panel-task-icon {
+.agentify-message-task[data-status="completed"] .agentify-message-task-icon {
   color: var(--agentify-accent);
 }
 
-.agentify-panel-task[data-status="cancelled"] .agentify-panel-task-icon {
+.agentify-message-task[data-status="cancelled"] .agentify-message-task-icon {
   color: var(--agentify-on-surface-variant);
+  opacity: 0.6;
 }
 
-.agentify-panel-task-title {
-  max-width: 180px;
+.agentify-message-task-title {
+  min-width: 0;
+}
+
+/* Loading skeleton for tasks under message */
+.agentify-message-tasks-loading .agentify-message-tasks-list {
+  gap: 8px;
+}
+
+.agentify-message-task-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.agentify-task-skeleton-line {
+  display: inline-block;
+  width: 120px;
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--agentify-skeleton-base) 0%,
+    var(--agentify-skeleton-shine) 50%,
+    var(--agentify-skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: agentify-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.agentify-message-task-title {
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -479,6 +508,7 @@
 /* Message bubbles */
 .agentify-message {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 12px;
   animation: agentify-messageIn var(--agentify-motion-duration) var(--agentify-motion-easing);
@@ -643,11 +673,191 @@
   overflow-y: auto;
 }
 
+/* Error strip under thinking (subtle red, Try again) */
+.agentify-thinking-error-wrap {
+  margin-top: 8px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(244, 67, 54, 0.08);
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  border-radius: var(--agentify-radius-sm);
+  font-size: 0.75rem;
+}
+
+.agentify-try-again-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--agentify-primary);
+  color: #0d1117;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--agentify-motion-duration) var(--agentify-motion-easing);
+}
+
+.agentify-try-again-btn:hover {
+  background: var(--agentify-primary-alt);
+}
+
+.agentify-thinking-error-text {
+  color: var(--agentify-on-surface-variant);
+  flex: 1;
+  min-width: 0;
+}
+
+/* Error box under assistant message (not inside thinking) */
+.agentify-message-error-wrap {
+  margin-top: 8px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(244, 67, 54, 0.08);
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  border-radius: var(--agentify-radius-sm);
+  font-size: 0.75rem;
+}
+
+.agentify-message-error-text {
+  color: var(--agentify-on-surface-variant);
+  flex: 1;
+  min-width: 0;
+}
+
+/* Data table from render_data_table tool */
+.agentify-data-table-wrap {
+  margin: 10px 0;
+  overflow-x: auto;
+  border-radius: var(--agentify-radius-sm);
+  border: 1px solid var(--agentify-outline);
+  background: var(--agentify-surface-elevated);
+}
+
+.agentify-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.agentify-data-table th,
+.agentify-data-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--agentify-outline);
+}
+
+.agentify-data-table th {
+  font-weight: 600;
+  color: var(--agentify-primary);
+  background: rgba(70, 169, 198, 0.08);
+}
+
+.agentify-data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.agentify-data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Multiple choice question from multiple_choice_question tool */
+.agentify-mc-block {
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: var(--agentify-radius-sm);
+  border: 1px solid var(--agentify-outline);
+  background: var(--agentify-surface-elevated);
+}
+
+.agentify-mc-question {
+  margin: 0 0 12px;
+  font-weight: 500;
+  color: var(--agentify-on-surface);
+}
+
+.agentify-mc-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.agentify-mc-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--agentify-on-surface-variant);
+}
+
+.agentify-mc-option:hover {
+  color: var(--agentify-on-surface);
+}
+
+.agentify-mc-option input[type="radio"] {
+  accent-color: var(--agentify-primary);
+}
+
+.agentify-mc-confirm {
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--agentify-surface);
+  background: var(--agentify-primary);
+  border: none;
+  border-radius: var(--agentify-radius-sm);
+  cursor: pointer;
+  transition: background var(--agentify-motion-duration) var(--agentify-motion-easing);
+}
+
+.agentify-mc-confirm:hover {
+  background: var(--agentify-primary-alt);
+}
+
+.agentify-mc-confirm:focus-visible {
+  outline: 2px solid var(--agentify-accent);
+  outline-offset: 2px;
+}
+
+/* Link button from render_button tool */
+.agentify-msg-button-wrap {
+  margin: 8px 0;
+}
+
+.agentify-msg-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 18px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--agentify-surface);
+  background: var(--agentify-primary);
+  border-radius: var(--agentify-radius-sm);
+  text-decoration: none;
+  transition: background var(--agentify-motion-duration) var(--agentify-motion-easing);
+}
+
+.agentify-msg-button:hover {
+  background: var(--agentify-primary-alt);
+  color: var(--agentify-surface);
+}
+
+.agentify-msg-button:focus-visible {
+  outline: 2px solid var(--agentify-accent);
+  outline-offset: 2px;
+}
+
 /* Events list under thinking (subtle, stacked) */
 .agentify-thinking-events {
   margin-top: 8px;
   padding-top: 6px;
-  border-top: 1px solid var(--agentify-outline);
 }
 
 .agentify-thinking-events-list {
@@ -679,6 +889,26 @@
   border-radius: 50%;
   background: var(--agentify-primary);
   opacity: 0.6;
+}
+
+.agentify-thinking-event-item.agentify-thinking-event-loading::before {
+  display: none;
+}
+
+.agentify-thinking-event-skeleton {
+  display: inline-block;
+  width: 72px;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--agentify-skeleton-base) 0%,
+    var(--agentify-skeleton-shine) 50%,
+    var(--agentify-skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: agentify-skeleton-shimmer 1.2s ease-in-out infinite;
+  vertical-align: middle;
 }
 
 .agentify-thinking-current-step {

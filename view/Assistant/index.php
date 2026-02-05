@@ -48,9 +48,6 @@ if ( ! defined( 'ABSPATH' ) ) {
             <p>Hi. Ask me anything.</p>
           </div>
         </div>
-        <div class="agentify-panel-tasks" id="agentify-panel-tasks" aria-label="<?php esc_attr_e( 'Tasks for this chat', 'plugifity' ); ?>">
-          <ul class="agentify-panel-tasks-list" id="agentify-panel-tasks-list"></ul>
-        </div>
 
         <form class="agentify-input-area" id="agentify-chat-form" novalidate>
           <div class="agentify-input-wrapper">

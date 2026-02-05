@@ -79,6 +79,8 @@ class Assistant extends AbstractService
             'restUrl'        => rest_url( self::REST_NAMESPACE ),
             'nonce'          => wp_create_nonce( 'wp_rest' ),
             'agentifyBaseUrl' => $agentify_base,
+            'siteUrl'        => home_url( '/' ),
+            'adminUrl'       => admin_url( '/' ),
         ] );
     }
 
@@ -244,6 +246,14 @@ class Assistant extends AbstractService
                 'id'     => [ 'type' => 'integer', 'required' => true ],
                 'status' => [ 'type' => 'string', 'required' => false ],
             ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tasks/sync', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restSyncTasks' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [],
         ] );
     }
 
@@ -480,7 +490,8 @@ class Assistant extends AbstractService
     }
 
     /**
-     * List tasks (optionally by chat_id or status). Aligns with README: getTasks(options).
+     * List tasks (optionally by chat_id or status). Only returns tasks created by the model via create_task tool.
+     * Excludes internal Agentify sync entries (title starting with "chat:" or "tool_followup:").
      */
     public function restGetTasks( WP_REST_Request $request ): WP_REST_Response
     {
@@ -491,6 +502,10 @@ class Assistant extends AbstractService
             $chatId !== null ? (int) $chatId : null,
             is_string( $status ) ? $status : null
         );
+        $tasks = array_filter( $tasks, function ( Task $t ) {
+            $title = $t->title ?? '';
+            return strpos( $title, 'chat:' ) !== 0 && strpos( $title, 'tool_followup:' ) !== 0;
+        } );
         $items = array_map( function ( Task $t ) {
             return [
                 'id'          => $t->id,
@@ -501,7 +516,7 @@ class Assistant extends AbstractService
                 'created_at'  => $t->created_at,
                 'updated_at'  => $t->updated_at,
             ];
-        }, $tasks );
+        }, array_values( $tasks ) );
         return new WP_REST_Response( [ 'tasks' => $items ], 200 );
     }
 
@@ -556,6 +571,46 @@ class Assistant extends AbstractService
             return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to update task.', 'plugifity' ) ], 500 );
         }
         return new WP_REST_Response( [ 'success' => true, 'message' => __( 'Task updated.', 'plugifity' ) ], 200 );
+    }
+
+    /**
+     * Sync Agentify tasks from client (agent.getTasks()) to DB. Body: { chat_id, tasks }.
+     */
+    public function restSyncTasks( WP_REST_Request $request ): WP_REST_Response
+    {
+        $body = $request->get_json_params();
+        if ( ! is_array( $body ) ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Invalid body.', 'plugifity' ) ], 400 );
+        }
+        $chatId = isset( $body['chat_id'] ) ? (int) $body['chat_id'] : null;
+        $tasks  = isset( $body['tasks'] ) && is_array( $body['tasks'] ) ? $body['tasks'] : [];
+        if ( $chatId <= 0 ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'chat_id is required.', 'plugifity' ) ], 400 );
+        }
+        $repo = $this->getContainer()->get( TaskRepository::class );
+        $synced = 0;
+        foreach ( $tasks as $t ) {
+            $type    = isset( $t['type'] ) ? sanitize_text_field( (string) $t['type'] ) : 'chat';
+            $status  = isset( $t['status'] ) ? sanitize_text_field( (string) $t['status'] ) : 'pending';
+            $input   = isset( $t['input'] ) ? (string) $t['input'] : '';
+            $title   = $type . ( $input !== '' ? ': ' . wp_trim_words( $input, 8 ) : '' );
+            $desc    = isset( $t['id'] ) ? 'agentify_id:' . sanitize_text_field( (string) $t['id'] ) : null;
+            $data    = [
+                'chat_id'     => $chatId,
+                'title'       => substr( $title, 0, 255 ),
+                'description' => $desc,
+                'status'      => $status,
+            ];
+            $id = $repo->create( $data );
+            if ( $id !== false ) {
+                $synced++;
+            }
+        }
+        return new WP_REST_Response( [
+            'success' => true,
+            'synced'  => $synced,
+            'message' => sprintf( __( '%d task(s) synced.', 'plugifity' ), $synced ),
+        ], 200 );
     }
 
     public function renderPage(): void

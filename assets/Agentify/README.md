@@ -810,35 +810,112 @@ agent.onThinkingChange((status) => {
 
 ## 💾 Task Management
 
-Automatic task tracking for all operations:
+**Model-created tasks** with title, description, status, and chat_id. Tasks are NOT automatically created - the model must create them using the `create_task` tool.
+
+### Task Structure
+
+Tasks have the following structure:
+- `id` - Unique task ID
+- `title` - Task title (required)
+- `description` - Optional task description
+- `status` - Task status: `'pending'` or `'completed'`
+- `chat_id` - Associated chat ID (optional, defaults to current chat)
+- `created_at` - Creation timestamp
+- `updated_at` - Last update timestamp
+
+### Creating Tasks
 
 ```javascript
-// Get all tasks
-const tasks = agent.getTasks();
-
-// Filter tasks
-const failedTasks = agent.getTasks({
-    status: 'failed',
-    since: '2024-01-01',
-    limit: 20
+// Create a new task
+const task = agent.createTask({
+    title: 'Buy groceries',
+    description: 'Milk, bread, eggs',
+    status: 'pending',  // or 'completed'
+    chat_id: 'chat_123' // optional, defaults to current chat
 });
 
+console.log('Task created:', task.id);
+```
+
+### Getting Tasks
+
+```javascript
+// Get all tasks for current chat
+const tasks = agent.getTasks();
+
+// Get tasks for specific chat
+const chatTasks = agent.getTasks({
+    chat_id: 'chat_123'
+});
+
+// Filter by status
+const pendingTasks = agent.getTasks({
+    chat_id: 'chat_123',
+    status: 'pending'
+});
+
+const completedTasks = agent.getTasks({
+    chat_id: 'chat_123',
+    status: 'completed'
+});
+
+// Get with limit
 const recentTasks = agent.getTasks({
-    chatId: 'chat_123',
+    chat_id: 'chat_123',
     limit: 10
 });
 
-// Get task statistics
+// Get single task by ID
+const task = agent.getTask('task_1234567890_abc');
+```
+
+### Updating Task Status
+
+```javascript
+// Mark task as completed
+agent.taskManager.updateTaskStatus('task_123', 'completed');
+
+// Or mark as pending
+agent.taskManager.updateTaskStatus('task_123', 'pending');
+```
+
+### Deleting Tasks
+
+```javascript
+// Delete a specific task
+const deleted = agent.deleteTask('task_123');
+if (deleted) {
+    console.log('Task deleted');
+} else {
+    console.log('Task not found');
+}
+
+// Clear all tasks
+agent.clearTasks();
+```
+
+### Task Statistics
+
+```javascript
 const stats = agent.getTaskStats();
 console.log('Total tasks:', stats.totalTasks);
-console.log('By status:', stats.byStatus);
-console.log('By type:', stats.byType);
+console.log('By status:', stats.statusCounts);
+console.log('By chat:', stats.chatIdCounts);
 console.log('Storage used:', stats.storageUsedFormatted);
-console.log('Average duration:', stats.averageDuration, 'ms');
+console.log('Oldest task:', stats.oldestTask);
+console.log('Newest task:', stats.newestTask);
+```
 
-// Export tasks for backend integration
+### Export Tasks
+
+```javascript
+// Export as JSON
 const json = agent.exportTasks('json');
+
+// Export as CSV
 const csv = agent.exportTasks('csv');
+
+// Export as text
 const text = agent.exportTasks('text');
 
 // Send to backend
@@ -847,10 +924,17 @@ await fetch('/api/tasks/sync', {
     headers: { 'Content-Type': 'application/json' },
     body: json
 });
-
-// Clear tasks after sync
-agent.clearTasks();
 ```
+
+### Task Tools for Model
+
+The agent has access to these tools for task management:
+
+- **`create_task`** - Create a new task with title and optional description
+- **`get_tasks`** - Get list of tasks for current chat (optionally filtered by status)
+- **`complete_task`** - Mark a task as completed by task ID
+
+These tools allow the model to manage tasks based on user requests.
 
 ## 🛡️ Error Handling
 
