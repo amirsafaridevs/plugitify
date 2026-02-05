@@ -693,7 +693,7 @@
     wrap.className = 'agentify-message-tasks';
     var title = function (t) {
       var s = (t && (t.title != null || t.name != null)) ? String(t.title != null ? t.title : t.name).trim() : '';
-      return s || '\u2014';
+      return s || 'Task';
     };
     wrap.innerHTML = '<ul class="agentify-message-tasks-list">' + lastFour.map(function (t) {
       var taskTitle = escapeHtml(title(t));
@@ -984,16 +984,57 @@
           });
         }).then(function () {
           return agent.addTool({
+            name: 'list_directory',
+            description: 'List folders and files inside a WordPress directory. Path is relative to the WordPress root (e.g. "" for root, "wp-content", "wp-content/plugins", "wp-includes"). Use when the user wants to see contents of a folder.',
+            instruction: 'Call with path: string relative to WP root. Use empty string for root, or e.g. "wp-content/plugins". Returns items with name, type (directory or file), and size for files.',
+            parameters: {
+              path: { type: 'string', description: 'Path relative to WordPress root. Empty for root, or e.g. "wp-content", "wp-content/plugins".', required: true },
+            },
+            execute: function (params) {
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.', items: [] });
+              var path = (params && params.path != null) ? String(params.path).trim() : '';
+              return api('/tools/list-directory?path=' + encodeURIComponent(path)).then(function (res) {
+                if (res.ok && res.data && res.data.success) {
+                  return { success: true, path: res.data.path, items: res.data.items || [] };
+                }
+                return { success: false, message: (res.data && res.data.message) || 'Failed to list directory.', items: [] };
+              });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'read_file',
+            description: 'Read the contents of a text file inside the WordPress directory. Path is relative to WordPress root. Binary files and files larger than 1 MB are not supported.',
+            instruction: 'Call with path: string (e.g. "wp-content/plugins/plugitify/plugifity.php"). Returns file content. Only text files, max 1 MB.',
+            parameters: {
+              path: { type: 'string', description: 'File path relative to WordPress root (e.g. "wp-content/plugins/my-plugin/readme.txt").', required: true },
+            },
+            execute: function (params) {
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.' });
+              var path = (params && params.path != null) ? String(params.path).trim() : '';
+              if (!path) return Promise.resolve({ success: false, message: 'Path is required.' });
+              return api('/tools/read-file?path=' + encodeURIComponent(path)).then(function (res) {
+                if (res.ok && res.data && res.data.success) {
+                  return { success: true, path: res.data.path, content: res.data.content, size: res.data.size };
+                }
+                return { success: false, message: (res.data && res.data.message) || 'Failed to read file.' };
+              });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
             name: 'create_task',
             description: 'Create a task (todo) for the user. You MUST call this whenever the user asks to remember something, add a todo, or for any work item (e.g. "یادت باشه", "تسک بساز", "add a task"). Tasks are displayed to the user under your message. You MUST always provide a clear, short title (required): the title is what the user sees in the task list. Without a title the task appears empty. Use a descriptive title for each task (e.g. "Get plugin list", "Run database query", "Set chat title").',
             instruction: 'Always call create_task with a clear, short title. The title is required and is shown to the user—never leave it empty. Use one task per work item. Example: create_task({ title: "Fetch user list from database", description: "optional details" }).',
             parameters: {
-              title: { type: 'string', description: 'Required. Short, clear title shown to the user in the task list (e.g. "Get plugin list", "Run query"). Never omit.', required: true },
+              title: { type: 'string', description: 'Required. Short, clear title shown to the user in the task list (e.g. "Get plugin list", "Run query"). Use title or name.', required: true },
+              name: { type: 'string', description: 'Alternative to title. If title is empty, this is used as the task title.', required: false },
               description: { type: 'string', description: 'Optional longer description or notes', required: false },
             },
             execute: function (params) {
               try {
-                var title = (params && params.title) ? String(params.title).trim() : '';
+                var title = (params && (params.title != null || params.name != null))
+                  ? String(params.title != null ? params.title : params.name).trim() : '';
                 if (!title) return Promise.resolve({ success: false, message: 'Title is required.' });
                 var taskData = { title: title, status: 'pending' };
                 if (params && params.description && String(params.description).trim()) taskData.description = String(params.description).trim();
@@ -1185,6 +1226,110 @@
               }).catch(function (err) {
                 return { success: false, message: (err && err.message) || 'Failed to create or upload ZIP.', url: '' };
               });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'create_txt_and_upload',
+            description: 'Create a plain text file and upload it to the WordPress media library. Returns the download URL. Use when the user wants to export text content as a downloadable .txt file.',
+            instruction: 'Call with content: string (the text). Optionally filename: string (e.g. "notes.txt"). Returns the download URL.',
+            parameters: {
+              content: { type: 'string', description: 'The text content of the file.', required: true },
+              filename: { type: 'string', description: 'Optional. File name (e.g. "export.txt").', required: false },
+            },
+            execute: function (params) {
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.', url: '' });
+              var content = (params && params.content != null) ? String(params.content) : '';
+              var filename = (params && params.filename && String(params.filename).trim()) ? String(params.filename).trim() : 'document.txt';
+              if (!/\.txt$/i.test(filename)) filename = filename + '.txt';
+              var blob = new Blob([ content ], { type: 'text/plain;charset=utf-8' });
+              var formData = new FormData();
+              formData.append('file', blob, filename);
+              return api('/tools/upload-txt', { method: 'POST', body: formData }).then(function (res) {
+                if (res.ok && res.data && res.data.success && res.data.url) {
+                  return { success: true, url: res.data.url, id: res.data.id, message: res.data.message || 'TXT uploaded.' };
+                }
+                return { success: false, message: (res.data && res.data.message) || 'Upload failed.', url: '' };
+              }).catch(function (err) {
+                return { success: false, message: (err && err.message) || 'Failed to upload TXT.', url: '' };
+              });
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'create_excel_and_upload',
+            description: 'Create an Excel (XLSX) file from table data and upload it to the WordPress media library. Returns the download URL. Use when the user wants to export data as a spreadsheet.',
+            instruction: 'Call with data: array of arrays (rows; first row can be headers) and optionally sheetName and filename. Returns the download URL.',
+            parameters: {
+              data: { type: 'array', description: 'Array of rows; each row is an array of cell values. First row is often headers.', required: true },
+              sheetName: { type: 'string', description: 'Optional. Name of the sheet (e.g. "Users").', required: false },
+              filename: { type: 'string', description: 'Optional. File name (e.g. "export.xlsx").', required: false },
+            },
+            execute: function (params) {
+              if (!window.XLSX) return Promise.resolve({ success: false, message: 'XLSX library not loaded. Cannot create Excel.', url: '' });
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.', url: '' });
+              var rows = params && params.data && Array.isArray(params.data) ? params.data : [];
+              if (rows.length === 0) return Promise.resolve({ success: false, message: 'At least one row is required.', url: '' });
+              var sheetName = (params && params.sheetName && String(params.sheetName).trim()) ? String(params.sheetName).trim().slice(0, 31) : 'Sheet1';
+              var filename = (params && params.filename && String(params.filename).trim()) ? String(params.filename).trim() : 'export.xlsx';
+              if (!/\.xlsx$/i.test(filename)) filename = filename + '.xlsx';
+              try {
+                var ws = window.XLSX.utils.aoa_to_sheet(rows);
+                var wb = window.XLSX.utils.book_new();
+                window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                var wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                var blob = new Blob([ wbout ], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                var formData = new FormData();
+                formData.append('file', blob, filename);
+                return api('/tools/upload-excel', { method: 'POST', body: formData }).then(function (res) {
+                  if (res.ok && res.data && res.data.success && res.data.url) {
+                    return { success: true, url: res.data.url, id: res.data.id, message: res.data.message || 'Excel uploaded.' };
+                  }
+                  return { success: false, message: (res.data && res.data.message) || 'Upload failed.', url: '' };
+                }).catch(function (err) {
+                  return { success: false, message: (err && err.message) || 'Failed to upload Excel.', url: '' };
+                });
+              } catch (err) {
+                return Promise.resolve({ success: false, message: (err && err.message) || 'Failed to create Excel.', url: '' });
+              }
+            },
+          });
+        }).then(function () {
+          return agent.addTool({
+            name: 'create_pdf_and_upload',
+            description: 'Create a PDF file from text content and upload it to the WordPress media library. Returns the download URL. Use when the user wants to export content as a downloadable PDF.',
+            instruction: 'Call with content: string (text to put in the PDF). Optionally filename and title. Returns the download URL.',
+            parameters: {
+              content: { type: 'string', description: 'The text content for the PDF.', required: true },
+              filename: { type: 'string', description: 'Optional. File name (e.g. "report.pdf").', required: false },
+              title: { type: 'string', description: 'Optional. Document title in PDF metadata.', required: false },
+            },
+            execute: function (params) {
+              var jsPDF = window.jspdf && window.jspdf.jsPDF;
+              if (!jsPDF) return Promise.resolve({ success: false, message: 'jsPDF not loaded. Cannot create PDF.', url: '' });
+              if (!restUrl) return Promise.resolve({ success: false, message: 'REST not configured.', url: '' });
+              var content = (params && params.content != null) ? String(params.content) : '';
+              var filename = (params && params.filename && String(params.filename).trim()) ? String(params.filename).trim() : 'document.pdf';
+              if (!/\.pdf$/i.test(filename)) filename = filename + '.pdf';
+              try {
+                var doc = new jsPDF();
+                if (params && params.title && String(params.title).trim()) doc.setDocumentProperties({ title: String(params.title).trim() });
+                var lines = doc.splitTextToSize(content, 180);
+                doc.text(lines, 10, 10);
+                var blob = doc.output('blob');
+                var formData = new FormData();
+                formData.append('file', blob, filename);
+                return api('/tools/upload-pdf', { method: 'POST', body: formData }).then(function (res) {
+                  if (res.ok && res.data && res.data.success && res.data.url) {
+                    return { success: true, url: res.data.url, id: res.data.id, message: res.data.message || 'PDF uploaded.' };
+                  }
+                  return { success: false, message: (res.data && res.data.message) || 'Upload failed.', url: '' };
+                }).catch(function (err) {
+                  return { success: false, message: (err && err.message) || 'Failed to upload PDF.', url: '' };
+                });
+              } catch (err) {
+                return Promise.resolve({ success: false, message: (err && err.message) || 'Failed to create PDF.', url: '' });
+              }
             },
           });
         }).then(function () {

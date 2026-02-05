@@ -62,18 +62,31 @@ class Assistant extends AbstractService
             [ 'material-symbols-outlined' ]
         );
 
-        wp_enqueue_script(
+        $app->enqueueScript(
             'jszip',
-            'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js',
+            'admin/jszip.min.js',
             [],
-            '3.10.1',
+            true
+        );
+        $app->enqueueScript(
+            'xlsx',
+            'admin/xlsx.full.min.js',
+            [],
+            true
+        );
+        // jsPDF from CDN (local copy can be truncated; CDN ensures full file)
+        wp_enqueue_script(
+            'jspdf',
+            'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+            [],
+            '2.5.1',
             true
         );
         // Load Assistant JavaScript (ES module for Agentify)
         $app->enqueueScript(
             'agentify-assistant',
             'admin/Assistant/app.js',
-            [ 'jszip' ],
+            [ 'jszip', 'xlsx', 'jspdf' ],
             true
         );
         wp_script_add_data( 'agentify-assistant', 'type', 'module' );
@@ -234,6 +247,58 @@ class Assistant extends AbstractService
                 return current_user_can( 'upload_files' ) && current_user_can( 'manage_options' );
             },
             'args' => [],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/upload-txt', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restUploadTxt' ],
+            'permission_callback' => function () {
+                return current_user_can( 'upload_files' ) && current_user_can( 'manage_options' );
+            },
+            'args' => [],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/upload-excel', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restUploadExcel' ],
+            'permission_callback' => function () {
+                return current_user_can( 'upload_files' ) && current_user_can( 'manage_options' );
+            },
+            'args' => [],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/upload-pdf', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'restUploadPdf' ],
+            'permission_callback' => function () {
+                return current_user_can( 'upload_files' ) && current_user_can( 'manage_options' );
+            },
+            'args' => [],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/list-directory', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'restListDirectory' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'path' => [
+                    'type'              => 'string',
+                    'required'          => true,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ] );
+        register_rest_route( self::REST_NAMESPACE, '/tools/read-file', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'restReadFile' ],
+            'permission_callback' => function () {
+                return current_user_can( 'manage_options' );
+            },
+            'args' => [
+                'path' => [
+                    'type'              => 'string',
+                    'required'          => true,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
         ] );
 
         register_rest_route( self::REST_NAMESPACE, '/tasks', [
@@ -591,6 +656,234 @@ class Assistant extends AbstractService
     }
 
     /**
+     * Accept a TXT file upload (multipart/form-data, field "file"), add to media library, return download URL.
+     */
+    public function restUploadTxt( WP_REST_Request $request ): WP_REST_Response
+    {
+        return $this->restUploadSingleFile( $request, 'txt', [ 'txt' ], 'text/plain', __( 'Only TXT files are allowed.', 'plugifity' ), 'document.txt' );
+    }
+
+    /**
+     * Accept an Excel file upload (multipart/form-data, field "file"), add to media library, return download URL.
+     */
+    public function restUploadExcel( WP_REST_Request $request ): WP_REST_Response
+    {
+        return $this->restUploadSingleFile( $request, 'xlsx', [ 'xlsx' ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', __( 'Only Excel (XLSX) files are allowed.', 'plugifity' ), 'export.xlsx' );
+    }
+
+    /**
+     * Accept a PDF file upload (multipart/form-data, field "file"), add to media library, return download URL.
+     */
+    public function restUploadPdf( WP_REST_Request $request ): WP_REST_Response
+    {
+        return $this->restUploadSingleFile( $request, 'pdf', [ 'pdf' ], 'application/pdf', __( 'Only PDF files are allowed.', 'plugifity' ), 'document.pdf' );
+    }
+
+    /**
+     * Generic single-file upload: validate, sideload, insert attachment, return URL.
+     *
+     * @param WP_REST_Request $request       Request with file params.
+     * @param string         $extKey        Extension key for error message.
+     * @param string[]       $allowedExt    Allowed file extensions (lowercase).
+     * @param string         $defaultMime   Default MIME type.
+     * @param string         $errorMessage  Message when extension not allowed.
+     * @param string         $defaultName   Default filename if missing.
+     * @return WP_REST_Response
+     */
+    private function restUploadSingleFile( WP_REST_Request $request, $extKey, array $allowedExt, $defaultMime, $errorMessage, $defaultName ): WP_REST_Response
+    {
+        if ( ! function_exists( 'wp_handle_sideload' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+        $files = $request->get_file_params();
+        if ( empty( $files['file'] ) || empty( $files['file']['tmp_name'] ) ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'No file uploaded or invalid upload.', 'plugifity' ) ], 400 );
+        }
+        $file   = $files['file'];
+        $ext    = strtolower( pathinfo( isset( $file['name'] ) ? $file['name'] : '', PATHINFO_EXTENSION ) );
+        if ( ! in_array( $ext, $allowedExt, true ) ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => $errorMessage ], 400 );
+        }
+        $file_data = [
+            'name'     => isset( $file['name'] ) ? sanitize_file_name( $file['name'] ) : $defaultName,
+            'type'     => isset( $file['type'] ) ? $file['type'] : $defaultMime,
+            'tmp_name' => $file['tmp_name'],
+            'error'    => isset( $file['error'] ) ? (int) $file['error'] : 0,
+            'size'     => isset( $file['size'] ) ? (int) $file['size'] : 0,
+        ];
+        $sideload = wp_handle_sideload( $file_data, [ 'test_form' => false ] );
+        if ( ! empty( $sideload['error'] ) ) {
+            return new WP_REST_Response( [ 'success' => false, 'message' => $sideload['error'] ], 400 );
+        }
+        $file_path = $sideload['file'];
+        $url       = $sideload['url'];
+        $attachment = [
+            'post_mime_type' => $sideload['type'],
+            'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $file_path ) ),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ];
+        $id = wp_insert_attachment( $attachment, $file_path, 0 );
+        if ( is_wp_error( $id ) ) {
+            @unlink( $file_path );
+            return new WP_REST_Response( [ 'success' => false, 'message' => $id->get_error_message() ], 500 );
+        }
+        wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file_path ) );
+        $attachment_url = wp_get_attachment_url( $id );
+        return new WP_REST_Response( [
+            'success' => true,
+            'url'     => $attachment_url ?: $url,
+            'id'      => (int) $id,
+            'message' => __( 'File uploaded to media library.', 'plugifity' ),
+        ], 200 );
+    }
+
+    /**
+     * Resolve and validate path: must be inside WordPress root. Returns real path or null.
+     *
+     * @param string $path Path relative to ABSPATH (e.g. "" or "wp-content/plugins").
+     * @return string|null Real path or null if invalid/outside WP.
+     */
+    private function resolvePathInsideWordPress( string $path ): ?string
+    {
+        $path = preg_replace( '#/+#', '/', trim( $path, " \t\n\r\0\x0B/" ) );
+        $base = rtrim( str_replace( '\\', '/', ABSPATH ), '/' );
+        $full = $path === '' ? $base : $base . '/' . $path;
+        $real = realpath( $full );
+        if ( $real === false || $real === '' ) {
+            return null;
+        }
+        $real = str_replace( '\\', '/', $real );
+        $baseReal = str_replace( '\\', '/', realpath( $base ) );
+        if ( $baseReal === false || strpos( $real, $baseReal ) !== 0 ) {
+            return null;
+        }
+        return $real;
+    }
+
+    /**
+     * List directory contents (folders and files) inside WordPress. Path is relative to WP root.
+     */
+    public function restListDirectory( WP_REST_Request $request ): WP_REST_Response
+    {
+        $path = $request->get_param( 'path' );
+        $resolved = $this->resolvePathInsideWordPress( $path );
+        if ( $resolved === null ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Invalid path or outside WordPress directory.', 'plugifity' ),
+                'items'   => [],
+            ], 400 );
+        }
+        if ( ! is_dir( $resolved ) ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Path is not a directory.', 'plugifity' ),
+                'items'   => [],
+            ], 400 );
+        }
+        $list = @scandir( $resolved );
+        if ( ! is_array( $list ) ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Could not read directory.', 'plugifity' ),
+                'items'   => [],
+            ], 500 );
+        }
+        $items = [];
+        $base  = rtrim( str_replace( '\\', '/', ABSPATH ), '/' );
+        $baseReal = str_replace( '\\', '/', realpath( $base ) );
+        foreach ( $list as $name ) {
+            if ( $name === '.' || $name === '..' ) {
+                continue;
+            }
+            $full = $resolved . '/' . $name;
+            $isDir = is_dir( $full );
+            $item = [
+                'name' => $name,
+                'type' => $isDir ? 'directory' : 'file',
+            ];
+            if ( ! $isDir && is_file( $full ) ) {
+                $item['size'] = (int) @filesize( $full );
+            }
+            $items[] = $item;
+        }
+        usort( $items, function ( $a, $b ) {
+            if ( $a['type'] !== $b['type'] ) {
+                return $a['type'] === 'directory' ? -1 : 1;
+            }
+            return strcasecmp( $a['name'], $b['name'] );
+        } );
+        $relativePath = $path === '' ? '' : ltrim( $path, '/' );
+        return new WP_REST_Response( [
+            'success' => true,
+            'path'    => $relativePath,
+            'items'   => $items,
+        ], 200 );
+    }
+
+    /**
+     * Read file contents. Path is relative to WordPress root. Limited to text files and max size.
+     */
+    public function restReadFile( WP_REST_Request $request ): WP_REST_Response
+    {
+        $path = $request->get_param( 'path' );
+        $resolved = $this->resolvePathInsideWordPress( $path );
+        if ( $resolved === null ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Invalid path or outside WordPress directory.', 'plugifity' ),
+            ], 400 );
+        }
+        if ( ! is_file( $resolved ) ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Path is not a file.', 'plugifity' ),
+            ], 400 );
+        }
+        $maxSize = 1024 * 1024; // 1 MB
+        $size = @filesize( $resolved );
+        if ( $size === false || $size > $maxSize ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => $size > $maxSize
+                    ? __( 'File is too large to read (max 1 MB).', 'plugifity' )
+                    : __( 'Could not read file.', 'plugifity' ),
+            ], 400 );
+        }
+        $content = @file_get_contents( $resolved );
+        if ( $content === false ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Could not read file contents.', 'plugifity' ),
+            ], 500 );
+        }
+        // Detect binary: null bytes or high proportion of non-printable
+        $sample = strlen( $content ) > 8192 ? substr( $content, 0, 8192 ) : $content;
+        if ( strpos( $sample, "\0" ) !== false ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'Binary files cannot be read as text.', 'plugifity' ),
+            ], 400 );
+        }
+        $nonPrintable = preg_match_all( '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $sample );
+        if ( $nonPrintable > strlen( $sample ) * 0.3 ) {
+            return new WP_REST_Response( [
+                'success' => false,
+                'message' => __( 'File appears to be binary, not readable as text.', 'plugifity' ),
+            ], 400 );
+        }
+        return new WP_REST_Response( [
+            'success' => true,
+            'path'    => ltrim( preg_replace( '#/+#', '/', trim( $path, '/' ) ), '/' ),
+            'content' => $content,
+            'size'    => $size,
+        ], 200 );
+    }
+
+    /**
      * List tasks (optionally by chat_id or status). Only returns tasks created by the model via create_task tool.
      * Excludes internal Agentify sync entries (title starting with "chat:" or "tool_followup:").
      */
@@ -608,10 +901,11 @@ class Assistant extends AbstractService
             return strpos( $title, 'chat:' ) !== 0 && strpos( $title, 'tool_followup:' ) !== 0;
         } );
         $items = array_map( function ( Task $t ) {
+            $title = isset( $t->title ) && trim( (string) $t->title ) !== '' ? $t->title : __( 'Task', 'plugifity' );
             return [
                 'id'          => $t->id,
                 'chat_id'     => $t->chat_id,
-                'title'       => $t->title,
+                'title'       => $title,
                 'description' => $t->description,
                 'status'      => $t->status,
                 'created_at'  => $t->created_at,
