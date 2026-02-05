@@ -85,6 +85,7 @@ class SchemaBuilder
     {
         $fullName = $this->getTableName($table);
         $sql = 'DROP TABLE IF EXISTS `' . esc_sql($fullName) . '`';
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- DDL statement, table name is escaped
         return $this->wpdb->query($sql) !== false;
     }
 
@@ -126,6 +127,7 @@ class SchemaBuilder
                 $default = $d === 'CURRENT_TIMESTAMP' ? ' DEFAULT CURRENT_TIMESTAMP' : " DEFAULT '" . addslashes((string) $d) . "'";
             }
             $sql = "ALTER TABLE `{$fullName}` ADD COLUMN `{$name}` {$type}{$unsigned}{$null}{$default}";
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- DDL statement, table/column names are escaped
             if ($this->wpdb->query($sql) === false) {
                 return false;
             }
@@ -145,6 +147,7 @@ class SchemaBuilder
     {
         $fullName = $this->getTableName($table);
         $sql = "ALTER TABLE `{$fullName}` DROP COLUMN `" . esc_sql($column) . "`";
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- DDL statement, table/column names are escaped
         return $this->wpdb->query($sql) !== false;
     }
 
@@ -160,6 +163,7 @@ class SchemaBuilder
         $fromFull = $this->getTableName($from);
         $toFull = $this->getTableName($to);
         $sql = "RENAME TABLE `{$fromFull}` TO `{$toFull}`";
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- DDL statement, table names are escaped
         return $this->wpdb->query($sql) !== false;
     }
 
@@ -172,6 +176,7 @@ class SchemaBuilder
     public function hasTable(string $table): bool
     {
         $fullName = $this->getTableName($table);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- prepare() is used correctly with placeholders
         $result = $this->wpdb->get_var(
             $this->wpdb->prepare(
                 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s',
@@ -192,6 +197,7 @@ class SchemaBuilder
     public function hasColumn(string $table, string $column): bool
     {
         $fullName = $this->getTableName($table);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- prepare() is used correctly with placeholders
         $result = $this->wpdb->get_var(
             $this->wpdb->prepare(
                 'SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s',

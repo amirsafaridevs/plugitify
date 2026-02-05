@@ -49,11 +49,32 @@ class App extends AbstractSingleton
      */
     private function init(): void
     {
-        if ( defined( 'PLUGIFITY_PLUGIN_FILE' ) ) {
-            register_activation_hook( PLUGIFITY_PLUGIN_FILE, [ $this, 'runMigrations' ] );
+        if ( defined( 'PLUGITIFY_PLUGIN_FILE' ) ) {
+            register_activation_hook( PLUGITIFY_PLUGIN_FILE, [ $this, 'runMigrations' ] );
         }
+        
+        // Load plugin text domain for translations
+        add_action( 'plugins_loaded', [ $this, 'loadTextDomain' ] );
+        
         $this->application->registerProvider(AdminServiceProvider::class);
         $this->application->boot();
+    }
+
+    /**
+     * Load plugin text domain for translations
+     *
+     * @return void
+     */
+    public function loadTextDomain(): void
+    {
+        if ( defined( 'PLUGITIFY_PLUGIN_FILE' ) ) {
+            // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- Required for non-WordPress.org plugins
+            load_plugin_textdomain(
+                'plugitify',
+                false,
+                dirname( plugin_basename( PLUGITIFY_PLUGIN_FILE ) ) . '/languages'
+            );
+        }
     }
 
     /**

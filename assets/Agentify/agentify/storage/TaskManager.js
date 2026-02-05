@@ -47,7 +47,7 @@ export class TaskManager {
         throw this.errorManager.createSystemError(
           'Task title is required',
           'SYS_INVALID_PARAMETER',
-          { task }
+          {}
         );
       }
 
@@ -82,7 +82,7 @@ export class TaskManager {
       throw this.errorManager.createStorageError(
         'Failed to create task',
         StorageError.codes.WRITE_FAILED,
-        { task, originalError: error.message }
+        { originalError: error.message }
       );
     }
   }

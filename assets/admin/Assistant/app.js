@@ -248,6 +248,10 @@
         '<div class="agentify-message-text" dir="' + dir + '">' + formatMessageContent(content) + '</div>' +
         '<div class="agentify-message-time">' + timeStr + '</div></div></div>';
       messagesEl.insertAdjacentHTML('beforeend', html);
+      // Render tasks under the last assistant message
+      if (currentTasksList && currentTasksList.length > 0) {
+        renderTasksUnderMessage(currentTasksList, false);
+      }
     }
     messagesEl.classList.add('agentify-has-messages');
     scrollToBottom();
@@ -410,35 +414,27 @@
     var bubble = thinkingEl.querySelector('.agentify-message-bubble');
     if (!bubble) return;
     
-    // Preserve agentify-thinking-text - get current text or default to "Thinking"
-    var existingThinkingText = bubble.querySelector('.agentify-thinking-text');
-    var thinkingTextValue = existingThinkingText ? existingThinkingText.textContent.trim() : 'Thinking';
-    
     var time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     var parsed = parseAssistantContentWithError(text || '');
     var errorMsg = parsed.errorMessage || (isError ? (text || 'Something went wrong.') : null);
     var mainContent = parsed.messageContent || (!isError && text ? text : '');
     
-    // Remove thinking inner, stream, and events, but keep structure
+    // Remove thinking inner (includes "Thinking" text and dots), stream, and events
     var innerEl = bubble.querySelector('.agentify-thinking-inner');
     var streamEl = bubble.querySelector('.agentify-thinking-stream');
     var eventsEl = bubble.querySelector('.agentify-thinking-events');
     var errorWrapEl = bubble.querySelector('.agentify-thinking-error-wrap');
+    var thinkingTextEl = bubble.querySelector('.agentify-thinking-text');
     if (innerEl) innerEl.remove();
     if (streamEl) streamEl.remove();
     if (eventsEl) eventsEl.remove();
     if (errorWrapEl) errorWrapEl.remove();
+    if (thinkingTextEl) thinkingTextEl.remove(); // Remove any remaining thinking-text
     
     // Update element classes
     thinkingEl.classList.remove('agentify-thinking');
     thinkingEl.removeAttribute('aria-busy');
     thinkingEl.removeAttribute('id');
-    
-    // Create and add thinking-text at the top
-    var thinkingTextEl = document.createElement('span');
-    thinkingTextEl.className = 'agentify-thinking-text';
-    thinkingTextEl.textContent = thinkingTextValue || 'Thinking';
-    bubble.insertBefore(thinkingTextEl, bubble.firstChild);
     
     if (mainContent) {
       var textDiv = document.createElement('div');
@@ -467,6 +463,10 @@
     }
     clearAllEvents();
     scrollToBottom();
+    // Render tasks under the last assistant message after replacing thinking
+    if (currentTasksList && currentTasksList.length > 0) {
+      renderTasksUnderMessage(currentTasksList, false);
+    }
   }
 
   /** Morph the thinking block (with streamed content) into the final assistant message. Errors go in a small box below with Try again. */
@@ -484,6 +484,10 @@
         }
         if (messagesEl) messagesEl.classList.add('agentify-has-messages');
         scrollToBottom();
+        // Render tasks under the last assistant message (addMessageToDOM already does this, but ensure it happens)
+        if (currentTasksList && currentTasksList.length > 0) {
+          renderTasksUnderMessage(currentTasksList, false);
+        }
       }
       return;
     }
@@ -503,25 +507,17 @@
     thinkingEl.removeAttribute('aria-busy');
     thinkingEl.removeAttribute('id');
     
-    // Preserve agentify-thinking-text - get current text or default to "Thinking"
-    var existingThinkingText = bubble.querySelector('.agentify-thinking-text');
-    var thinkingTextValue = existingThinkingText ? existingThinkingText.textContent.trim() : 'Thinking';
-    
-    // Remove thinking inner, stream, and events, but keep structure
+    // Remove thinking inner (includes "Thinking" text and dots), stream, and events
     var innerEl = bubble.querySelector('.agentify-thinking-inner');
     var streamEl = bubble.querySelector('.agentify-thinking-stream');
     var eventsEl = bubble.querySelector('.agentify-thinking-events');
     var errorWrapEl = bubble.querySelector('.agentify-thinking-error-wrap');
+    var thinkingTextEl = bubble.querySelector('.agentify-thinking-text');
     if (innerEl) innerEl.remove();
     if (streamEl) streamEl.remove();
     if (eventsEl) eventsEl.remove();
     if (errorWrapEl) errorWrapEl.remove();
-    
-    // Create and add thinking-text at the top
-    var thinkingTextEl = document.createElement('span');
-    thinkingTextEl.className = 'agentify-thinking-text';
-    thinkingTextEl.textContent = thinkingTextValue || 'Thinking';
-    bubble.insertBefore(thinkingTextEl, bubble.firstChild);
+    if (thinkingTextEl) thinkingTextEl.remove(); // Remove any remaining thinking-text
     
     if (mainContent) {
       var textDiv = document.createElement('div');
@@ -550,6 +546,10 @@
     }
     clearAllEvents();
     scrollToBottom();
+    // Render tasks under the last assistant message after morphing thinking
+    if (currentTasksList && currentTasksList.length > 0) {
+      renderTasksUnderMessage(currentTasksList, false);
+    }
   }
 
   function setSendLoading(loading) {
@@ -669,9 +669,22 @@
     var list = Array.isArray(tasks) ? tasks : [];
     var existing = messagesEl.querySelector('.agentify-message-tasks');
     if (existing) existing.remove();
+    
+    // Find the LAST assistant message (not thinking) - iterate backwards through all messages
+    var allMessages = messagesEl.querySelectorAll('.agentify-message.agentify-assistant');
+    var lastAssistant = null;
+    for (var i = allMessages.length - 1; i >= 0; i--) {
+      if (!allMessages[i].classList.contains('agentify-thinking')) {
+        lastAssistant = allMessages[i];
+        break;
+      }
+    }
+    // Fallback: if no non-thinking assistant found, use the last assistant (even if thinking)
+    if (!lastAssistant && allMessages.length > 0) {
+      lastAssistant = allMessages[allMessages.length - 1];
+    }
+    
     if (isLoading) {
-      var lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant:not(.agentify-thinking)');
-      if (!lastAssistant) lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant');
       if (lastAssistant) {
         var wrap = document.createElement('div');
         wrap.className = 'agentify-message-tasks agentify-message-tasks-loading';
@@ -685,8 +698,6 @@
       return;
     }
     if (list.length === 0) return;
-    var lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant:not(.agentify-thinking)');
-    if (!lastAssistant) lastAssistant = messagesEl.querySelector('.agentify-message.agentify-assistant');
     if (!lastAssistant) return;
     var lastFour = list.slice(-4);
     var wrap = document.createElement('div');

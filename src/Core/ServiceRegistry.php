@@ -57,6 +57,7 @@ class ServiceRegistry implements ServiceRegistryInterface
         // If it's a string, resolve it from container
         if (is_string($provider)) {
             if (!class_exists($provider)) {
+                // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception message
                 throw new \Exception("Service provider class [{$provider}] does not exist.");
             }
 

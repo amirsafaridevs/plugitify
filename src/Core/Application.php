@@ -284,13 +284,13 @@ class Application implements ApplicationInterface
      */
     public function view(string $view, array $data = []): void
     {
-        $viewBasePath = defined( 'PLUGIFITY_PLUGIN_FILE' )
-            ? plugin_dir_path( PLUGIFITY_PLUGIN_FILE )
+        $viewBasePath = defined( 'PLUGITIFY_PLUGIN_FILE' )
+            ? plugin_dir_path( PLUGITIFY_PLUGIN_FILE )
             : $this->basePath;
         $viewPath = $viewBasePath . 'view' . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $view ) . '.php';
 
         if ( ! is_readable( $viewPath ) ) {
-            echo '<div class="wrap"><p>' . esc_html__('View not found: ', 'plugifity') . esc_html($view) . '</p></div>';
+            echo '<div class="wrap"><p>' . esc_html__('View not found: ', 'plugitify') . esc_html($view) . '</p></div>';
             return;
         }
         // Extract data to variables for use in view
@@ -356,7 +356,7 @@ class Application implements ApplicationInterface
             return;
         }
 
-        wp_enqueue_style($handle, $url, $deps, null);
+        wp_enqueue_style($handle, $url, $deps, $this->version);
     }
 
     /**
@@ -367,7 +367,7 @@ class Application implements ApplicationInterface
      */
     private function getAssetUrl(string $src): string
     {
-        return plugins_url('assets/' . ltrim($src, '/'), PLUGIFITY_PLUGIN_FILE);
+        return plugins_url('assets/' . ltrim($src, '/'), PLUGITIFY_PLUGIN_FILE);
     }
 
     /**
@@ -422,7 +422,8 @@ class Application implements ApplicationInterface
         }
 
         // Check page slug for top-level pages
-        if (isset($_GET['page']) && $_GET['page'] === $pageIdentifier) {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- This is a read-only check for page identifier
+        if (isset($_GET['page']) && sanitize_text_field(wp_unslash($_GET['page'])) === $pageIdentifier) {
             return true;
         }
 

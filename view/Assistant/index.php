@@ -131,9 +131,9 @@ if ( ! defined( 'ABSPATH' ) ) {
         <div class="agentify-settings-section agentify-settings-db-write">
           <label class="agentify-settings-checkbox-wrap" for="agentify-settings-allow-db-write">
             <input type="checkbox" id="agentify-settings-allow-db-write" class="agentify-settings-checkbox" value="1" />
-            <span class="agentify-settings-checkbox-label"><?php esc_html_e( 'Allow database changes', 'plugifity' ); ?></span>
+            <span class="agentify-settings-checkbox-label"><?php esc_html_e( 'Allow database changes', 'plugitify' ); ?></span>
           </label>
-          <p class="agentify-settings-description"><?php esc_html_e( 'When enabled, the assistant can run INSERT/UPDATE/DELETE on the WordPress database. When disabled, only read-only (SELECT) queries are allowed.', 'plugifity' ); ?></p>
+          <p class="agentify-settings-description"><?php esc_html_e( 'When enabled, the assistant can run INSERT/UPDATE/DELETE on the WordPress database. When disabled, only read-only (SELECT) queries are allowed.', 'plugitify' ); ?></p>
         </div>
         <div class="agentify-settings-message" id="agentify-settings-message" role="status" aria-live="polite"></div>
       </div>

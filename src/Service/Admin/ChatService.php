@@ -41,8 +41,8 @@ class ChatService extends AbstractService
      */
     public function getSystemInstruction(): string
     {
-        $base = defined( 'PLUGIFITY_PLUGIN_FILE' )
-            ? plugin_dir_path( PLUGIFITY_PLUGIN_FILE )
+        $base = defined( 'PLUGITIFY_PLUGIN_FILE' )
+            ? plugin_dir_path( PLUGITIFY_PLUGIN_FILE )
             : '';
         $path = $base . self::SYSTEM_INSTRUCTION_FILE;
         if ( ! is_readable( $path ) ) {
@@ -169,7 +169,7 @@ class ChatService extends AbstractService
     {
         $userContent = trim( $userContent );
         if ( $userContent === '' ) {
-            throw new \InvalidArgumentException( __( 'Message cannot be empty.', 'plugifity' ) );
+            throw new \InvalidArgumentException( esc_html__( 'Message cannot be empty.', 'plugitify' ) );
         }
 
         $settings = get_option( self::OPTION_SETTINGS, [] );
@@ -192,24 +192,24 @@ class ChatService extends AbstractService
 
         if ( $apiKey === '' ) {
             throw new \RuntimeException(
-                sprintf(
+                esc_html( sprintf(
                     /* translators: %s: provider name */
-                    __( 'API key for %s is not set. Please configure it in Settings.', 'plugifity' ),
-                    $provider
-                )
+                    __( 'API key for %s is not set. Please configure it in Settings.', 'plugitify' ),
+                    esc_html( $provider )
+                ) )
             );
         }
 
         if ( $chatId === null ) {
             $newId = $this->createChat( wp_trim_words( $userContent, 5 ) );
             if ( $newId === false ) {
-                throw new \RuntimeException( __( 'Failed to create chat.', 'plugifity' ) );
+                throw new \RuntimeException( esc_html__( 'Failed to create chat.', 'plugitify' ) );
             }
             $chatId = $newId;
         } else {
             $chat = $this->chatRepository->find( $chatId );
             if ( ! $chat ) {
-                throw new \InvalidArgumentException( __( 'Chat not found.', 'plugifity' ) );
+                throw new \InvalidArgumentException( esc_html__( 'Chat not found.', 'plugitify' ) );
             }
         }
 
@@ -276,11 +276,11 @@ class ChatService extends AbstractService
         $url = $this->getProviderUrl( $provider );
         if ( $url === '' ) {
             throw new \RuntimeException(
-                sprintf(
+                esc_html( sprintf(
                     /* translators: %s: provider name */
-                    __( 'Unsupported provider: %s.', 'plugifity' ),
-                    $provider
-                )
+                    __( 'Unsupported provider: %s.', 'plugitify' ),
+                    esc_html( $provider )
+                ) )
             );
         }
 
@@ -301,7 +301,7 @@ class ChatService extends AbstractService
 
         if ( is_wp_error( $response ) ) {
             throw new \RuntimeException(
-                __( 'Request failed: ', 'plugifity' ) . $response->get_error_message()
+                esc_html__( 'Request failed: ', 'plugitify' ) . esc_html( $response->get_error_message() )
             );
         }
 
@@ -312,17 +312,17 @@ class ChatService extends AbstractService
         if ( $code >= 400 ) {
             $message = isset( $data['error']['message'] ) ? $data['error']['message'] : (string) $bodyResponse;
             throw new \RuntimeException(
-                sprintf(
+                esc_html( sprintf(
                     /* translators: 1: HTTP code, 2: error message */
-                    __( 'API error (%1$d): %2$s', 'plugifity' ),
+                    __( 'API error (%1$d): %2$s', 'plugitify' ),
                     $code,
-                    $message
-                )
+                    esc_html( $message )
+                ) )
             );
         }
 
         if ( ! is_array( $data ) || empty( $data['choices'][0]['message']['content'] ) ) {
-            throw new \RuntimeException( __( 'Invalid API response.', 'plugifity' ) );
+            throw new \RuntimeException( esc_html__( 'Invalid API response.', 'plugitify' ) );
         }
 
         return (string) $data['choices'][0]['message']['content'];

@@ -30,8 +30,8 @@ class Assistant extends AbstractService
     public function addMenu(): void
     {
         add_menu_page(
-            esc_html__( 'Agentify', 'plugifity' ),
-            esc_html__( 'Agentify', 'plugifity' ),
+            esc_html__( 'Agentify', 'plugitify' ),
+            esc_html__( 'Agentify', 'plugitify' ),
             'manage_options',
             'agentify',
             [ $this, 'renderPage' ],
@@ -74,9 +74,11 @@ class Assistant extends AbstractService
             [],
             true
         );
-        // jsPDF from CDN (local copy can be truncated; CDN ensures full file)
+        // Note: External scripts are discouraged but jsPDF is required for PDF generation
+        // Consider bundling locally in future versions
         wp_enqueue_script(
             'jspdf',
+            // phpcs:ignore PluginCheck.CodeAnalysis.EnqueuedResourceOffloading.OffloadedContent -- Required for PDF functionality, will be bundled locally in future version
             'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
             [],
             '2.5.1',
@@ -91,8 +93,8 @@ class Assistant extends AbstractService
         );
         wp_script_add_data( 'agentify-assistant', 'type', 'module' );
 
-        $agentify_base = defined( 'PLUGIFITY_PLUGIN_FILE' )
-            ? plugins_url( 'assets/Agentify/', PLUGIFITY_PLUGIN_FILE )
+        $agentify_base = defined( 'PLUGITIFY_PLUGIN_FILE' )
+            ? plugins_url( 'assets/Agentify/', PLUGITIFY_PLUGIN_FILE )
             : '';
 
         wp_localize_script( 'agentify-assistant', 'agentifyRest', [
@@ -391,7 +393,7 @@ class Assistant extends AbstractService
         update_option( self::OPTION_SETTINGS, $current );
         return new WP_REST_Response( [
             'success' => true,
-            'message' => __( 'Settings saved.', 'plugifity' ),
+            'message' => __( 'Settings saved.', 'plugitify' ),
         ], 200 );
     }
 
@@ -418,7 +420,7 @@ class Assistant extends AbstractService
         $chatService = $this->getContainer()->get( ChatService::class );
         $id = $chatService->createChat( is_string( $title ) ? $title : null );
         if ( $id === false ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to create chat.', 'plugifity' ) ], 500 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to create chat.', 'plugitify' ) ], 500 );
         }
         return new WP_REST_Response( [ 'chat_id' => $id ], 200 );
     }
@@ -445,7 +447,7 @@ class Assistant extends AbstractService
         $chatId = $request->get_param( 'chat_id' );
         $content = $request->get_param( 'content' );
         if ( ! is_string( $content ) || trim( $content ) === '' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Message is required.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Message is required.', 'plugitify' ) ], 400 );
         }
         $chatService = $this->getContainer()->get( ChatService::class );
         try {
@@ -468,12 +470,12 @@ class Assistant extends AbstractService
         $chatId = (int) $request->get_param( 'id' );
         $title  = $request->get_param( 'title' );
         if ( ! is_string( $title ) || trim( $title ) === '' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Title is required.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Title is required.', 'plugitify' ) ], 400 );
         }
         $chatService = $this->getContainer()->get( ChatService::class );
         $ok = $chatService->updateChatTitleIfNew( $chatId, $title );
         if ( ! $ok ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Chat title can only be set when it is new or empty.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Chat title can only be set when it is new or empty.', 'plugitify' ) ], 400 );
         }
         return new WP_REST_Response( [ 'success' => true ], 200 );
     }
@@ -484,7 +486,7 @@ class Assistant extends AbstractService
         $chatService = $this->getContainer()->get( ChatService::class );
         $ok = $chatService->deleteChat( $chatId );
         if ( ! $ok ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to delete chat.', 'plugifity' ) ], 500 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to delete chat.', 'plugitify' ) ], 500 );
         }
         return new WP_REST_Response( [ 'success' => true ], 200 );
     }
@@ -500,7 +502,7 @@ class Assistant extends AbstractService
         $chatService = $this->getContainer()->get( ChatService::class );
         $ok = $chatService->appendMessage( $chatId, $role, $content );
         if ( ! $ok ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to save message.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to save message.', 'plugitify' ) ], 400 );
         }
         return new WP_REST_Response( [ 'success' => true ], 200 );
     }
@@ -512,17 +514,18 @@ class Assistant extends AbstractService
     {
         $query = $request->get_param( 'query' );
         if ( ! is_string( $query ) || trim( $query ) === '' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Query is required.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Query is required.', 'plugitify' ) ], 400 );
         }
         $query = trim( $query );
         if ( strpos( $query, ';' ) !== false ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only a single statement is allowed.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only a single statement is allowed.', 'plugitify' ) ], 400 );
         }
         $first = strtoupper( substr( $query, 0, 6 ) );
         if ( $first !== 'SELECT' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only SELECT queries are allowed. Use the write tool for changes.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only SELECT queries are allowed. Use the write tool for changes.', 'plugitify' ) ], 400 );
         }
         global $wpdb;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query is validated and sanitized before use
         $results = $wpdb->get_results( $query );
         if ( $results === null && $wpdb->last_error ) {
             return new WP_REST_Response( [
@@ -546,24 +549,25 @@ class Assistant extends AbstractService
         if ( ! $allow ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Database changes are disabled. The admin must enable "Allow database changes" in Agentify Settings to run INSERT/UPDATE/DELETE.', 'plugifity' ),
+                'message' => __( 'Database changes are disabled. The admin must enable "Allow database changes" in Agentify Settings to run INSERT/UPDATE/DELETE.', 'plugitify' ),
                 'code'    => 'db_write_disabled',
             ], 403 );
         }
         $query = $request->get_param( 'query' );
         if ( ! is_string( $query ) || trim( $query ) === '' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Query is required.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Query is required.', 'plugitify' ) ], 400 );
         }
         $query = trim( $query );
         if ( strpos( $query, ';' ) !== false ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only a single statement is allowed.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only a single statement is allowed.', 'plugitify' ) ], 400 );
         }
         $upper = strtoupper( substr( $query, 0, 12 ) );
         $allowed = ( strpos( $upper, 'INSERT' ) === 0 || strpos( $upper, 'UPDATE' ) === 0 || strpos( $upper, 'DELETE' ) === 0 || strpos( $upper, 'REPLACE' ) === 0 );
         if ( ! $allowed ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only INSERT, UPDATE, DELETE, or REPLACE are allowed. Use the read tool for SELECT.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only INSERT, UPDATE, DELETE, or REPLACE are allowed. Use the read tool for SELECT.', 'plugitify' ) ], 400 );
         }
         global $wpdb;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query is validated and sanitized before use
         $affected = $wpdb->query( $query );
         if ( $affected === false && $wpdb->last_error ) {
             return new WP_REST_Response( [
@@ -614,12 +618,12 @@ class Assistant extends AbstractService
         }
         $files = $request->get_file_params();
         if ( empty( $files['file'] ) || empty( $files['file']['tmp_name'] ) ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'No file uploaded or invalid upload.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'No file uploaded or invalid upload.', 'plugitify' ) ], 400 );
         }
         $file = $files['file'];
         $ext = strtolower( pathinfo( isset( $file['name'] ) ? $file['name'] : '', PATHINFO_EXTENSION ) );
         if ( $ext !== 'zip' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only ZIP files are allowed.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Only ZIP files are allowed.', 'plugitify' ) ], 400 );
         }
         $file_data = [
             'name'     => isset( $file['name'] ) ? sanitize_file_name( $file['name'] ) : 'upload.zip',
@@ -642,7 +646,7 @@ class Assistant extends AbstractService
         ];
         $id = wp_insert_attachment( $attachment, $file_path, 0 );
         if ( is_wp_error( $id ) ) {
-            @unlink( $file_path );
+            wp_delete_file( $file_path );
             return new WP_REST_Response( [ 'success' => false, 'message' => $id->get_error_message() ], 500 );
         }
         wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file_path ) );
@@ -651,7 +655,7 @@ class Assistant extends AbstractService
             'success' => true,
             'url'     => $attachment_url ?: $url,
             'id'      => (int) $id,
-            'message' => __( 'ZIP uploaded to media library.', 'plugifity' ),
+            'message' => __( 'ZIP uploaded to media library.', 'plugitify' ),
         ], 200 );
     }
 
@@ -660,7 +664,7 @@ class Assistant extends AbstractService
      */
     public function restUploadTxt( WP_REST_Request $request ): WP_REST_Response
     {
-        return $this->restUploadSingleFile( $request, 'txt', [ 'txt' ], 'text/plain', __( 'Only TXT files are allowed.', 'plugifity' ), 'document.txt' );
+        return $this->restUploadSingleFile( $request, 'txt', [ 'txt' ], 'text/plain', __( 'Only TXT files are allowed.', 'plugitify' ), 'document.txt' );
     }
 
     /**
@@ -668,7 +672,7 @@ class Assistant extends AbstractService
      */
     public function restUploadExcel( WP_REST_Request $request ): WP_REST_Response
     {
-        return $this->restUploadSingleFile( $request, 'xlsx', [ 'xlsx' ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', __( 'Only Excel (XLSX) files are allowed.', 'plugifity' ), 'export.xlsx' );
+        return $this->restUploadSingleFile( $request, 'xlsx', [ 'xlsx' ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', __( 'Only Excel (XLSX) files are allowed.', 'plugitify' ), 'export.xlsx' );
     }
 
     /**
@@ -676,7 +680,7 @@ class Assistant extends AbstractService
      */
     public function restUploadPdf( WP_REST_Request $request ): WP_REST_Response
     {
-        return $this->restUploadSingleFile( $request, 'pdf', [ 'pdf' ], 'application/pdf', __( 'Only PDF files are allowed.', 'plugifity' ), 'document.pdf' );
+        return $this->restUploadSingleFile( $request, 'pdf', [ 'pdf' ], 'application/pdf', __( 'Only PDF files are allowed.', 'plugitify' ), 'document.pdf' );
     }
 
     /**
@@ -699,7 +703,7 @@ class Assistant extends AbstractService
         }
         $files = $request->get_file_params();
         if ( empty( $files['file'] ) || empty( $files['file']['tmp_name'] ) ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'No file uploaded or invalid upload.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'No file uploaded or invalid upload.', 'plugitify' ) ], 400 );
         }
         $file   = $files['file'];
         $ext    = strtolower( pathinfo( isset( $file['name'] ) ? $file['name'] : '', PATHINFO_EXTENSION ) );
@@ -727,7 +731,7 @@ class Assistant extends AbstractService
         ];
         $id = wp_insert_attachment( $attachment, $file_path, 0 );
         if ( is_wp_error( $id ) ) {
-            @unlink( $file_path );
+            wp_delete_file( $file_path );
             return new WP_REST_Response( [ 'success' => false, 'message' => $id->get_error_message() ], 500 );
         }
         wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file_path ) );
@@ -736,7 +740,7 @@ class Assistant extends AbstractService
             'success' => true,
             'url'     => $attachment_url ?: $url,
             'id'      => (int) $id,
-            'message' => __( 'File uploaded to media library.', 'plugifity' ),
+            'message' => __( 'File uploaded to media library.', 'plugitify' ),
         ], 200 );
     }
 
@@ -773,14 +777,14 @@ class Assistant extends AbstractService
         if ( $resolved === null ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Invalid path or outside WordPress directory.', 'plugifity' ),
+                'message' => __( 'Invalid path or outside WordPress directory.', 'plugitify' ),
                 'items'   => [],
             ], 400 );
         }
         if ( ! is_dir( $resolved ) ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Path is not a directory.', 'plugifity' ),
+                'message' => __( 'Path is not a directory.', 'plugitify' ),
                 'items'   => [],
             ], 400 );
         }
@@ -788,7 +792,7 @@ class Assistant extends AbstractService
         if ( ! is_array( $list ) ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Could not read directory.', 'plugifity' ),
+                'message' => __( 'Could not read directory.', 'plugitify' ),
                 'items'   => [],
             ], 500 );
         }
@@ -834,13 +838,13 @@ class Assistant extends AbstractService
         if ( $resolved === null ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Invalid path or outside WordPress directory.', 'plugifity' ),
+                'message' => __( 'Invalid path or outside WordPress directory.', 'plugitify' ),
             ], 400 );
         }
         if ( ! is_file( $resolved ) ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Path is not a file.', 'plugifity' ),
+                'message' => __( 'Path is not a file.', 'plugitify' ),
             ], 400 );
         }
         $maxSize = 1024 * 1024; // 1 MB
@@ -849,15 +853,15 @@ class Assistant extends AbstractService
             return new WP_REST_Response( [
                 'success' => false,
                 'message' => $size > $maxSize
-                    ? __( 'File is too large to read (max 1 MB).', 'plugifity' )
-                    : __( 'Could not read file.', 'plugifity' ),
+                    ? __( 'File is too large to read (max 1 MB).', 'plugitify' )
+                    : __( 'Could not read file.', 'plugitify' ),
             ], 400 );
         }
         $content = @file_get_contents( $resolved );
         if ( $content === false ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Could not read file contents.', 'plugifity' ),
+                'message' => __( 'Could not read file contents.', 'plugitify' ),
             ], 500 );
         }
         // Detect binary: null bytes or high proportion of non-printable
@@ -865,14 +869,14 @@ class Assistant extends AbstractService
         if ( strpos( $sample, "\0" ) !== false ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'Binary files cannot be read as text.', 'plugifity' ),
+                'message' => __( 'Binary files cannot be read as text.', 'plugitify' ),
             ], 400 );
         }
         $nonPrintable = preg_match_all( '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $sample );
         if ( $nonPrintable > strlen( $sample ) * 0.3 ) {
             return new WP_REST_Response( [
                 'success' => false,
-                'message' => __( 'File appears to be binary, not readable as text.', 'plugifity' ),
+                'message' => __( 'File appears to be binary, not readable as text.', 'plugitify' ),
             ], 400 );
         }
         return new WP_REST_Response( [
@@ -901,7 +905,7 @@ class Assistant extends AbstractService
             return strpos( $title, 'chat:' ) !== 0 && strpos( $title, 'tool_followup:' ) !== 0;
         } );
         $items = array_map( function ( Task $t ) {
-            $title = isset( $t->title ) && trim( (string) $t->title ) !== '' ? $t->title : __( 'Task', 'plugifity' );
+            $title = isset( $t->title ) && trim( (string) $t->title ) !== '' ? $t->title : __( 'Task', 'plugitify' );
             return [
                 'id'          => $t->id,
                 'chat_id'     => $t->chat_id,
@@ -924,7 +928,7 @@ class Assistant extends AbstractService
         $description = $request->get_param( 'description' );
         $chatId      = $request->get_param( 'chat_id' );
         if ( ! is_string( $title ) || trim( $title ) === '' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Title is required.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Title is required.', 'plugitify' ) ], 400 );
         }
         $repo = $this->getContainer()->get( TaskRepository::class );
         $data = [
@@ -937,12 +941,12 @@ class Assistant extends AbstractService
         }
         $id = $repo->create( $data );
         if ( $id === false ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to create task.', 'plugifity' ) ], 500 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to create task.', 'plugitify' ) ], 500 );
         }
         return new WP_REST_Response( [
             'success' => true,
             'task_id' => (int) $id,
-            'message' => __( 'Task created.', 'plugifity' ),
+            'message' => __( 'Task created.', 'plugitify' ),
         ], 200 );
     }
 
@@ -954,18 +958,18 @@ class Assistant extends AbstractService
         $id     = (int) $request->get_param( 'id' );
         $status = $request->get_param( 'status' );
         if ( ! is_string( $status ) || trim( $status ) === '' ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Status is required.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Status is required.', 'plugitify' ) ], 400 );
         }
         $repo   = $this->getContainer()->get( TaskRepository::class );
         $task   = $repo->find( $id );
         if ( $task === null ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Task not found.', 'plugifity' ) ], 404 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Task not found.', 'plugitify' ) ], 404 );
         }
         $ok = $repo->update( $id, [ 'status' => sanitize_text_field( $status ) ] );
         if ( $ok === false ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to update task.', 'plugifity' ) ], 500 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Failed to update task.', 'plugitify' ) ], 500 );
         }
-        return new WP_REST_Response( [ 'success' => true, 'message' => __( 'Task updated.', 'plugifity' ) ], 200 );
+        return new WP_REST_Response( [ 'success' => true, 'message' => __( 'Task updated.', 'plugitify' ) ], 200 );
     }
 
     /**
@@ -975,12 +979,12 @@ class Assistant extends AbstractService
     {
         $body = $request->get_json_params();
         if ( ! is_array( $body ) ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Invalid body.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Invalid body.', 'plugitify' ) ], 400 );
         }
         $chatId = isset( $body['chat_id'] ) ? (int) $body['chat_id'] : null;
         $tasks  = isset( $body['tasks'] ) && is_array( $body['tasks'] ) ? $body['tasks'] : [];
         if ( $chatId <= 0 ) {
-            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'chat_id is required.', 'plugifity' ) ], 400 );
+            return new WP_REST_Response( [ 'success' => false, 'message' => __( 'chat_id is required.', 'plugitify' ) ], 400 );
         }
         $repo = $this->getContainer()->get( TaskRepository::class );
         $synced = 0;
@@ -1004,7 +1008,8 @@ class Assistant extends AbstractService
         return new WP_REST_Response( [
             'success' => true,
             'synced'  => $synced,
-            'message' => sprintf( __( '%d task(s) synced.', 'plugifity' ), $synced ),
+            /* translators: %d: number of tasks synced */
+            'message' => sprintf( __( '%d task(s) synced.', 'plugitify' ), $synced ),
         ], 200 );
     }
 

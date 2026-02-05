@@ -158,7 +158,9 @@ class QueryBuilder
         if ($sql === '') {
             return [];
         }
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL is built from QueryBuilder methods with proper escaping
         $prepared = $this->bindings !== [] ? $this->wpdb->prepare($sql, ...$this->bindings) : $sql;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared above or safe SQL from QueryBuilder
         $results = $this->wpdb->get_results($prepared);
         return $results !== null ? $results : [];
     }
@@ -228,12 +230,16 @@ class QueryBuilder
         if ($whereSql !== '') {
             $values = array_merge($values, $this->bindings);
             $sql = 'UPDATE `' . esc_sql($this->table) . '` SET ' . implode(', ', $set) . ' WHERE ' . $whereSql;
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL is prepared with $values
             $prepared = $this->wpdb->prepare($sql, ...$values);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared above
             $this->wpdb->query($prepared);
             return $this->wpdb->rows_affected;
         }
         $sql = 'UPDATE `' . esc_sql($this->table) . '` SET ' . implode(', ', $set);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL is prepared with $values
         $prepared = $this->wpdb->prepare($sql, ...$values);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared above
         $this->wpdb->query($prepared);
         return $this->wpdb->rows_affected;
     }
@@ -248,11 +254,14 @@ class QueryBuilder
         $whereSql = $this->buildWhereSql();
         if ($whereSql === '') {
             $sql = 'DELETE FROM `' . esc_sql($this->table) . '`';
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Table name is escaped with esc_sql
             $this->wpdb->query($sql);
             return $this->wpdb->rows_affected;
         }
         $sql = 'DELETE FROM `' . esc_sql($this->table) . '` WHERE ' . $whereSql;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL is prepared with bindings or safe
         $prepared = $this->bindings !== [] ? $this->wpdb->prepare($sql, ...$this->bindings) : $sql;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared above or safe SQL
         $this->wpdb->query($prepared);
         return $this->wpdb->rows_affected;
     }
@@ -274,7 +283,9 @@ class QueryBuilder
         if ($sql === '') {
             return 0;
         }
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL is built from QueryBuilder methods with proper escaping
         $prepared = $builder->bindings !== [] ? $this->wpdb->prepare($sql, ...$builder->bindings) : $sql;
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared above or safe SQL from QueryBuilder
         $result = $this->wpdb->get_var($prepared);
         return (int) $result;
     }

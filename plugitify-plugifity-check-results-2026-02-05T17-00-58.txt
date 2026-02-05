@@ -1,0 +1,228 @@
+PLUGIN CHECK RESULTS
+====================
+
+Generated: 2/5/2026, 8:30:58 PM
+
+Plugin: Plugifity
+Plugin Basename: plugitify/plugifity.php
+
+
+FILE: .gitattributes
+==================================================
+
+Type: ERROR
+File: .gitattributes
+Line: 0
+Column: 0
+Code: hidden_files
+Message: Hidden files are not permitted.
+
+--------------------------------------------------
+
+
+FILE: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\Database\SchemaBuilder.php
+==================================================
+
+Type: ERROR
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\Database\SchemaBuilder.php
+Line: 180
+Column: 13
+Code: WordPress.DB.PreparedSQL.NotPrepared
+Message: Use placeholders and $wpdb->prepare(); found $this
+
+--------------------------------------------------
+
+Type: ERROR
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\Database\SchemaBuilder.php
+Line: 180
+Column: 20
+Code: WordPress.DB.PreparedSQL.NotPrepared
+Message: Use placeholders and $wpdb->prepare(); found wpdb
+
+--------------------------------------------------
+
+Type: ERROR
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\Database\SchemaBuilder.php
+Line: 180
+Column: 26
+Code: WordPress.DB.PreparedSQL.NotPrepared
+Message: Use placeholders and $wpdb->prepare(); found prepare
+
+--------------------------------------------------
+
+Type: ERROR
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\Database\SchemaBuilder.php
+Line: 200
+Column: 13
+Code: WordPress.DB.PreparedSQL.NotPrepared
+Message: Use placeholders and $wpdb->prepare(); found $this
+
+--------------------------------------------------
+
+Type: ERROR
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\Database\SchemaBuilder.php
+Line: 200
+Column: 20
+Code: WordPress.DB.PreparedSQL.NotPrepared
+Message: Use placeholders and $wpdb->prepare(); found wpdb
+
+--------------------------------------------------
+
+Type: ERROR
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\Database\SchemaBuilder.php
+Line: 200
+Column: 26
+Code: WordPress.DB.PreparedSQL.NotPrepared
+Message: Use placeholders and $wpdb->prepare(); found prepare
+
+--------------------------------------------------
+
+
+FILE: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+==================================================
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 130
+Column: 20
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 130
+Column: 20
+Code: WordPress.DB.DirectDatabaseQuery.NoCaching
+Message: Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 147
+Column: 16
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 147
+Column: 16
+Code: WordPress.DB.DirectDatabaseQuery.NoCaching
+Message: Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 162
+Column: 19
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 178
+Column: 16
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 178
+Column: 16
+Code: WordPress.DB.DirectDatabaseQuery.NoCaching
+Message: Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 192
+Column: 16
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Core\DB.php
+Line: 192
+Column: 16
+Code: WordPress.DB.DirectDatabaseQuery.NoCaching
+Message: Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+--------------------------------------------------
+
+
+FILE: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Repository\ErrorRepository.php
+==================================================
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Repository\ErrorRepository.php
+Line: 91
+Column: 19
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Repository\ErrorRepository.php
+Line: 91
+Column: 19
+Code: WordPress.DB.DirectDatabaseQuery.NoCaching
+Message: Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+--------------------------------------------------
+
+
+FILE: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Service\Admin\Assistant.php
+==================================================
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Service\Admin\Assistant.php
+Line: 529
+Column: 20
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Service\Admin\Assistant.php
+Line: 529
+Column: 20
+Code: WordPress.DB.DirectDatabaseQuery.NoCaching
+Message: Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Service\Admin\Assistant.php
+Line: 571
+Column: 21
+Code: WordPress.DB.DirectDatabaseQuery.DirectQuery
+Message: Use of a direct database call is discouraged.
+
+--------------------------------------------------
+
+Type: WARNING
+File: C:\wamp64\www\wpagentify\wordpress\wp-content\plugins\plugitify\src\Service\Admin\Assistant.php
+Line: 571
+Column: 21
+Code: WordPress.DB.DirectDatabaseQuery.NoCaching
+Message: Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+--------------------------------------------------
+
+
+Checks complete. Errors were found.

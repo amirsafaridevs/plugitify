@@ -381,10 +381,10 @@ export class Agentify {
 
       if (config.stream) {
         // Handle streaming response
-        return await this.handleStreamingResponse(response, task, options, chatId, startTime);
+        return await this.handleStreamingResponse(response, undefined, options, chatId, startTime);
       } else {
         // Handle non-streaming response
-        return await this.handleNonStreamingResponse(response, task, options, chatId, startTime);
+        return await this.handleNonStreamingResponse(response, undefined, options, chatId, startTime);
       }
 
     } catch (error) {
