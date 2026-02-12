@@ -9,18 +9,19 @@ use Plugifity\Core\Application;
 abstract class AbstractService implements ServiceInterface
 {
     /**
-     * Container instance
+     * Container instance (auto-injected when service is resolved from the container).
      *
      * @var ContainerInterface
      */
     protected ContainerInterface $container;
+
     /**
-     * Boot services after registration
+     * Boot the service. Override in subclass.
+     * Container is already available via $this->container or $this->getContainer().
      *
-     * @param ContainerInterface $container
      * @return void
      */
-    public function boot(ContainerInterface $container): void
+    public function boot(): void
     {
     }
 

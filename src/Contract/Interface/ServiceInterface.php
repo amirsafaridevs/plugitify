@@ -4,16 +4,17 @@ namespace Plugifity\Contract\Interface;
 
 /**
  * Service Interface
- * 
- * Contract for service implementations
+ *
+ * Contract for service implementations.
+ * Container is auto-injected when the service is resolved from the container (setContainer is called by Container::make).
  */
 interface ServiceInterface
 {
     /**
-     * Boot services after registration
+     * Boot the service (hooks, routes, etc.).
+     * Use $this->getContainer() or $this->container when you need the container.
      *
-     * @param ContainerInterface $container
      * @return void
      */
-    public function boot(ContainerInterface $container): void;
+    public function boot(): void;
 }

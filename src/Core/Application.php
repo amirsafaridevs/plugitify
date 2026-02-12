@@ -51,6 +51,27 @@ class Application implements ApplicationInterface
     protected string $basePath = '';
 
     /**
+     * Application prefix (e.g. for options)
+     *
+     * @var string
+     */
+    public string $prefix = '';
+
+    /**
+     * Application text domain
+     *
+     * @var string
+     */
+    protected string $textdomain = '';
+
+    /**
+     * Application migrations path
+     *
+     * @var string
+     */
+    protected string $migration_folder = '';
+
+    /**
      * Constructor
      */
     public function __construct()
@@ -67,23 +88,29 @@ class Application implements ApplicationInterface
 
     /**
      * Run on plugin activation (call from register_activation_hook in main plugin file).
+     * Runs migrations if migration_folder is set, and ensures text domain is available.
      */
     public function pluginActivation(): void
     {
-        $this->runMigrations();
+        if ($this->migration_folder !== '') {
+            $this->runMigrations();
+        }
+        if ($this->textdomain !== '' && defined('PLUGITIFY_PLUGIN_FILE')) {
+            $this->loadTextDomain();
+        }
     }
 
     /**
-     * Run all migrations in the Migration folder.
+     * Run all migrations from the configured migration folder.
+     * Only runs when migration_folder property is set.
      */
     public function runMigrations(): void
     {
-        $migrationPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'Migration';
-        if (!is_dir($migrationPath)) {
+        if ($this->migration_folder === '' || !is_dir($this->migration_folder)) {
             return;
         }
 
-        $files = glob($migrationPath . DIRECTORY_SEPARATOR . '*.php');
+        $files = glob($this->migration_folder . DIRECTORY_SEPARATOR . '*.php');
         if ($files === false) {
             return;
         }
@@ -110,6 +137,24 @@ class Application implements ApplicationInterface
 
             $migration->up();
         }
+    }
+
+    /**
+     * Load plugin text domain for translations.
+     * Uses textdomain property and languages path relative to plugin file.
+     * Callback for 'init' action when textdomain is set.
+     */
+    public function loadTextDomain(): void
+    {
+        if ($this->textdomain === '' || !defined('PLUGITIFY_PLUGIN_FILE')) {
+            return;
+        }
+        // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- Required for non-WordPress.org plugins
+        load_plugin_textdomain(
+            $this->textdomain,
+            false,
+            dirname(plugin_basename(PLUGITIFY_PLUGIN_FILE)) . '/languages'
+        );
     }
     /**
      * Get a configuration value
@@ -190,6 +235,12 @@ class Application implements ApplicationInterface
     public function boot(): void
     {
         $this->registry->boot();
+        if ($this->textdomain !== '') {
+            add_action('init', [$this, 'loadTextDomain']);
+        }
+        if (defined('PLUGITIFY_PLUGIN_FILE')) {
+            register_activation_hook(PLUGITIFY_PLUGIN_FILE, [$this, 'pluginActivation']);
+        }
     }
 
     /**

@@ -1,0 +1,510 @@
+/**
+ * Plugifity Dashboard - Material Design, rounded, animations
+ */
+
+/* Local SVG icons (inline sprite in view, no CDN) */
+.plugifity-dashboard .plugifity-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+  stroke: currentColor;
+  fill: none;
+}
+.plugifity-dashboard .plugifity-icon--lg {
+  width: 32px;
+  height: 32px;
+}
+.plugifity-dashboard .plugifity-icon--xl {
+  width: 40px;
+  height: 40px;
+}
+
+/* Container: prevent overflow, contain layout */
+.plugifity-dashboard {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding-right: 20px;
+  --pfy-radius: 16px;
+  --pfy-radius-sm: 12px;
+  --pfy-radius-btn: 9999px;
+  --pfy-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --pfy-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --pfy-primary: #4bb6d3;
+  --pfy-primary-container: #d4f1f7;
+  --pfy-secondary: #6ef2cc;
+  --pfy-on-primary: #ffffff;
+  --pfy-surface: #f0fdf9;
+  --pfy-outline: #79747e;
+  --pfy-duration: 0.3s;
+}
+
+.plugifity-dashboard *,
+.plugifity-dashboard *::before,
+.plugifity-dashboard *::after {
+  box-sizing: border-box;
+}
+
+/* Page title - with animation */
+.plugifity-dashboard .plugifity-page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  font-size: 28px;
+  font-weight: 400;
+  color: #1c1b1f;
+  animation: pfy-fade-in-up 0.5s ease-out;
+}
+
+.plugifity-dashboard .plugifity-page-title .plugifity-icon {
+  color: var(--pfy-primary);
+}
+
+/* Cards grid: responsive, no overflow */
+.plugifity-dashboard .plugifity-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+  animation: pfy-fade-in-up 0.5s ease-out 0.1s both;
+}
+
+.plugifity-dashboard .plugifity-card {
+  background: #fff;
+  border-radius: var(--pfy-radius);
+  padding: 24px;
+  box-shadow: var(--pfy-shadow);
+  border: none;
+  transition: transform var(--pfy-duration) ease, box-shadow var(--pfy-duration) ease;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plugifity-dashboard .plugifity-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--pfy-shadow-hover);
+}
+
+.plugifity-dashboard .plugifity-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.plugifity-dashboard .plugifity-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--pfy-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.plugifity-dashboard .plugifity-card-icon.logs {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+.plugifity-dashboard .plugifity-card-icon.logs .plugifity-icon {
+  stroke: #1976d2;
+}
+
+.plugifity-dashboard .plugifity-card-icon.api {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+.plugifity-dashboard .plugifity-card-icon.api .plugifity-icon {
+  stroke: #388e3c;
+}
+
+.plugifity-dashboard .plugifity-card-icon.changes {
+  background: #fff3e0;
+  color: #f57c00;
+}
+.plugifity-dashboard .plugifity-card-icon.changes .plugifity-icon {
+  stroke: #f57c00;
+}
+
+.plugifity-dashboard .plugifity-card-icon.errors {
+  background: #ffebee;
+  color: #c62828;
+}
+.plugifity-dashboard .plugifity-card-icon.errors .plugifity-icon {
+  stroke: #c62828;
+}
+
+.plugifity-dashboard .plugifity-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #49454f;
+  letter-spacing: 0.1px;
+}
+
+.plugifity-dashboard .plugifity-card-value {
+  margin: 0 0 16px 0;
+  font-size: 32px;
+  font-weight: 600;
+  color: #1c1b1f;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.plugifity-dashboard .plugifity-card-actions {
+  margin-top: auto;
+}
+
+.plugifity-dashboard .plugifity-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--pfy-radius-btn);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background var(--pfy-duration) ease, transform 0.2s ease;
+  background: var(--pfy-primary-container);
+  color: var(--pfy-primary);
+}
+
+.plugifity-dashboard .plugifity-btn:hover {
+  background: var(--pfy-secondary);
+  color: #1c1b1f;
+  transform: scale(1.02);
+}
+
+.plugifity-dashboard .plugifity-btn .plugifity-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Logs section */
+.plugifity-dashboard .plugifity-logs-section {
+  background: #fff;
+  border-radius: var(--pfy-radius);
+  padding: 24px;
+  box-shadow: var(--pfy-shadow);
+  border: none;
+  animation: pfy-fade-in-up 0.5s ease-out 0.2s both;
+}
+
+.plugifity-dashboard .plugifity-logs-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 500;
+  color: #1c1b1f;
+}
+
+.plugifity-dashboard .plugifity-logs-header .plugifity-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--pfy-primary);
+  stroke: var(--pfy-primary);
+}
+
+/* Log list (not table) */
+.plugifity-dashboard .plugifity-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plugifity-dashboard .plugifity-log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--pfy-radius-sm);
+  margin-bottom: 8px;
+  background: #f5f5f5;
+  transition: background var(--pfy-duration) ease, transform 0.2s ease;
+  animation: pfy-fade-in 0.4s ease-out;
+}
+
+.plugifity-dashboard .plugifity-log-item:hover {
+  background: #eeeeee;
+}
+
+.plugifity-dashboard .plugifity-log-item:last-child {
+  margin-bottom: 0;
+}
+
+.plugifity-dashboard .plugifity-log-item-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pfy-primary-container);
+  color: var(--pfy-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.plugifity-dashboard .plugifity-log-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.plugifity-dashboard .plugifity-log-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #79747e;
+}
+
+.plugifity-dashboard .plugifity-log-item-type {
+  font-weight: 600;
+  color: var(--pfy-primary);
+}
+
+.plugifity-dashboard .plugifity-log-item-message {
+  font-size: 14px;
+  color: #1c1b1f;
+  line-height: 1.5;
+}
+
+/* Empty state */
+.plugifity-dashboard .plugifity-empty {
+  text-align: center;
+  padding: 48px 24px;
+  border-radius: var(--pfy-radius-sm);
+  background: #f5f5f5;
+  animation: pfy-fade-in 0.5s ease-out;
+}
+
+.plugifity-dashboard .plugifity-empty-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--pfy-primary-container);
+  color: var(--pfy-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.plugifity-dashboard .plugifity-empty-icon .plugifity-icon {
+  stroke: var(--pfy-primary);
+}
+
+.plugifity-dashboard .plugifity-empty-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #1c1b1f;
+}
+
+.plugifity-dashboard .plugifity-empty-text {
+  margin: 0;
+  font-size: 14px;
+  color: #79747e;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Loading skeleton */
+.plugifity-dashboard .plugifity-skeleton {
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+.plugifity-dashboard.plugifity-dashboard--loaded .plugifity-skeleton {
+  display: none;
+}
+
+.plugifity-dashboard .plugifity-content {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.plugifity-dashboard.plugifity-dashboard--loaded .plugifity-content {
+  opacity: 1;
+}
+
+.plugifity-dashboard .plugifity-skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.plugifity-dashboard .plugifity-skeleton-card {
+  height: 160px;
+  border-radius: var(--pfy-radius);
+  background: linear-gradient(
+    90deg,
+    #e0e0e0 25%,
+    #eeeeee 50%,
+    #e0e0e0 75%
+  );
+  background-size: 200% 100%;
+  animation: pfy-shimmer 1.5s infinite;
+}
+
+.plugifity-dashboard .plugifity-skeleton-logs {
+  height: 280px;
+  border-radius: var(--pfy-radius);
+  background: linear-gradient(
+    90deg,
+    #e0e0e0 25%,
+    #eeeeee 50%,
+    #e0e0e0 75%
+  );
+  background-size: 200% 100%;
+  animation: pfy-shimmer 1.5s infinite 0.3s;
+}
+
+@keyframes pfy-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pfy-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pfy-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger log items */
+.plugifity-dashboard .plugifity-log-item:nth-child(1) { animation-delay: 0.05s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(2) { animation-delay: 0.1s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(3) { animation-delay: 0.15s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(4) { animation-delay: 0.2s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(5) { animation-delay: 0.25s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(6) { animation-delay: 0.3s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(7) { animation-delay: 0.35s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(8) { animation-delay: 0.4s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(9) { animation-delay: 0.45s; }
+.plugifity-dashboard .plugifity-log-item:nth-child(10) { animation-delay: 0.5s; }
+
+/* ========== Settings page (same design as Dashboard) ========== */
+.plugifity-dashboard.plugifity-settings-page {
+  max-width: 100%;
+  overflow-x: hidden;
+  padding-right: 20px;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-page-title {
+  animation: pfy-fade-in-up 0.5s ease-out;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-settings-card {
+  background: #fff;
+  border-radius: var(--pfy-radius);
+  padding: 24px;
+  box-shadow: var(--pfy-shadow);
+  margin-bottom: 20px;
+  max-width: 560px;
+  animation: pfy-fade-in-up 0.5s ease-out 0.1s both;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-settings-desc {
+  color: #49454f;
+  font-size: 14px;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-field {
+  margin-bottom: 20px;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1c1b1f;
+  margin-bottom: 8px;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-input {
+  width: 100%;
+  max-width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--pfy-radius-sm);
+  border: 1px solid #e0e0e0;
+  font-size: 14px;
+  transition: border-color var(--pfy-duration) ease, box-shadow var(--pfy-duration) ease;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-input:focus {
+  outline: none;
+  border-color: var(--pfy-primary);
+  box-shadow: 0 0 0 3px rgba(75, 182, 211, 0.2);
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--pfy-radius-btn);
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  background: var(--pfy-primary);
+  color: var(--pfy-on-primary);
+  transition: background var(--pfy-duration) ease, transform 0.2s ease;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-btn-submit:hover {
+  background: #3a9fb8;
+  transform: scale(1.02);
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-license-message {
+  max-width: 560px;
+  margin-top: 16px;
+  padding: 16px 20px;
+  border-radius: var(--pfy-radius-sm);
+  font-weight: 500;
+  font-size: 14px;
+  animation: pfy-fade-in-up 0.4s ease-out;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-license-message .plugifity-icon {
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-license-message--valid {
+  background: var(--pfy-primary-container);
+  color: #0d7377;
+  border: 1px solid var(--pfy-primary);
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-license-message--invalid {
+  background: #ffebee;
+  color: #b71c1c;
+  border: 1px solid #c62828;
+}

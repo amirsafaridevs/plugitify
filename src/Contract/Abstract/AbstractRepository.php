@@ -10,11 +10,13 @@ use Plugifity\Contract\Interface\ModelInterface;
 use Plugifity\Contract\Interface\RepositoryInterface;
 use Plugifity\Core\DB;
 use Plugifity\Core\Database\QueryBuilder;
+use Plugifity\Core\Database\RepositoryQueryBuilder;
 
 /**
- * Abstract Repository
+ * Abstract Repository (Laravel-style)
  *
  * Base for data access. Subclasses must define getModelClass(); may override newQuery(), get(), prepareCreate(), prepareUpdate(), delete().
+ * Supports query(), where(), whereIn(), whereNull(), whereNotNull(), get(), first(), find(), findOrFail(), paginate(), count(), exists(), insert(), update(), delete().
  */
 abstract class AbstractRepository implements RepositoryInterface
 {
@@ -37,6 +39,103 @@ abstract class AbstractRepository implements RepositoryInterface
     protected function newQuery(): QueryBuilder
     {
         return DB::table( $this->getTable() );
+    }
+
+    /**
+     * Expose base query for RepositoryQueryBuilder (fresh instance each time).
+     */
+    public function getBaseQuery(): QueryBuilder
+    {
+        return $this->newQuery();
+    }
+
+    /**
+     * Expose model class for hydration in RepositoryQueryBuilder.
+     *
+     * @return class-string<ModelInterface>
+     */
+    public function getModelClassForQuery(): string
+    {
+        return $this->getModelClass();
+    }
+
+    /**
+     * Prepare data for insert (for use by RepositoryQueryBuilder).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function prepareCreateForQuery( array $data ): array
+    {
+        return $this->prepareCreate( $data );
+    }
+
+    /**
+     * Prepare data for update (for use by RepositoryQueryBuilder).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function prepareUpdateForQuery( array $data ): array
+    {
+        return $this->prepareUpdate( $data );
+    }
+
+    /**
+     * New repository query builder (Laravel-style). Uses newQuery() so default scopes apply.
+     *
+     * @return RepositoryQueryBuilder<ModelInterface>
+     */
+    public function query(): RepositoryQueryBuilder
+    {
+        return new RepositoryQueryBuilder( $this );
+    }
+
+    /**
+     * Start a query with where.
+     *
+     * @param string     $column
+     * @param mixed      $operatorOrValue
+     * @param mixed|null $value
+     * @return RepositoryQueryBuilder<ModelInterface>
+     */
+    public function where( string $column, $operatorOrValue, $value = null ): RepositoryQueryBuilder
+    {
+        return $this->query()->where( $column, $operatorOrValue, $value );
+    }
+
+    /**
+     * Start a query with whereIn.
+     *
+     * @param string        $column
+     * @param array<int, mixed> $values
+     * @return RepositoryQueryBuilder<ModelInterface>
+     */
+    public function whereIn( string $column, array $values ): RepositoryQueryBuilder
+    {
+        return $this->query()->whereIn( $column, $values );
+    }
+
+    /**
+     * Start a query with whereNull.
+     *
+     * @param string $column
+     * @return RepositoryQueryBuilder<ModelInterface>
+     */
+    public function whereNull( string $column ): RepositoryQueryBuilder
+    {
+        return $this->query()->whereNull( $column );
+    }
+
+    /**
+     * Start a query with whereNotNull.
+     *
+     * @param string $column
+     * @return RepositoryQueryBuilder<ModelInterface>
+     */
+    public function whereNotNull( string $column ): RepositoryQueryBuilder
+    {
+        return $this->query()->whereNotNull( $column );
     }
 
     /**
@@ -83,12 +182,19 @@ abstract class AbstractRepository implements RepositoryInterface
 
     public function find( int $id ): ?object
     {
-        $row = $this->newQuery()->where( 'id', $id )->first();
-        if ( $row === null ) {
-            return null;
-        }
-        $modelClass = $this->getModelClass();
-        return $modelClass::fromRow( $row );
+        return $this->query()->find( $id );
+    }
+
+    /**
+     * Find by id or throw.
+     *
+     * @param int $id
+     * @return object
+     * @throws \RuntimeException
+     */
+    public function findOrFail( int $id ): object
+    {
+        return $this->query()->findOrFail( $id );
     }
 
     /**
@@ -96,15 +202,9 @@ abstract class AbstractRepository implements RepositoryInterface
      */
     public function get(): array
     {
-        $rows = $this->newQuery()
+        return $this->query()
             ->orderBy( $this->getOrderColumn(), $this->getOrderDirection() )
             ->get();
-        $modelClass = $this->getModelClass();
-        $result = [];
-        foreach ( $rows as $row ) {
-            $result[] = $modelClass::fromRow( $row );
-        }
-        return $result;
     }
 
     /**

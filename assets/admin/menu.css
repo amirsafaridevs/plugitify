@@ -1,9 +1,0 @@
-.wp-submenu a[href$="page=plugitify-assistant"]::before {
-    font-family: "dashicons";
-    content: "\f111";
-    display: inline-block;
-    margin-right: 6px;
-    vertical-align: text-bottom;
-}
-
-

@@ -3,11 +3,14 @@
 namespace Plugifity\Provider;
 
 use Plugifity\Contract\Abstract\AbstractServiceProvider;
-use Plugifity\Repository\ChatRepository;
-use Plugifity\Repository\MessageRepository;
-use Plugifity\Service\Admin\Assistant;
-use Plugifity\Service\Admin\ChatService;
-
+use Plugifity\Service\Admin\Dashboard;
+use Plugifity\Service\Admin\Settings;
+use Plugifity\Service\Admin\Log;
+use Plugifity\Service\Admin\Errors;
+use Plugifity\Service\Admin\Changes;
+use Plugifity\Repository\LogRepository;
+use Plugifity\Repository\ErrorsRepository;
+use Plugifity\Repository\ChangesRepository;
 /**
  * Admin Service Provider
  *
@@ -22,10 +25,11 @@ class AdminServiceProvider extends AbstractServiceProvider
      */
     protected function registerServices(): void
     {
-        $this->container->singleton( ChatRepository::class, ChatRepository::class );
-        $this->container->singleton( MessageRepository::class, MessageRepository::class );
-        $this->container->singleton( ChatService::class, ChatService::class );
-        $this->container->singleton( 'admin.assistant', Assistant::class );
+        $this->container->singleton( 'admin.dashboard', Dashboard::class );
+        $this->container->singleton( 'admin.settings', Settings::class );
+        $this->container->singleton( 'admin.log', Log::class )->bind( LogRepository::class );
+        $this->container->singleton( 'admin.errors', Errors::class )->bind( ErrorsRepository::class );
+        $this->container->singleton( 'admin.changes', Changes::class )->bind( ChangesRepository::class );
     }
 
     /**
@@ -35,12 +39,19 @@ class AdminServiceProvider extends AbstractServiceProvider
      */
     protected function bootServices(): void
     {
-        // Boot Assistant: registers admin menu, assets, and REST routes
-        $assistant = $this->container->get( 'admin.assistant' );
-        $assistant->boot( $this->container );
+        // Boot services (container is auto-injected when each is resolved)
+        $dashboard = $this->container->get( 'admin.dashboard' );
+        $dashboard->boot();
+        $settings = $this->container->get( 'admin.settings' );
+        $settings->boot();
+        $log = $this->container->get( 'admin.log' );
+        $log->boot();
+        $errors = $this->container->get( 'admin.errors' );
+        $errors->boot();
+        $changes = $this->container->get( 'admin.changes' );
+        $changes->boot();
 
-        // Note: Other services (Agent, ChatService, Repositories) do not need boot;
-        // they are resolved on-demand when used.
+      
     }
 }
 
