@@ -38,7 +38,9 @@ class Settings extends AbstractService
         if ($hook_suffix !== 'plugifity_page_plugifity-settings') {
             return;
         }
-        $this->getApplication()->enqueueStyle('plugitify-dashboard', 'admin/dashboard.css', [], 'admin_page:plugifity-settings');
+        $app = $this->getApplication();
+        $app->enqueueStyle('plugitify-dashboard', 'admin/dashboard.css', [], 'admin_page:plugifity-settings');
+        $app->enqueueScript('plugitify-dashboard', 'admin/dashboard.js', [], true, 'admin_page:plugifity-settings');
     }
 
     /**

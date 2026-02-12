@@ -19,7 +19,7 @@ class CreateLogsTable extends AbstractMigration
      */
     public function up(): void
     {
-        DB::schema()->create('plugifity_logs', function ($table) {
+        DB::schema()->create($this->getTableName('logs'), function ($table) {
             $table->id();
             $table->string('type', 100);
             $table->text('message')->nullable();
@@ -34,6 +34,6 @@ class CreateLogsTable extends AbstractMigration
      */
     public function down(): void
     {
-        DB::schema()->dropIfExists('plugifity_logs');
+        DB::schema()->dropIfExists($this->getTableName('logs'));
     }
 }

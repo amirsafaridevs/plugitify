@@ -53,6 +53,17 @@ $license_valid = $license_valid ?? null;
                            placeholder="<?php esc_attr_e('Enter your license key', 'plugitify'); ?>"
                            autocomplete="off">
                 </div>
+                <?php if ($license_message !== null) : ?>
+                    <div class="plugifity-license-message plugifity-license-message--<?php echo $license_valid ? 'valid' : 'invalid'; ?>"
+                         role="alert">
+                        <?php if ($license_valid) : ?>
+                            <span class="plugifity-license-dot plugifity-license-dot--valid" aria-hidden="true"></span>
+                        <?php else : ?>
+                            <span class="plugifity-license-dot plugifity-license-dot--invalid" aria-hidden="true"></span>
+                        <?php endif; ?>
+                        <span><?php echo esc_html($license_message); ?></span>
+                    </div>
+                <?php endif; ?>
                 <p style="margin: 0;">
                     <button type="submit" class="plugifity-btn-submit">
                         <svg class="plugifity-icon" style="width: 18px; height: 18px;" aria-hidden="true"><use href="#pfy-icon-check"/></svg>
@@ -61,17 +72,5 @@ $license_valid = $license_valid ?? null;
                 </p>
             </form>
         </div>
-
-        <?php if ($license_message !== null) : ?>
-            <div class="plugifity-license-message plugifity-license-message--<?php echo $license_valid ? 'valid' : 'invalid'; ?>"
-                 role="alert">
-                <?php if ($license_valid) : ?>
-                    <svg class="plugifity-icon" style="width: 20px; height: 20px;" aria-hidden="true"><use href="#pfy-icon-check"/></svg>
-                <?php else : ?>
-                    <svg class="plugifity-icon" style="width: 20px; height: 20px;" aria-hidden="true"><use href="#pfy-icon-close"/></svg>
-                <?php endif; ?>
-                <span><?php echo esc_html($license_message); ?></span>
-            </div>
-        <?php endif; ?>
     </div>
 </div>

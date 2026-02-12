@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use Plugifity\Contract\Interface\ModelInterface;
+use Plugifity\Core\Application;
 use Plugifity\Core\DB;
 use Plugifity\Core\Database\ModelQueryBuilder;
 use Plugifity\Core\Database\Paginator;
@@ -14,13 +15,14 @@ use Plugifity\Core\Database\Paginator;
 /**
  * Abstract Model (Laravel-style)
  *
- * Base for entity models. Subclasses must define TABLE and implement fromRow() and toArray().
- * Provides: primary key, timestamps, find/save/delete, get/set attributes, fillable/guarded, fresh/refresh.
+ * Base for entity models. Subclasses must define TABLE (table name suffix, e.g. 'logs') and implement fromRow() and toArray().
+ * Full table name = application prefix + '_' + TABLE (e.g. plugifity_logs). WordPress prefix (wp_) is applied by QueryBuilder.
  */
 abstract class AbstractModel implements ModelInterface
 {
     /**
-     * Table name (without prefix). Must be defined in subclass.
+     * Table name suffix (e.g. 'logs', 'changes'). Full name = application prefix + '_' + TABLE.
+     * Must be defined in subclass.
      */
     public const TABLE = '';
 
@@ -70,7 +72,8 @@ abstract class AbstractModel implements ModelInterface
 
     public static function getTable(): string
     {
-        return static::TABLE;
+        $prefix = Application::get()->prefix ?? '';
+        return $prefix !== '' ? $prefix . '_' . static::TABLE : static::TABLE;
     }
 
     /**

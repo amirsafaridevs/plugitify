@@ -8,6 +8,7 @@ use Plugifity\Service\Admin\Settings;
 use Plugifity\Service\Admin\Log;
 use Plugifity\Service\Admin\Errors;
 use Plugifity\Service\Admin\Changes;
+use Plugifity\Helper\RecordBuffer;
 use Plugifity\Repository\LogRepository;
 use Plugifity\Repository\ErrorsRepository;
 use Plugifity\Repository\ChangesRepository;
@@ -30,6 +31,7 @@ class AdminServiceProvider extends AbstractServiceProvider
         $this->container->singleton( 'admin.log', Log::class )->bind( LogRepository::class );
         $this->container->singleton( 'admin.errors', Errors::class )->bind( ErrorsRepository::class );
         $this->container->singleton( 'admin.changes', Changes::class )->bind( ChangesRepository::class );
+        $this->container->instance( RecordBuffer::class, RecordBuffer::get() );
     }
 
     /**

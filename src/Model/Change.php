@@ -9,11 +9,11 @@ if (!defined('ABSPATH')) {
 use Plugifity\Contract\Abstract\AbstractModel;
 
 /**
- * Change model (plugifity_changes).
+ * Change model (prefix_changes, e.g. plugifity_changes).
  */
 class Change extends AbstractModel
 {
-    public const TABLE = 'plugifity_changes';
+    public const TABLE = 'changes';
 
     public ?int $id = null;
     public ?string $type = null;

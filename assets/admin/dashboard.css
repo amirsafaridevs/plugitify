@@ -410,6 +410,14 @@
   padding-right: 20px;
 }
 
+/* Settings has no skeleton; show content immediately and after JS add --loaded */
+.plugifity-dashboard.plugifity-settings-page .plugifity-skeleton {
+  display: none;
+}
+.plugifity-dashboard.plugifity-settings-page .plugifity-content {
+  opacity: 1;
+}
+
 .plugifity-dashboard.plugifity-settings-page .plugifity-page-title {
   animation: pfy-fade-in-up 0.5s ease-out;
 }
@@ -480,31 +488,37 @@
 }
 
 .plugifity-dashboard.plugifity-settings-page .plugifity-license-message {
-  max-width: 560px;
-  margin-top: 16px;
-  padding: 16px 20px;
-  border-radius: var(--pfy-radius-sm);
+  margin-bottom: 16px;
+  padding: 0;
   font-weight: 500;
   font-size: 14px;
   animation: pfy-fade-in-up 0.4s ease-out;
   display: flex;
   align-items: center;
   gap: 8px;
+  background: none;
+  border: none;
 }
 
-.plugifity-dashboard.plugifity-settings-page .plugifity-license-message .plugifity-icon {
+.plugifity-dashboard.plugifity-settings-page .plugifity-license-dot {
   flex-shrink: 0;
-  stroke: currentColor;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-license-dot--valid {
+  background: var(--pfy-primary);
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-license-dot--invalid {
+  background: #c62828;
 }
 
 .plugifity-dashboard.plugifity-settings-page .plugifity-license-message--valid {
-  background: var(--pfy-primary-container);
   color: #0d7377;
-  border: 1px solid var(--pfy-primary);
 }
 
 .plugifity-dashboard.plugifity-settings-page .plugifity-license-message--invalid {
-  background: #ffebee;
   color: #b71c1c;
-  border: 1px solid #c62828;
 }

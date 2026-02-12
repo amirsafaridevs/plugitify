@@ -20,7 +20,7 @@ class CreateChangesTable extends AbstractMigration
      */
     public function up(): void
     {
-        DB::schema()->create('plugifity_changes', function ($table) {
+        DB::schema()->create($this->getTableName('changes'), function ($table) {
             $table->id();
             $table->string('type', 100)->nullable();
             $table->longText('from_value')->nullable();
@@ -36,6 +36,6 @@ class CreateChangesTable extends AbstractMigration
      */
     public function down(): void
     {
-        DB::schema()->dropIfExists('plugifity_changes');
+        DB::schema()->dropIfExists($this->getTableName('changes'));
     }
 }

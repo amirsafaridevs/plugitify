@@ -16,6 +16,8 @@ use Plugifity\Provider\APIServiceProvider;
  */
 class App extends AbstractSingleton
 {
+    /** @var static|null */
+    protected static ?self $instance = null;
 
     /**
      * Service registry instance
@@ -37,11 +39,11 @@ class App extends AbstractSingleton
      */
     public function __construct() {
         $this->application = Application::get();
-        $this->application->setProperty('basePath', plugin_dir_path(__FILE__));
+        $this->application->setProperty('basePath', plugin_dir_path(PLUGITIFY_PLUGIN_FILE));
         $this->application->setProperty('version', '0.0.1');
         $this->application->setProperty('prefix', 'plugifity');
         $this->application->setProperty('textdomain', 'plugifity');
-        $this->application->setProperty('migration_folder', $this->application->path('Migration'));
+        $this->application->setProperty('migration_folder', $this->application->path('src' . DIRECTORY_SEPARATOR . 'Migration'));
         $this->init();
     }
 

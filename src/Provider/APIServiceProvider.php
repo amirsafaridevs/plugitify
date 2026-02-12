@@ -3,6 +3,7 @@
 namespace Plugifity\Provider;
 
 use Plugifity\Contract\Abstract\AbstractServiceProvider;
+use Plugifity\Core\Http\ApiRouter;
 use Plugifity\Service\API\Main;
 use Plugifity\Service\Tools\Query;
 use Plugifity\Service\Tools\File;
@@ -31,8 +32,6 @@ class APIServiceProvider extends AbstractServiceProvider
         $this->container->singleton( 'api.main', Main::class );
         $this->container->singleton( 'api.tools.query', Query::class );
         $this->container->singleton( 'api.tools.file', File::class );
-        $this->container->singleton( 'api.tools.plugin', Plugin::class );
-        $this->container->singleton( 'api.tools.theme', Theme::class );
         $this->container->singleton( 'api.tools.general', General::class );
 
 
@@ -48,20 +47,21 @@ class APIServiceProvider extends AbstractServiceProvider
      */
     protected function bootServices(): void
     {
-        // Boot services (container is auto-injected when each is resolved)
+        ApiRouter::getInstance()->setPrefix( 'api' );
+        ApiRouter::getInstance()->setNamespace( 'plugitify/v1' );
+
+        // Boot services first so they register their routes
         $main = $this->container->get( 'api.main' );
         $main->boot();
         $query = $this->container->get( 'api.tools.query' );
         $query->boot();
         $file = $this->container->get( 'api.tools.file' );
         $file->boot();
-        $plugin = $this->container->get( 'api.tools.plugin' );
-        $plugin->boot();
-        $theme = $this->container->get( 'api.tools.theme' );
-        $theme->boot();
         $general = $this->container->get( 'api.tools.general' );
         $general->boot();
-      
+
+        // Register REST routes with WordPress (after all routes are added)
+        ApiRouter::getInstance()->boot();
     }
 }
 

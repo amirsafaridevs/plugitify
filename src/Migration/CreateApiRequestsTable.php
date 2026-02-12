@@ -10,7 +10,8 @@ use Plugifity\Contract\Abstract\AbstractMigration;
 use Plugifity\Core\DB;
 
 /**
- * Migration: Create table for API request logs (url, title, description, from, details).
+ * Migration: Create table for API request logs (url, title, description, from_source, details).
+ * Column from_source used to avoid MySQL reserved word (from).
  */
 class CreateApiRequestsTable extends AbstractMigration
 {
@@ -19,12 +20,12 @@ class CreateApiRequestsTable extends AbstractMigration
      */
     public function up(): void
     {
-        DB::schema()->create('plugifity_api_requests', function ($table) {
+        DB::schema()->create($this->getTableName('api_requests'), function ($table) {
             $table->id();
             $table->string('url', 2048)->nullable();
             $table->string('title', 500)->nullable();
             $table->text('description')->nullable();
-            $table->string('from', 255)->nullable();
+            $table->string('from_source', 255)->nullable();
             $table->longText('details')->nullable();
             $table->timestamps();
         });
@@ -35,6 +36,6 @@ class CreateApiRequestsTable extends AbstractMigration
      */
     public function down(): void
     {
-        DB::schema()->dropIfExists('plugifity_api_requests');
+        DB::schema()->dropIfExists($this->getTableName('api_requests'));
     }
 }

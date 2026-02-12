@@ -9,11 +9,11 @@ if (!defined('ABSPATH')) {
 use Plugifity\Contract\Abstract\AbstractModel;
 
 /**
- * Log model (plugifity_logs).
+ * Log model (prefix_logs, e.g. plugifity_logs).
  */
 class Log extends AbstractModel
 {
-    public const TABLE = 'plugifity_logs';
+    public const TABLE = 'logs';
 
     public ?int $id = null;
     public ?string $type = null;

@@ -3,12 +3,14 @@
 namespace Plugifity\Contract\Abstract;
 
 use Plugifity\Contract\Interface\MigrationInterface;
+use Plugifity\Core\Application;
 
 /**
  * Abstract Migration
  *
  * Base class for database migrations (Laravel-style).
  * Extend this class and implement up() and down() for each migration.
+ * Use getTableName('suffix') to get the table name with application prefix (e.g. plugifity_logs).
  *
  * @see https://laravel.com/docs/migrations
  */
@@ -21,6 +23,19 @@ abstract class AbstractMigration implements MigrationInterface
      * @var string|null
      */
     protected ?string $connection = null;
+
+    /**
+     * Get full table name with application prefix (e.g. 'logs' → 'plugifity_logs').
+     * WordPress table prefix (wp_) is applied by SchemaBuilder.
+     *
+     * @param string $suffix Table name suffix (e.g. 'logs', 'api_requests').
+     * @return string
+     */
+    protected function getTableName(string $suffix): string
+    {
+        $prefix = Application::get()->prefix ?? '';
+        return $prefix !== '' ? $prefix . '_' . $suffix : $suffix;
+    }
 
     /**
      * Run the migrations.
