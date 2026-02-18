@@ -165,17 +165,26 @@ class DB
 
     /**
      * Update table (direct wpdb->update).
+     * When $format / $where_format are null, defaults are applied so the query is always properly prepared.
      *
-     * @param string $table
-     * @param array<string, mixed> $data
-     * @param array<string, mixed> $where
-     * @return int|false Rows affected or false
+     * @param string $table Table name with or without WordPress prefix (e.g. plugifity_chats or wp_plugifity_chats).
+     * @param array<string, mixed> $data Column => value to set.
+     * @param array<string, mixed> $where Column => value for WHERE.
+     * @param array<int, string>|null $format Format for $data (e.g. ['%s', '%d']). Default: all '%s'.
+     * @param array<int, string>|null $where_format Format for $where (e.g. ['%d']). Default: all '%s'.
+     * @return int|false Rows affected or false on failure
      */
-    public static function update(string $table, array $data, array $where)
+    public static function update(string $table, array $data, array $where, ?array $format = null, ?array $where_format = null)
     {
         $wpdb = static::connection();
         $fullTable = (strpos($table, $wpdb->prefix) === 0) ? $table : $wpdb->prefix . $table;
-        return $wpdb->update($fullTable, $data, $where);
+        if ($format === null) {
+            $format = array_fill(0, count($data), '%s');
+        }
+        if ($where_format === null) {
+            $where_format = array_fill(0, count($where), '%s');
+        }
+        return $wpdb->update($fullTable, $data, $where, $format, $where_format);
     }
 
     /**

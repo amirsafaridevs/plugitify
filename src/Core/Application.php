@@ -72,6 +72,14 @@ class Application implements ApplicationInterface
     protected string $migration_folder = '';
 
     /**
+     * Arbitrary runtime properties set via setProperty().
+     * Avoids PHP 8.2+ dynamic property deprecations.
+     *
+     * @var array<string, mixed>
+     */
+    protected array $properties = [];
+
+    /**
      * Constructor
      */
     public function __construct()
@@ -179,7 +187,12 @@ class Application implements ApplicationInterface
      */
     public function setProperty(string $key, $value): self
     {
-        $this->{$key} = $value;
+        if (property_exists($this, $key)) {
+            $this->{$key} = $value;
+            return $this;
+        }
+
+        $this->properties[$key] = $value;
         return $this;
     }
 
@@ -192,7 +205,11 @@ class Application implements ApplicationInterface
      */
     public function getProperty(string $key, $default = null): mixed
     {
-        return $this->{$key} ?? $default;
+        if (property_exists($this, $key)) {
+            return $this->{$key};
+        }
+
+        return $this->properties[$key] ?? $default;
     }
 
     /**

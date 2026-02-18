@@ -10,6 +10,7 @@ use Plugifity\Contract\Abstract\AbstractService;
 use Plugifity\Core\Http\ApiRouter;
 use Plugifity\Core\Http\Request;
 use Plugifity\Core\Http\Response;
+use Plugifity\Core\ToolsPolicy;
 use Plugifity\Helper\RecordBuffer;
 
 /**
@@ -48,15 +49,15 @@ class General extends AbstractService
      */
     public function boot(): void
     {
-        ApiRouter::post('general/plugins', [$this, 'pluginsList'])->name('api.tools.general.plugins');
-        ApiRouter::post('general/themes', [$this, 'themesList'])->name('api.tools.general.themes');
-        ApiRouter::post('general/debug', [$this, 'debugSettings'])->name('api.tools.general.debug');
-        ApiRouter::post('general/log', [$this, 'readLog'])->name('api.tools.general.log');
-        ApiRouter::post('general/site-urls', [$this, 'siteUrls'])->name('api.tools.general.site-urls');
-        ApiRouter::post('general/create-plugin', [$this, 'createPlugin'])->name('api.tools.general.create-plugin');
-        ApiRouter::post('general/create-theme', [$this, 'createTheme'])->name('api.tools.general.create-theme');
-        ApiRouter::post('general/delete-plugin', [$this, 'deletePlugin'])->name('api.tools.general.delete-plugin');
-        ApiRouter::post('general/delete-theme', [$this, 'deleteTheme'])->name('api.tools.general.delete-theme');
+        ApiRouter::post('general/plugins', [$this, 'pluginsList'])->name('api.tools.general.plugins')->tool('general', 'plugins');
+        ApiRouter::post('general/themes', [$this, 'themesList'])->name('api.tools.general.themes')->tool('general', 'themes');
+        ApiRouter::post('general/debug', [$this, 'debugSettings'])->name('api.tools.general.debug')->tool('general', 'debug');
+        ApiRouter::post('general/log', [$this, 'readLog'])->name('api.tools.general.log')->tool('general', 'log');
+        ApiRouter::post('general/site-urls', [$this, 'siteUrls'])->name('api.tools.general.site-urls')->tool('general', 'site-urls');
+        ApiRouter::post('general/create-plugin', [$this, 'createPlugin'])->name('api.tools.general.create-plugin')->tool('general', 'create-plugin');
+        ApiRouter::post('general/create-theme', [$this, 'createTheme'])->name('api.tools.general.create-theme')->tool('general', 'create-theme');
+        ApiRouter::post('general/delete-plugin', [$this, 'deletePlugin'])->name('api.tools.general.delete-plugin')->tool('general', 'delete-plugin');
+        ApiRouter::post('general/delete-theme', [$this, 'deleteTheme'])->name('api.tools.general.delete-theme')->tool('general', 'delete-theme');
     }
 
     /**
@@ -67,6 +68,9 @@ class General extends AbstractService
      */
     public function pluginsList(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'plugins')) !== null) {
+            return $r;
+        }
         $buffer = $this->recordGeneralApi($request, 'general/plugins', __('List plugins', 'plugitify'));
 
         if (!function_exists('get_plugins')) {
@@ -99,6 +103,9 @@ class General extends AbstractService
      */
     public function themesList(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'themes')) !== null) {
+            return $r;
+        }
         $buffer = $this->recordGeneralApi($request, 'general/themes', __('List themes', 'plugitify'));
 
         $current_stylesheet = get_option('stylesheet', '');
@@ -131,6 +138,9 @@ class General extends AbstractService
      */
     public function debugSettings(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'debug')) !== null) {
+            return $r;
+        }
         $buffer = $this->recordGeneralApi($request, 'general/debug', __('Get or set debug settings', 'plugitify'), [
             'enabled'     => $request->input('enabled'),
             'log_to_file' => $request->input('log_to_file'),
@@ -268,6 +278,9 @@ class General extends AbstractService
      */
     public function readLog(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'log')) !== null) {
+            return $r;
+        }
         $pathInput = $request->str('path', '');
         $buffer    = $this->recordGeneralApi($request, 'general/log', __('Read log file', 'plugitify'), ['path' => $pathInput]);
 
@@ -311,6 +324,9 @@ class General extends AbstractService
      */
     public function siteUrls(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'site-urls')) !== null) {
+            return $r;
+        }
         $buffer  = $this->recordGeneralApi($request, 'general/site-urls', __('Get site URLs', 'plugitify'));
         $siteurl = get_option('siteurl', '');
         $home    = get_option('home', '');
@@ -332,6 +348,9 @@ class General extends AbstractService
      */
     public function createPlugin(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'create-plugin')) !== null) {
+            return $r;
+        }
         $pluginName = $request->str('plugin_name', '');
         $folderName = $request->str('folder_name', '');
         $version    = $request->str('version', '1.0.0');
@@ -406,6 +425,9 @@ class General extends AbstractService
      */
     public function createTheme(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'create-theme')) !== null) {
+            return $r;
+        }
         $themeName  = $request->str('theme_name', '');
         $folderName = $request->str('folder_name', '');
         $version    = $request->str('version', '1.0.0');
@@ -472,6 +494,9 @@ class General extends AbstractService
      */
     public function deletePlugin(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'delete-plugin')) !== null) {
+            return $r;
+        }
         $folderName = $request->str('folder_name', '');
 
         $buffer = $this->recordGeneralApi($request, 'general/delete-plugin', __('Delete plugin', 'plugitify'), ['folder_name' => $folderName]);
@@ -540,6 +565,9 @@ class General extends AbstractService
      */
     public function deleteTheme(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('general', 'delete-theme')) !== null) {
+            return $r;
+        }
         $folderName = $request->str('folder_name', '');
 
         $buffer = $this->recordGeneralApi($request, 'general/delete-theme', __('Delete theme', 'plugitify'), ['folder_name' => $folderName]);

@@ -11,6 +11,7 @@ use Plugifity\Core\DB;
 use Plugifity\Core\Http\ApiRouter;
 use Plugifity\Core\Http\Request;
 use Plugifity\Core\Http\Response;
+use Plugifity\Core\ToolsPolicy;
 use Plugifity\Helper\RecordBuffer;
 
 /**
@@ -19,7 +20,21 @@ use Plugifity\Helper\RecordBuffer;
 class Query extends AbstractService
 {
     private const API_SOURCE = 'api.query';
-
+     /**
+     * Boot the service – register query API routes.
+     *
+     * @return void
+     */
+    public function boot(): void
+    {
+        ApiRouter::post('query/read', [$this, 'read'])->name('api.tools.query.read')->tool('query', 'read');
+        ApiRouter::post('query/execute', [$this, 'execute'])->name('api.tools.query.execute')->tool('query', 'execute');
+        ApiRouter::post('query/create-table', [$this, 'createTable'])->name('api.tools.query.create-table')->tool('query', 'create-table');
+        ApiRouter::post('query/backup', [$this, 'backup'])->name('api.tools.query.backup')->tool('query', 'backup');
+        ApiRouter::post('query/backup-list', [$this, 'listBackups'])->name('api.tools.query.backup-list')->tool('query', 'backup-list');
+        ApiRouter::post('query/restore', [$this, 'restore'])->name('api.tools.query.restore')->tool('query', 'restore');
+        ApiRouter::post('query/tables', [$this, 'listTables'])->name('api.tools.query.tables')->tool('query', 'tables');
+    }
     /**
      * Record query API call and return buffer.
      *
@@ -192,21 +207,7 @@ class Query extends AbstractService
         return $resolved;
     }
 
-    /**
-     * Boot the service – register query API routes.
-     *
-     * @return void
-     */
-    public function boot(): void
-    {
-        ApiRouter::post('query/read', [$this, 'read'])->name('api.tools.query.read');
-        ApiRouter::post('query/execute', [$this, 'execute'])->name('api.tools.query.execute');
-        ApiRouter::post('query/create-table', [$this, 'createTable'])->name('api.tools.query.create-table');
-        ApiRouter::post('query/backup', [$this, 'backup'])->name('api.tools.query.backup');
-        ApiRouter::post('query/backup-list', [$this, 'listBackups'])->name('api.tools.query.backup-list');
-        ApiRouter::post('query/restore', [$this, 'restore'])->name('api.tools.query.restore');
-        ApiRouter::post('query/tables', [$this, 'listTables'])->name('api.tools.query.tables');
-    }
+  
 
     /**
      * Run a read-only SELECT query.
@@ -217,6 +218,9 @@ class Query extends AbstractService
      */
     public function read(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('query', 'read')) !== null) {
+            return $r;
+        }
         $sql      = $request->str('sql', '');
         $bindings = $request->input('bindings', []);
         $bindings = is_array($bindings) ? $bindings : [];
@@ -259,6 +263,9 @@ class Query extends AbstractService
      */
     public function execute(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('query', 'execute')) !== null) {
+            return $r;
+        }
         $sql      = $request->str('sql', '');
         $bindings = $request->input('bindings', []);
         $bindings = is_array($bindings) ? $bindings : [];
@@ -310,6 +317,9 @@ class Query extends AbstractService
      */
     public function createTable(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('query', 'create-table')) !== null) {
+            return $r;
+        }
         $table   = $request->str('table', '');
         $columns = $request->input('columns', []);
         $columns = is_array($columns) ? $columns : [];
@@ -430,6 +440,9 @@ class Query extends AbstractService
      */
     public function backup(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('query', 'backup')) !== null) {
+            return $r;
+        }
         $table  = $request->str('table', '');
         $buffer = $this->recordQueryApi($request, 'query/backup', __('Backup table', 'plugitify'), ['table' => $table]);
 
@@ -496,6 +509,9 @@ class Query extends AbstractService
      */
     public function listBackups(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('query', 'backup-list')) !== null) {
+            return $r;
+        }
         $buffer = $this->recordQueryApi($request, 'query/backup-list', __('List backups', 'plugitify'));
 
         try {
@@ -552,6 +568,9 @@ class Query extends AbstractService
      */
     public function restore(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('query', 'restore')) !== null) {
+            return $r;
+        }
         $backup    = $request->input('backup');
         $table     = $request->str('table', '');
         $createSql = $request->str('create_sql', '');
@@ -664,6 +683,9 @@ class Query extends AbstractService
      */
     public function listTables(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('query', 'tables')) !== null) {
+            return $r;
+        }
         $prefixOnly = $request->boolean('prefix_only', false);
         $buffer     = $this->recordQueryApi($request, 'query/tables', __('List database tables', 'plugitify'), ['prefix_only' => $prefixOnly]);
 

@@ -1,75 +1,99 @@
 <?php
 /**
- * Settings view: license key (wpagentify.com) – same design as Dashboard (rounded, icons, animations).
+ * Settings view: one tab per tool (Query, File, General). In each tab, enable/disable per endpoint.
+ * Ping is not in settings.
  *
- * @var string      $license_key     Current license key value
- * @var string|null $license_message Message after validation (or current status)
- * @var bool|null   $license_valid   true = green, false = red, null = no message
+ * @var string   $current_tab     Active tab key (query, file, general)
+ * @var array   $available_tabs   Tab key => label
+ * @var array   $tool_endpoints   Tool slug => [ endpoint_slug => label ]
+ * @var array   $tools_enabled    Tool slug => [ endpoint_slug => bool ]
+ * @var string|null $message     Success message after save
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-$license_key = $license_key ?? '';
-$license_message = $license_message ?? null;
-$license_valid = $license_valid ?? null;
+$current_tab    = $current_tab ?? 'query';
+$available_tabs = $available_tabs ?? [];
+$tool_endpoints = $tool_endpoints ?? [];
+$tools_enabled  = $tools_enabled ?? [];
+$message        = $message ?? null;
+
+$base_url = admin_url('admin.php?page=plugifity-settings');
+$endpoints_for_tab = $tool_endpoints[$current_tab] ?? [];
 ?>
 <div class="wrap plugifity-dashboard plugifity-settings-page">
-    <!-- Inline SVG sprite (settings + key icons, no CDN) -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
-        <symbol id="pfy-icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
-        <symbol id="pfy-icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
-        <symbol id="pfy-icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></symbol>
-        <symbol id="pfy-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></symbol>
-    </svg>
+    <h1 class="plugifity-page-title">
+        <?php esc_html_e('Settings', 'plugitify'); ?>
+    </h1>
 
-    <div class="plugifity-content">
-        <h1 class="plugifity-page-title">
-            <svg class="plugifity-icon plugifity-icon--lg" aria-hidden="true"><use href="#pfy-icon-settings"/></svg>
-            <?php esc_html_e('Settings', 'plugitify'); ?>
-        </h1>
+    <nav class="nav-tab-wrapper plugifity-settings-tabs" aria-label="<?php esc_attr_e('Settings tabs', 'plugitify'); ?>">
+        <?php foreach ($available_tabs as $tab_key => $label) : ?>
+            <a href="<?php echo esc_url(add_query_arg('tab', $tab_key, $base_url)); ?>"
+               class="nav-tab <?php echo $current_tab === $tab_key ? 'nav-tab-active' : ''; ?>">
+                <?php echo esc_html($label); ?>
+            </a>
+        <?php endforeach; ?>
+    </nav>
 
-        <div class="plugifity-settings-card">
-            <div class="plugifity-card-header" style="margin-bottom: 16px;">
-                <div class="plugifity-card-icon api" style="width: 44px; height: 44px;">
-                    <svg class="plugifity-icon" style="width: 22px; height: 22px;" aria-hidden="true"><use href="#pfy-icon-key"/></svg>
-                </div>
-                <div>
-                    <h2 class="plugifity-card-title" style="margin: 0 0 4px 0;"><?php esc_html_e('License key', 'plugitify'); ?></h2>
-                    <p class="plugifity-settings-desc" style="margin: 0;"><?php esc_html_e('Register the license purchased from wpagentify.com.', 'plugitify'); ?></p>
-                </div>
+    <div class="plugifity-settings-content" style="margin-top: 20px;">
+        <?php if ($message) : ?>
+            <div class="notice notice-success is-dismissible" style="margin: 0 0 16px 0;">
+                <p><?php echo esc_html($message); ?></p>
             </div>
+        <?php endif; ?>
+
+        <div class="plugifity-card" style="max-width: 720px;">
+            <h2 class="plugifity-settings-section-title" style="margin-top: 0; font-size: 1.1em; color: #1c1b1f;">
+                <?php echo esc_html($available_tabs[$current_tab] ?? $current_tab); ?>
+            </h2>
+            <p class="description" style="margin-bottom: 20px;">
+                <?php esc_html_e('Enable or disable each endpoint. When disabled, API requests for that endpoint will be rejected with a message that the WordPress admin has disabled it from Plugifity settings.', 'plugitify'); ?>
+            </p>
 
             <form method="post" action="">
-                <?php wp_nonce_field('plugitify_save_settings', 'plugitify_settings_nonce'); ?>
-                <div class="plugifity-field">
-                    <label for="plugitify-license-key" class="plugifity-field-label"><?php esc_html_e('License key', 'plugitify'); ?></label>
-                    <input type="text"
-                           id="plugitify-license-key"
-                           name="license_key"
-                           value="<?php echo esc_attr($license_key); ?>"
-                           class="plugifity-input"
-                           placeholder="<?php esc_attr_e('Enter your license key', 'plugitify'); ?>"
-                           autocomplete="off">
-                </div>
-                <?php if ($license_message !== null) : ?>
-                    <div class="plugifity-license-message plugifity-license-message--<?php echo $license_valid ? 'valid' : 'invalid'; ?>"
-                         role="alert">
-                        <?php if ($license_valid) : ?>
-                            <span class="plugifity-license-dot plugifity-license-dot--valid" aria-hidden="true"></span>
-                        <?php else : ?>
-                            <span class="plugifity-license-dot plugifity-license-dot--invalid" aria-hidden="true"></span>
-                        <?php endif; ?>
-                        <span><?php echo esc_html($license_message); ?></span>
-                    </div>
+                <?php wp_nonce_field('plugitify_save_settings', 'plugifity_settings_nonce'); ?>
+                <input type="hidden" name="tab" value="<?php echo esc_attr($current_tab); ?>" />
+
+                <table class="form-table" role="presentation">
+                    <tbody>
+                        <?php foreach ($endpoints_for_tab as $endpoint_slug => $endpoint_label) : ?>
+                            <?php
+                            $is_enabled = !empty($tools_enabled[$current_tab][$endpoint_slug]);
+                            ?>
+                            <tr>
+                                <th scope="row" style="padding: 12px 0;">
+                                    <label for="tool-<?php echo esc_attr($current_tab); ?>-<?php echo esc_attr($endpoint_slug); ?>">
+                                        <?php echo esc_html($endpoint_label); ?>
+                                    </label>
+                                </th>
+                                <td style="padding: 12px 0;">
+                                    <label class="plugifity-toggle-wrap">
+                                        <input type="checkbox"
+                                               name="tool_enabled[<?php echo esc_attr($endpoint_slug); ?>]"
+                                               id="tool-<?php echo esc_attr($current_tab); ?>-<?php echo esc_attr($endpoint_slug); ?>"
+                                               value="1"
+                                               <?php checked($is_enabled); ?> />
+                                        <span class="plugifity-toggle-label">
+                                            <?php echo $is_enabled
+                                                ? esc_html__('Enabled', 'plugitify')
+                                                : esc_html__('Disabled', 'plugitify'); ?>
+                                        </span>
+                                    </label>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+                <?php if (!empty($endpoints_for_tab)) : ?>
+                    <p class="submit">
+                        <button type="submit" class="button button-primary">
+                            <?php esc_html_e('Save changes', 'plugitify'); ?>
+                        </button>
+                    </p>
                 <?php endif; ?>
-                <p style="margin: 0;">
-                    <button type="submit" class="plugifity-btn-submit">
-                        <svg class="plugifity-icon" style="width: 18px; height: 18px;" aria-hidden="true"><use href="#pfy-icon-check"/></svg>
-                        <?php esc_html_e('Save & validate', 'plugitify'); ?>
-                    </button>
-                </p>
             </form>
         </div>
     </div>

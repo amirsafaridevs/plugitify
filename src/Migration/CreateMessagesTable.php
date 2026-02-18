@@ -21,10 +21,11 @@ class CreateMessagesTable extends AbstractMigration
     {
         DB::schema()->create($this->getTableName('messages'), function ($table) {
             $table->id();
+            $table->string('role', 191);
             $table->foreignId('chat_id');
             $table->longText('content')->nullable();
             $table->timestamps();
-            $table->index('chat_id');
+            $table->index(['chat_id', 'role']);
         });
     }
 

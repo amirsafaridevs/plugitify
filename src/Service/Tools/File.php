@@ -10,6 +10,7 @@ use Plugifity\Contract\Abstract\AbstractService;
 use Plugifity\Core\Http\ApiRouter;
 use Plugifity\Core\Http\Request;
 use Plugifity\Core\Http\Response;
+use Plugifity\Core\ToolsPolicy;
 use Plugifity\Helper\RecordBuffer;
 
 /**
@@ -48,19 +49,19 @@ class File extends AbstractService
      */
     public function boot(): void
     {
-        ApiRouter::post('file/grep', [$this, 'grep'])->name('api.tools.file.grep');
-        ApiRouter::post('file/list-directory', [$this, 'listDirectory'])->name('api.tools.file.list');
-        ApiRouter::post('file/wp-path', [$this, 'wpPath'])->name('api.tools.file.wp-path');
-        ApiRouter::post('file/read', [$this, 'readFile'])->name('api.tools.file.read');
-        ApiRouter::post('file/create', [$this, 'createFile'])->name('api.tools.file.create');
-        ApiRouter::post('file/create-folder', [$this, 'createFolder'])->name('api.tools.file.create-folder');
-        ApiRouter::post('file/replace-content', [$this, 'replaceContent'])->name('api.tools.file.replace-content');
-        ApiRouter::post('file/replace-line', [$this, 'replaceLine'])->name('api.tools.file.replace-line');
-        ApiRouter::post('file/delete', [$this, 'delete'])->name('api.tools.file.delete');
-        ApiRouter::post('file/search-replace', [$this, 'searchReplace'])->name('api.tools.file.search-replace');
-        ApiRouter::post('file/read-range', [$this, 'readRange'])->name('api.tools.file.read-range');
-        ApiRouter::post('file/create-with-content', [$this, 'createWithContent'])->name('api.tools.file.create-with-content');
-        ApiRouter::post('file/replace-lines', [$this, 'replaceLines'])->name('api.tools.file.replace-lines');
+        ApiRouter::post('file/grep', [$this, 'grep'])->name('api.tools.file.grep')->tool('file', 'grep');
+        ApiRouter::post('file/list-directory', [$this, 'listDirectory'])->name('api.tools.file.list')->tool('file', 'list-directory');
+        ApiRouter::post('file/wp-path', [$this, 'wpPath'])->name('api.tools.file.wp-path')->tool('file', 'wp-path');
+        ApiRouter::post('file/read', [$this, 'readFile'])->name('api.tools.file.read')->tool('file', 'read');
+        ApiRouter::post('file/create', [$this, 'createFile'])->name('api.tools.file.create')->tool('file', 'create');
+        ApiRouter::post('file/create-folder', [$this, 'createFolder'])->name('api.tools.file.create-folder')->tool('file', 'create-folder');
+        ApiRouter::post('file/replace-content', [$this, 'replaceContent'])->name('api.tools.file.replace-content')->tool('file', 'replace-content');
+        ApiRouter::post('file/replace-line', [$this, 'replaceLine'])->name('api.tools.file.replace-line')->tool('file', 'replace-line');
+        ApiRouter::post('file/delete', [$this, 'delete'])->name('api.tools.file.delete')->tool('file', 'delete');
+        ApiRouter::post('file/search-replace', [$this, 'searchReplace'])->name('api.tools.file.search-replace')->tool('file', 'search-replace');
+        ApiRouter::post('file/read-range', [$this, 'readRange'])->name('api.tools.file.read-range')->tool('file', 'read-range');
+        ApiRouter::post('file/create-with-content', [$this, 'createWithContent'])->name('api.tools.file.create-with-content')->tool('file', 'create-with-content');
+        ApiRouter::post('file/replace-lines', [$this, 'replaceLines'])->name('api.tools.file.replace-lines')->tool('file', 'replace-lines');
     }
 
     /**
@@ -179,6 +180,9 @@ class File extends AbstractService
      */
     public function grep(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'grep')) !== null) {
+            return $r;
+        }
         $path    = $request->str('path', '');
         $pattern = $request->str('pattern', '');
         $buffer  = $this->recordFileApi($request, 'file/grep', __('Grep files', 'plugitify'), [
@@ -279,6 +283,9 @@ class File extends AbstractService
      */
     public function listDirectory(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'list-directory')) !== null) {
+            return $r;
+        }
         $path   = $request->str('path', '');
         $buffer = $this->recordFileApi($request, 'file/list-directory', __('List directory', 'plugitify'), ['path' => $path]);
 
@@ -344,6 +351,9 @@ class File extends AbstractService
      */
     public function wpPath(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'wp-path')) !== null) {
+            return $r;
+        }
         $buffer = $this->recordFileApi($request, 'file/wp-path', __('Get WordPress path', 'plugitify'));
         $path   = rtrim(ABSPATH, DIRECTORY_SEPARATOR);
         $buffer->addLog('info', __('WordPress path returned.', 'plugitify'), wp_json_encode(['path' => $path]));
@@ -362,6 +372,9 @@ class File extends AbstractService
      */
     public function readFile(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'read')) !== null) {
+            return $r;
+        }
         $path   = $request->str('path', '');
         $buffer = $this->recordFileApi($request, 'file/read', __('Read file', 'plugitify'), ['path' => $path]);
 
@@ -410,6 +423,9 @@ class File extends AbstractService
      */
     public function createFile(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'create')) !== null) {
+            return $r;
+        }
         $path   = $request->str('path', '');
         $buffer = $this->recordFileApi($request, 'file/create', __('Create file', 'plugitify'), ['path' => $path]);
 
@@ -458,6 +474,9 @@ class File extends AbstractService
      */
     public function createFolder(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'create-folder')) !== null) {
+            return $r;
+        }
         $path   = $request->str('path', '');
         $buffer = $this->recordFileApi($request, 'file/create-folder', __('Create folder', 'plugitify'), ['path' => $path]);
 
@@ -500,6 +519,9 @@ class File extends AbstractService
      */
     public function delete(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'delete')) !== null) {
+            return $r;
+        }
         $path   = $request->str('path', '');
         $buffer = $this->recordFileApi($request, 'file/delete', __('Delete file or folder', 'plugitify'), ['path' => $path]);
 
@@ -595,6 +617,9 @@ class File extends AbstractService
      */
     public function replaceContent(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'replace-content')) !== null) {
+            return $r;
+        }
         $path   = $request->str('path', '');
         $buffer = $this->recordFileApi($request, 'file/replace-content', __('Replace file content', 'plugitify'), ['path' => $path]);
 
@@ -650,6 +675,9 @@ class File extends AbstractService
      */
     public function replaceLine(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'replace-line')) !== null) {
+            return $r;
+        }
         $path       = $request->str('path', '');
         $lineNumber = $request->integer('line_number', 0);
         $newContent = $request->str('content', '');
@@ -715,6 +743,9 @@ class File extends AbstractService
      */
     public function searchReplace(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'search-replace')) !== null) {
+            return $r;
+        }
         $path       = $request->str('path', '');
         $oldString  = $request->str('old_string', '');
         $newString  = $request->str('new_string', '');
@@ -777,6 +808,9 @@ class File extends AbstractService
      */
     public function readRange(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'read-range')) !== null) {
+            return $r;
+        }
         $path   = $request->str('path', '');
         $offset = $request->integer('offset', 1);
         $limit  = $request->integer('limit', 100);
@@ -829,6 +863,9 @@ class File extends AbstractService
      */
     public function createWithContent(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'create-with-content')) !== null) {
+            return $r;
+        }
         $path    = $request->str('path', '');
         $content = $request->input('content');
         if ($content === null) {
@@ -880,6 +917,9 @@ class File extends AbstractService
      */
     public function replaceLines(Request $request): array
     {
+        if (($r = ToolsPolicy::getDisabledResponse('file', 'replace-lines')) !== null) {
+            return $r;
+        }
         $path      = $request->str('path', '');
         $startLine = $request->integer('start_line', 0);
         $endLine   = $request->integer('end_line', 0);

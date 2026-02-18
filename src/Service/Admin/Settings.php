@@ -2,20 +2,66 @@
 
 namespace Plugifity\Service\Admin;
 
+use Plugifity\Contract\Abstract\AbstractService;
+use Plugifity\Core\Settings as CoreSettings;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-use Plugifity\Contract\Abstract\AbstractService;
-use Plugifity\Core\Http\Request;
-use Plugifity\Core\Settings as CoreSettings;
-
 /**
- * Admin Settings service (submenu + license registration).
+ * Admin Settings service – tabbed UI: one tab per tool (Query, File, General), per-endpoint enable/disable.
+ * Ping and other non-tool routes are not shown in settings.
  */
 class Settings extends AbstractService
 {
     public const SUBMENU_SLUG = 'plugifity-settings';
+
+    /** Tab slug => label (one tab per tool category). English source for i18n. */
+    public const TOOL_TABS = [
+        'query'   => 'Query (Database)',
+        'file'    => 'File (Files & folders)',
+        'general' => 'General (Plugins, themes, debug)',
+    ];
+
+    /** Tool slug => [ endpoint_slug => label ]. Ping is not included. English source for i18n. */
+    public const TOOL_ENDPOINTS = [
+        'query' => [
+            'read'         => 'Read query',
+            'execute'      => 'Execute query',
+            'create-table' => 'Create table',
+            'backup'       => 'Backup',
+            'backup-list'  => 'Backup list',
+            'restore'      => 'Restore',
+            'tables'       => 'List tables',
+        ],
+        'file' => [
+            'grep'                => 'Grep (search in files)',
+            'list-directory'     => 'List directory',
+            'wp-path'            => 'WordPress path',
+            'read'               => 'Read file',
+            'create'             => 'Create file',
+            'create-folder'      => 'Create folder',
+            'replace-content'    => 'Replace content',
+            'replace-line'       => 'Replace line',
+            'delete'             => 'Delete file or folder',
+            'search-replace'     => 'Search & replace',
+            'read-range'         => 'Read line range',
+            'create-with-content'=> 'Create file with content',
+            'replace-lines'      => 'Replace lines',
+        ],
+        'general' => [
+            'plugins'       => 'Plugins list',
+            'themes'        => 'Themes list',
+            'debug'         => 'Debug settings',
+            'log'           => 'Read log',
+            'site-urls'     => 'Site URLs',
+            'create-plugin' => 'Create plugin',
+            'create-theme'  => 'Create theme',
+            'delete-plugin' => 'Delete plugin',
+            'delete-theme'  => 'Delete theme',
+        ],
+    ];
 
     /**
      * Boot the service: register Settings submenu under Plugifity.
@@ -29,7 +75,7 @@ class Settings extends AbstractService
     }
 
     /**
-     * Enqueue dashboard CSS on Settings page (same look as Dashboard).
+     * Enqueue assets only on Settings page.
      *
      * @param string $hook_suffix
      * @return void
@@ -41,7 +87,6 @@ class Settings extends AbstractService
         }
         $app = $this->getApplication();
         $app->enqueueStyle('plugitify-dashboard', 'admin/dashboard.css', [], 'admin_page:plugifity-settings');
-        $app->enqueueScript('plugitify-dashboard', 'admin/dashboard.js', [], true, 'admin_page:plugifity-settings');
     }
 
     /**
@@ -62,99 +107,70 @@ class Settings extends AbstractService
     }
 
     /**
-     * Render the settings page (license key form + validation message).
-     * Uses Application::view(). Handles POST save and validation.
+     * Render the settings page: one tab per tool (Query, File, General), per-endpoint checkboxes.
      *
      * @return void
      */
     public function renderSettingsPage(): void
     {
-        $message = null;
-        $is_valid = null;
+        $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'query';
+        if (!isset(self::TOOL_TABS[$current_tab])) {
+            $current_tab = 'query';
+        }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plugitify_settings_nonce'])) {
+        $tools_enabled = CoreSettings::get('tools_enabled', []);
+        $message = null;
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plugifity_settings_nonce'])) {
             if (current_user_can('manage_options') && wp_verify_nonce(
-                sanitize_text_field(wp_unslash($_POST['plugitify_settings_nonce'])),
+                sanitize_text_field(wp_unslash($_POST['plugifity_settings_nonce'])),
                 'plugitify_save_settings'
             )) {
-                $key = isset($_POST['license_key']) ? sanitize_text_field(wp_unslash($_POST['license_key'])) : '';
-                CoreSettings::set('license_key', $key);
-                $result = $this->validateLicense($key);
-                CoreSettings::set('license_status', $result['valid'] ? 'valid' : 'invalid');
-                $is_valid = $result['valid'];
-                $message = $result['message'];
+                $tab = isset($_POST['tab']) ? sanitize_key($_POST['tab']) : '';
+                if (isset(self::TOOL_ENDPOINTS[$tab])) {
+                    $new = [];
+                    foreach (array_keys(self::TOOL_ENDPOINTS[$tab]) as $endpoint) {
+                        $new[$endpoint] = !empty($_POST['tool_enabled'][$endpoint]);
+                    }
+                    $tools_enabled[$tab] = $new;
+                    CoreSettings::set('tools_enabled', $tools_enabled);
+                    $message = __('Settings saved.', 'plugitify');
+                }
             }
         }
 
-        if ($message === null && $is_valid === null) {
-            $stored = CoreSettings::get('license_status', null);
-            $stored_key = CoreSettings::get('license_key', '');
-            if ($stored !== null && $stored_key !== '') {
-                $is_valid = $stored === 'valid';
-                $message = $is_valid
-                    ? __('License is valid and active.', 'plugitify')
-                    : __('License is invalid or inactive.', 'plugitify');
+        // Default: all endpoints enabled when not set
+        foreach (self::TOOL_ENDPOINTS as $tool => $endpoints) {
+            if (!isset($tools_enabled[$tool]) || !is_array($tools_enabled[$tool])) {
+                $tools_enabled[$tool] = [];
+            }
+            foreach (array_keys($endpoints) as $ep) {
+                if (!isset($tools_enabled[$tool][$ep])) {
+                    $tools_enabled[$tool][$ep] = true;
+                }
             }
         }
 
-        $license_key = CoreSettings::get('license_key', '');
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['license_key'])) {
-            $license_key = sanitize_text_field(wp_unslash($_POST['license_key']));
+        // Pass translated labels for i18n (text domain: plugitify).
+        $available_tabs = [];
+        foreach (self::TOOL_TABS as $k => $label) {
+            $available_tabs[$k] = __($label, 'plugitify');
+        }
+        $tool_endpoints_translated = [];
+        foreach (self::TOOL_ENDPOINTS as $tool => $endpoints) {
+            $tool_endpoints_translated[$tool] = [];
+            foreach ($endpoints as $ep => $label) {
+                $tool_endpoints_translated[$tool][$ep] = __($label, 'plugitify');
+            }
         }
 
         $app = $this->getApplication();
         $app->view('Settings/index', [
-            'license_key' => $license_key,
-            'license_message' => $message,
-            'license_valid' => $is_valid,
+            'current_tab'   => $current_tab,
+            'available_tabs'=> $available_tabs,
+            'tool_endpoints'=> $tool_endpoints_translated,
+            'tools_enabled' => $tools_enabled,
+            'message'       => $message,
         ]);
-    }
-
-    /**
-     * Validate license key (purchased from wpagentify.com).
-     * Can be extended to call wpagentify API.
-     *
-     * @param string $key License key.
-     * @param string $backend_main_address Backend base URL from App (e.g. http://127.0.0.1:8000/).
-     * @return array{valid: bool, message: string}
-     */
-    private function validateLicense(string $key): array
-    {
-        $backend_main_address = $this->getApplication()->getProperty('backend_main_address', '');
-        $validation_url = $backend_main_address . 'sites/verify';
-        $key = trim($key);
-
-        if ($key === '') {
-            return [
-                'valid' => false,
-                'message' => __('Please enter a license key.', 'plugitify'),
-            ];
-        }
-
-        $payload = [
-            'site_url' => site_url(),
-            'license'  => $key,
-        ];
-
-        $response = Request::postJson($validation_url, $payload);
-
-        if ($response === null) {
-            return [
-                'valid' => false,
-                'message' => __('Could not reach license server. Please try again later.', 'plugitify'),
-            ];
-        }
-
-        $success = !empty($response['success']);
-        $message = isset($response['message']) && is_string($response['message'])
-            ? $response['message']
-            : ( $success
-                ? __('License is valid and active.', 'plugitify')
-                : __('License is invalid or inactive.', 'plugitify') );
-
-        return [
-            'valid'   => $success,
-            'message' => $message,
-        ];
     }
 }

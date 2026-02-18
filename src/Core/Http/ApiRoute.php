@@ -25,6 +25,12 @@ class ApiRoute
 
 	private ?string $name = null;
 
+	/** Tool slug for settings-based enable/disable (e.g. 'query', 'file', 'general'). */
+	private ?string $toolSlug = null;
+
+	/** Endpoint slug within the tool (e.g. 'read', 'execute'). Used for per-endpoint enable/disable. */
+	private ?string $endpointSlug = null;
+
 	/** @var array<int, string> */
 	private array $parameterNames = [];
 
@@ -46,6 +52,29 @@ class ApiRoute
 	{
 		$this->name = $name;
 		return $this;
+	}
+
+	/**
+	 * Mark route as belonging to a tool and optional endpoint (for settings: enable/disable per endpoint).
+	 *
+	 * @param string      $slug   Tool slug (e.g. 'query', 'file', 'general').
+	 * @param string|null $endpoint Endpoint slug (e.g. 'read', 'execute'). Omit for routes not in settings (e.g. ping).
+	 */
+	public function tool( string $slug, ?string $endpoint = null ): self
+	{
+		$this->toolSlug     = $slug;
+		$this->endpointSlug = $endpoint;
+		return $this;
+	}
+
+	public function getTool(): ?string
+	{
+		return $this->toolSlug;
+	}
+
+	public function getEndpoint(): ?string
+	{
+		return $this->endpointSlug;
 	}
 
 	/**

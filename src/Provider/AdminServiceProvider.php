@@ -4,6 +4,8 @@ namespace Plugifity\Provider;
 
 use Plugifity\Contract\Abstract\AbstractServiceProvider;
 use Plugifity\Service\Admin\Dashboard;
+use Plugifity\Service\Admin\Chat;
+use Plugifity\Service\Admin\Licence;
 use Plugifity\Service\Admin\Settings;
 use Plugifity\Service\Admin\Log;
 use Plugifity\Service\Admin\Errors;
@@ -28,6 +30,7 @@ class AdminServiceProvider extends AbstractServiceProvider
     {
         $this->container->singleton( 'admin.dashboard', Dashboard::class );
         $this->container->singleton( 'admin.chat', Chat::class );
+        $this->container->singleton( 'admin.licence', Licence::class );
         $this->container->singleton( 'admin.settings', Settings::class );
         $this->container->singleton( 'admin.log', Log::class )->bind( LogRepository::class );
         $this->container->singleton( 'admin.errors', Errors::class )->bind( ErrorsRepository::class );
@@ -47,6 +50,8 @@ class AdminServiceProvider extends AbstractServiceProvider
         $dashboard->boot();
         $chat = $this->container->get( 'admin.chat' );
         $chat->boot();
+        $licence = $this->container->get( 'admin.licence' );
+        $licence->boot();
         $settings = $this->container->get( 'admin.settings' );
         $settings->boot();
         $log = $this->container->get( 'admin.log' );

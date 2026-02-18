@@ -156,7 +156,7 @@ class ApiRouter
 				$byPath[ $path ][] = [
 					'methods'             => $wpMethod,
 					'callback'            => $this->wrapCallback( $route ),
-					'permission_callback' => $route->getPermissionCallback() ?? '__return_true',
+					'permission_callback' => $this->buildPermissionCallback( $route ),
 				];
 			}
 		}
@@ -190,6 +190,17 @@ class ApiRouter
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Build permission_callback for a route. Tool enable/disable is checked inside handlers via ToolsPolicy.
+	 *
+	 * @return callable(\WP_REST_Request): bool|\WP_Error
+	 */
+	private function buildPermissionCallback( ApiRoute $route ): callable
+	{
+		$basePermission = $route->getPermissionCallback();
+		return $basePermission ?? '__return_true';
 	}
 
 	/**
@@ -232,7 +243,7 @@ class ApiRouter
 				$request->setAttribute( $key, $value );
 			}
 
-			$result = $action( $request, $params );
+			$result = $action( $request, ...array_values( $params ) );
 
 			return rest_ensure_response( $result );
 		};
