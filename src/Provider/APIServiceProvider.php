@@ -10,7 +10,7 @@ use Plugifity\Service\Tools\File;
 use Plugifity\Service\Tools\Plugin;
 use Plugifity\Service\Tools\Theme;
 use Plugifity\Service\Tools\General;
-
+//use Plugifity\Service\Tools\woocommerce;
 use Plugifity\Repository\LogRepository;
 use Plugifity\Repository\ErrorsRepository;
 use Plugifity\Repository\ChangesRepository;
@@ -33,6 +33,7 @@ class APIServiceProvider extends AbstractServiceProvider
         $this->container->singleton( 'api.tools.query', Query::class );
         $this->container->singleton( 'api.tools.file', File::class );
         $this->container->singleton( 'api.tools.general', General::class );
+        //$this->container->singleton( 'api.tools.woocommerce', woocommerce::class );
 
 
 

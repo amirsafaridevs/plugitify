@@ -93,6 +93,41 @@ class Request
 		return new self( $get, $post, [], [], $server );
 	}
 
+	/**
+	 * Send outgoing POST request with JSON body and return decoded JSON response.
+	 *
+	 * @param string $url Full URL (e.g. http://127.0.0.1:8000/sites/verify).
+	 * @param array<string, mixed> $body Request body (e.g. ['site_url' => '', 'license' => '']).
+	 * @return array{success: bool, message: string, data?: string}|null Decoded response or null on failure.
+	 */
+	public static function postJson( string $url, array $body ): ?array
+	{
+		$response = wp_remote_post(
+			$url,
+			[
+				'timeout' => 15,
+				'headers' => [
+					'Content-Type' => 'application/json',
+					'Accept'       => 'application/json',
+				],
+				'body'    => wp_json_encode( $body ),
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		$raw  = wp_remote_retrieve_body( $response );
+		if ( $raw === '' ) {
+			return null;
+		}
+
+		$decoded = json_decode( $raw, true );
+		return is_array( $decoded ) ? $decoded : null;
+	}
+
 	// -------------------------------------------------------------------------
 	// Input
 	// -------------------------------------------------------------------------

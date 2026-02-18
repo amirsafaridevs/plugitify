@@ -260,6 +260,148 @@ Invoke-RestMethod -Uri "$BASE/file/replace-line" -Method Post -ContentType "appl
 
 ---
 
+## 8b. جستجو و جایگزینی متن (Search and Replace)
+
+**URL:** `POST .../api/file/search-replace`
+
+جایگزینی یک بلوک متن با متن دیگر؛ بدون نیاز به شماره خط یا ارسال کل فایل. با `replace_all: true` همهٔ موارد عوض می‌شوند؛ وگرنه فقط اولین occurrence.
+
+**JSON ورودی – فقط اولین مورد:**
+```json
+{
+  "path": "wp-content/plugins/plugitify/test-folder/empty.txt",
+  "old_string": "Line 2",
+  "new_string": "Line 2 (updated)"
+}
+```
+
+**JSON ورودی – همهٔ موارد:**
+```json
+{
+  "path": "wp-content/plugins/plugitify/config.php",
+  "old_string": "OLD",
+  "new_string": "NEW",
+  "replace_all": true
+}
+```
+
+**درخواست کامل (PowerShell):**
+```powershell
+Invoke-RestMethod -Uri "$BASE/file/search-replace" -Method Post -ContentType "application/json" -Body '{"path":"wp-content/plugins/plugitify/test-folder/empty.txt","old_string":"Line 2","new_string":"Line 2 updated"}'
+```
+
+**پاسخ نمونه (موفق):**
+```json
+{
+  "success": true,
+  "message": "Search and replace completed.",
+  "data": { "replacements_count": 1 }
+}
+```
+
+**پاسخ در صورت پیدا نشدن old_string:** `success: false`, `message`: "old_string not found in file."
+
+---
+
+## 8c. خواندن بازهٔ خطوط (Read Range)
+
+**URL:** `POST .../api/file/read-range`
+
+خواندن فقط یک بازه از خطوط فایل (برای فایل‌های بزرگ). `offset` و `limit` بر اساس شماره خط (۱-based).
+
+**JSON ورودی (نمونه):**
+```json
+{
+  "path": "wp-content/plugins/plugitify/src/Service/Tools/File.php",
+  "offset": 45,
+  "limit": 60
+}
+```
+
+**درخواست کامل (PowerShell):**
+```powershell
+Invoke-RestMethod -Uri "$BASE/file/read-range" -Method Post -ContentType "application/json" -Body '{"path":"wp-content/plugins/plugitify/src/Service/Tools/File.php","offset":45,"limit":60}'
+```
+
+**پاسخ نمونه:**
+```json
+{
+  "success": true,
+  "message": "File range read.",
+  "data": {
+    "path": "C:\\...\\File.php",
+    "content": "متن خطوط ۴۵ تا ۱۰۴ با \\n بین خطوط",
+    "offset": 45,
+    "limit": 60,
+    "total_lines": 480
+  }
+}
+```
+
+---
+
+## 8d. ایجاد فایل با محتوا (Create with Content)
+
+**URL:** `POST .../api/file/create-with-content`
+
+ساخت فایل به‌همراه محتوا در **یک** درخواست. اگر فایل از قبل وجود داشته باشد خطا برمی‌گردد.
+
+**JSON ورودی (نمونه):**
+```json
+{
+  "path": "wp-content/plugins/plugitify/test-folder/with-content.txt",
+  "content": "First line\nSecond line\nThird line"
+}
+```
+
+**درخواست کامل (PowerShell):**
+```powershell
+Invoke-RestMethod -Uri "$BASE/file/create-with-content" -Method Post -ContentType "application/json" -Body '{"path":"wp-content/plugins/plugitify/test-folder/with-content.txt","content":"First line\nSecond line"}'
+```
+
+**پاسخ نمونه:**
+```json
+{
+  "success": true,
+  "message": "File created with content.",
+  "data": { "path": "C:\\...\\with-content.txt" }
+}
+```
+
+---
+
+## 8e. جایگزینی بازهٔ خطوط (Replace Lines)
+
+**URL:** `POST .../api/file/replace-lines`
+
+تعویض خطوط از `start_line` تا `end_line` (۱-based) با یک بلوک متن جدید.
+
+**JSON ورودی (نمونه):**
+```json
+{
+  "path": "wp-content/plugins/plugitify/test-folder/empty.txt",
+  "start_line": 1,
+  "end_line": 2,
+  "content": "New line 1\nNew line 2"
+}
+```
+
+**درخواست کامل (PowerShell):**
+```powershell
+Invoke-RestMethod -Uri "$BASE/file/replace-lines" -Method Post -ContentType "application/json" -Body '{"path":"wp-content/plugins/plugitify/test-folder/empty.txt","start_line":1,"end_line":2,"content":"New line 1\nNew line 2"}'
+```
+
+**پاسخ نمونه:**
+```json
+{
+  "success": true,
+  "message": "Lines replaced.",
+  "data": { "path": "C:\\...\\empty.txt" }
+}
+```
+
+---
+
 ## 9. حذف فایل یا پوشه (Delete)
 
 **URL:** `POST .../api/file/delete`
@@ -877,7 +1019,11 @@ Invoke-RestMethod -Uri "$BASE/query/tables" -Method Post -ContentType "applicati
 7. `POST file/replace-content` با `{"path":"...","content":"Hello\nWorld"}`
 8. `POST file/read` دوباره برای همان فایل
 9. `POST file/replace-line` با `{"path":"...","line_number":1,"content":"First line"}`
-10. `POST file/delete` با `{"path":"wp-content/plugins/plugitify/test-folder/empty.txt"}` (حذف فایل)، بعد با `{"path":"wp-content/plugins/plugitify/test-folder"}` (حذف پوشه)
+10. (اختیاری) `POST file/search-replace` با `{"path":"...","old_string":"Hello","new_string":"Hi","replace_all":false}`
+11. (اختیاری) `POST file/read-range` با `{"path":"...","offset":1,"limit":5}` برای فایل بزرگ
+12. (اختیاری) `POST file/create-with-content` با `{"path":".../new.txt","content":"content"}`
+13. (اختیاری) `POST file/replace-lines` با `{"path":"...","start_line":1,"end_line":2,"content":"new\nlines"}`
+14. `POST file/delete` با `{"path":"wp-content/plugins/plugitify/test-folder/empty.txt"}` (حذف فایل)، بعد با `{"path":"wp-content/plugins/plugitify/test-folder"}` (حذف پوشه)
 
 یا برای پاک کردن پوشهٔ تست فقط: `POST file/delete` با `{"path":"wp-content/plugins/plugitify/test-folder"}` (پوشه و محتویاتش حذف می‌شود).
 

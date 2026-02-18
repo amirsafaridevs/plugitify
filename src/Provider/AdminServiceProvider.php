@@ -27,6 +27,7 @@ class AdminServiceProvider extends AbstractServiceProvider
     protected function registerServices(): void
     {
         $this->container->singleton( 'admin.dashboard', Dashboard::class );
+        $this->container->singleton( 'admin.chat', Chat::class );
         $this->container->singleton( 'admin.settings', Settings::class );
         $this->container->singleton( 'admin.log', Log::class )->bind( LogRepository::class );
         $this->container->singleton( 'admin.errors', Errors::class )->bind( ErrorsRepository::class );
@@ -44,6 +45,8 @@ class AdminServiceProvider extends AbstractServiceProvider
         // Boot services (container is auto-injected when each is resolved)
         $dashboard = $this->container->get( 'admin.dashboard' );
         $dashboard->boot();
+        $chat = $this->container->get( 'admin.chat' );
+        $chat->boot();
         $settings = $this->container->get( 'admin.settings' );
         $settings->boot();
         $log = $this->container->get( 'admin.log' );

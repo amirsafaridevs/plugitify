@@ -184,6 +184,18 @@ class Application implements ApplicationInterface
     }
 
     /**
+     * Get a configuration value
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getProperty(string $key, $default = null): mixed
+    {
+        return $this->{$key} ?? $default;
+    }
+
+    /**
      * Get the container instance
      *
      * @return ContainerInterface

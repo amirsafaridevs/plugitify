@@ -57,6 +57,10 @@ class File extends AbstractService
         ApiRouter::post('file/replace-content', [$this, 'replaceContent'])->name('api.tools.file.replace-content');
         ApiRouter::post('file/replace-line', [$this, 'replaceLine'])->name('api.tools.file.replace-line');
         ApiRouter::post('file/delete', [$this, 'delete'])->name('api.tools.file.delete');
+        ApiRouter::post('file/search-replace', [$this, 'searchReplace'])->name('api.tools.file.search-replace');
+        ApiRouter::post('file/read-range', [$this, 'readRange'])->name('api.tools.file.read-range');
+        ApiRouter::post('file/create-with-content', [$this, 'createWithContent'])->name('api.tools.file.create-with-content');
+        ApiRouter::post('file/replace-lines', [$this, 'replaceLines'])->name('api.tools.file.replace-lines');
     }
 
     /**
@@ -700,5 +704,224 @@ class File extends AbstractService
         $buffer->addLog('info', __('Line replaced.', 'plugitify'), wp_json_encode(['path' => $resolved, 'line_number' => $lineNumber]));
         $buffer->save();
         return Response::success(__('Line replaced.', 'plugitify'));
+    }
+
+    /**
+     * Search and replace text in a file (like Cursor). Replace first occurrence or all.
+     * Input: path, old_string, new_string, replace_all (optional, default false).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function searchReplace(Request $request): array
+    {
+        $path       = $request->str('path', '');
+        $oldString  = $request->str('old_string', '');
+        $newString  = $request->str('new_string', '');
+        $replaceAll = $request->boolean('replace_all', false);
+        $buffer     = $this->recordFileApi($request, 'file/search-replace', __('Search and replace', 'plugitify'), ['path' => $path]);
+
+        if ($path === '' || $oldString === '') {
+            $buffer->addLog('error', __('path and old_string are required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('path and old_string are required.', 'plugitify'));
+        }
+        $result   = $this->resolvePath($path);
+        $resolved = $result['resolved'];
+        if ($resolved === null) {
+            $buffer->addLog('error', __('Path is outside WordPress root or could not be resolved.', 'plugitify'), wp_json_encode($result['debug']));
+            $buffer->save();
+            return Response::error(__('Path is outside WordPress root or could not be resolved.', 'plugitify'), $result['debug']);
+        }
+        if (!is_file($resolved)) {
+            $buffer->addLog('error', __('Path is not a file or does not exist.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Path is not a file or does not exist.', 'plugitify'));
+        }
+        $content = file_get_contents($resolved);
+        if ($content === false) {
+            $buffer->addLog('error', __('Could not read file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not read file.', 'plugitify'));
+        }
+        if (strpos($content, $oldString) === false) {
+            $buffer->addLog('error', __('old_string not found in file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('old_string not found in file.', 'plugitify'), ['path' => $resolved]);
+        }
+        $count = 0;
+        if ($replaceAll) {
+            $newContent = str_replace($oldString, $newString, $content, $count);
+        } else {
+            $pos        = strpos($content, $oldString);
+            $newContent = substr_replace($content, $newString, $pos, strlen($oldString));
+            $count      = 1;
+        }
+        if (file_put_contents($resolved, $newContent) === false) {
+            $buffer->addLog('error', __('Could not write file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not write file.', 'plugitify'));
+        }
+        $buffer->addChange('file_search_replace', $content, $newContent, wp_json_encode(['path' => $resolved, 'replacements_count' => $count]));
+        $buffer->addLog('info', __('Search and replace completed.', 'plugitify'), wp_json_encode(['path' => $resolved, 'replacements_count' => $count]));
+        $buffer->save();
+        return Response::success(__('Search and replace completed.', 'plugitify'), ['replacements_count' => $count]);
+    }
+
+    /**
+     * Read a range of lines from a file (for large files).
+     * Input: path, offset (1-based start line), limit (optional, default 100).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function readRange(Request $request): array
+    {
+        $path   = $request->str('path', '');
+        $offset = $request->integer('offset', 1);
+        $limit  = $request->integer('limit', 100);
+        $buffer = $this->recordFileApi($request, 'file/read-range', __('Read file range', 'plugitify'), ['path' => $path]);
+
+        if ($path === '') {
+            $buffer->addLog('error', __('path is required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('path is required.', 'plugitify'));
+        }
+        if ($offset < 1 || $limit < 1) {
+            $buffer->addLog('error', __('offset and limit must be >= 1.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('offset and limit must be >= 1.', 'plugitify'));
+        }
+        $result   = $this->resolvePath($path);
+        $resolved = $result['resolved'];
+        if ($resolved === null || !is_file($resolved)) {
+            $buffer->addLog('error', __('Path is not a valid file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Path is not a valid file.', 'plugitify'));
+        }
+        $lines = file($resolved, FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+            $buffer->addLog('error', __('Could not read file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not read file.', 'plugitify'));
+        }
+        $totalLines = count($lines);
+        $indexStart = $offset - 1;
+        $slice      = array_slice($lines, $indexStart, $limit);
+        $content    = implode("\n", $slice);
+        $buffer->addLog('info', __('File range read.', 'plugitify'));
+        $buffer->save();
+        return Response::success(__('File range read.', 'plugitify'), [
+            'path'        => $resolved,
+            'content'     => $content,
+            'offset'      => $offset,
+            'limit'       => count($slice),
+            'total_lines' => $totalLines,
+        ]);
+    }
+
+    /**
+     * Create file with content in a single request.
+     * Input: path, content.
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function createWithContent(Request $request): array
+    {
+        $path    = $request->str('path', '');
+        $content = $request->input('content');
+        if ($content === null) {
+            $content = $request->getContent();
+        }
+        $content = is_array($content) ? '' : (string) $content;
+        $buffer  = $this->recordFileApi($request, 'file/create-with-content', __('Create file with content', 'plugitify'), ['path' => $path]);
+
+        if ($path === '') {
+            $buffer->addLog('error', __('path is required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('path is required.', 'plugitify'));
+        }
+        $result   = $this->resolvePath($path);
+        $resolved = $result['resolved'];
+        if ($resolved === null) {
+            $buffer->addLog('error', __('Path is outside WordPress root or could not be resolved.', 'plugitify'), wp_json_encode($result['debug']));
+            $buffer->save();
+            return Response::error(__('Path is outside WordPress root or could not be resolved.', 'plugitify'), $result['debug']);
+        }
+        $dir = dirname($resolved);
+        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
+            $buffer->addLog('error', __('Could not create parent directory.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not create parent directory.', 'plugitify'));
+        }
+        if (file_exists($resolved)) {
+            $buffer->addLog('error', __('File already exists.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('File already exists.', 'plugitify'));
+        }
+        if (file_put_contents($resolved, $content) === false) {
+            $buffer->addLog('error', __('Could not create file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not create file.', 'plugitify'));
+        }
+        $buffer->addChange('file_created', null, $resolved, wp_json_encode(['path' => $resolved]));
+        $buffer->addLog('info', __('File created with content.', 'plugitify'), wp_json_encode(['path' => $resolved]));
+        $buffer->save();
+        return Response::success(__('File created with content.', 'plugitify'), ['path' => $resolved]);
+    }
+
+    /**
+     * Replace a range of lines with new content.
+     * Input: path, start_line (1-based), end_line (1-based), content.
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function replaceLines(Request $request): array
+    {
+        $path      = $request->str('path', '');
+        $startLine = $request->integer('start_line', 0);
+        $endLine   = $request->integer('end_line', 0);
+        $content   = $request->str('content', '');
+        $buffer    = $this->recordFileApi($request, 'file/replace-lines', __('Replace lines', 'plugitify'), ['path' => $path]);
+
+        if ($path === '' || $startLine < 1 || $endLine < 1 || $startLine > $endLine) {
+            $buffer->addLog('error', __('path, start_line and end_line (start_line <= end_line) are required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('path, start_line and end_line (start_line <= end_line) are required.', 'plugitify'));
+        }
+        $result   = $this->resolvePath($path);
+        $resolved = $result['resolved'];
+        if ($resolved === null || !is_file($resolved)) {
+            $buffer->addLog('error', __('Path is not a valid file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Path is not a valid file.', 'plugitify'));
+        }
+        $lines = file($resolved, FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+            $buffer->addLog('error', __('Could not read file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not read file.', 'plugitify'));
+        }
+        $total = count($lines);
+        if ($endLine > $total) {
+            $buffer->addLog('error', __('end_line out of range.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('end_line out of range.', 'plugitify'));
+        }
+        $before   = array_slice($lines, 0, $startLine - 1);
+        $after    = array_slice($lines, $endLine);
+        $newLines = array_merge($before, explode("\n", $content), $after);
+        $newContent = implode("\n", $newLines);
+        if (file_put_contents($resolved, $newContent) === false) {
+            $buffer->addLog('error', __('Could not write file.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not write file.', 'plugitify'));
+        }
+        $buffer->addChange('file_lines_replaced', implode("\n", array_slice($lines, $startLine - 1, $endLine - $startLine + 1)), $content, wp_json_encode(['path' => $resolved, 'start_line' => $startLine, 'end_line' => $endLine]));
+        $buffer->addLog('info', __('Lines replaced.', 'plugitify'));
+        $buffer->save();
+        return Response::success(__('Lines replaced.', 'plugitify'), ['path' => $resolved]);
     }
 }

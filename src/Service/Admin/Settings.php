@@ -7,6 +7,7 @@ if (!defined('ABSPATH')) {
 }
 
 use Plugifity\Contract\Abstract\AbstractService;
+use Plugifity\Core\Http\Request;
 use Plugifity\Core\Settings as CoreSettings;
 
 /**
@@ -114,11 +115,15 @@ class Settings extends AbstractService
      * Can be extended to call wpagentify API.
      *
      * @param string $key License key.
+     * @param string $backend_main_address Backend base URL from App (e.g. http://127.0.0.1:8000/).
      * @return array{valid: bool, message: string}
      */
     private function validateLicense(string $key): array
     {
+        $backend_main_address = $this->getApplication()->getProperty('backend_main_address', '');
+        $validation_url = $backend_main_address . 'sites/verify';
         $key = trim($key);
+
         if ($key === '') {
             return [
                 'valid' => false,
@@ -126,15 +131,30 @@ class Settings extends AbstractService
             ];
         }
 
-        // Placeholder: extend to validate via wpagentify.com API (e.g. wp_remote_post).
-        // Example: $response = wp_remote_post('https://wpagentify.com/api/license/validate', ['body' => ['key' => $key]]);
-        $valid = strlen($key) >= 10;
+        $payload = [
+            'site_url' => site_url(),
+            'license'  => $key,
+        ];
+
+        $response = Request::postJson($validation_url, $payload);
+
+        if ($response === null) {
+            return [
+                'valid' => false,
+                'message' => __('Could not reach license server. Please try again later.', 'plugitify'),
+            ];
+        }
+
+        $success = !empty($response['success']);
+        $message = isset($response['message']) && is_string($response['message'])
+            ? $response['message']
+            : ( $success
+                ? __('License is valid and active.', 'plugitify')
+                : __('License is invalid or inactive.', 'plugitify') );
 
         return [
-            'valid' => $valid,
-            'message' => $valid
-                ? __('License is valid and active.', 'plugitify')
-                : __('License is invalid or inactive.', 'plugitify'),
+            'valid'   => $success,
+            'message' => $message,
         ];
     }
 }

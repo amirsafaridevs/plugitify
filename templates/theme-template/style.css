@@ -1,0 +1,24 @@
+/*
+Theme Name: Sample Theme
+Theme URI:
+Author:
+Author URI:
+Description: Sample Theme – WordPress theme.
+Version: 1.0.0
+License: GNU General Public License v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: sample-theme
+*/
+
+/* Sample Theme – main styles */
+
+body {
+    margin: 0;
+    font-family: sans-serif;
+}
+
+.site-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}

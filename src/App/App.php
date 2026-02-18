@@ -44,6 +44,7 @@ class App extends AbstractSingleton
         $this->application->setProperty('prefix', 'plugifity');
         $this->application->setProperty('textdomain', 'plugifity');
         $this->application->setProperty('migration_folder', $this->application->path('src' . DIRECTORY_SEPARATOR . 'Migration'));
+        $this->application->setProperty('backend_main_address', 'http://127.0.0.1:8000/');
         $this->init();
     }
 

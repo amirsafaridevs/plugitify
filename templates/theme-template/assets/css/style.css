@@ -1,0 +1,15 @@
+/* Sample Theme – assets */
+
+.sample-theme-main {
+    padding: 2rem 0;
+}
+
+.sample-theme-title {
+    margin-top: 0;
+}
+
+.sample-theme-header,
+.sample-theme-footer {
+    padding: 1rem;
+    background: #f5f5f5;
+}

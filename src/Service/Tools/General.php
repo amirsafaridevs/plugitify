@@ -13,7 +13,7 @@ use Plugifity\Core\Http\Response;
 use Plugifity\Helper\RecordBuffer;
 
 /**
- * API Tools – General service (plugins, themes, debug, site URLs, log).
+ * API Tools Ã¢â‚¬â€œ General service (plugins, themes, debug, site URLs, log).
  */
 class General extends AbstractService
 {
@@ -42,7 +42,7 @@ class General extends AbstractService
     }
 
     /**
-     * Boot the service – register general API routes.
+     * Boot the service Ã¢â‚¬â€œ register general API routes.
      *
      * @return void
      */
@@ -53,6 +53,10 @@ class General extends AbstractService
         ApiRouter::post('general/debug', [$this, 'debugSettings'])->name('api.tools.general.debug');
         ApiRouter::post('general/log', [$this, 'readLog'])->name('api.tools.general.log');
         ApiRouter::post('general/site-urls', [$this, 'siteUrls'])->name('api.tools.general.site-urls');
+        ApiRouter::post('general/create-plugin', [$this, 'createPlugin'])->name('api.tools.general.create-plugin');
+        ApiRouter::post('general/create-theme', [$this, 'createTheme'])->name('api.tools.general.create-theme');
+        ApiRouter::post('general/delete-plugin', [$this, 'deletePlugin'])->name('api.tools.general.delete-plugin');
+        ApiRouter::post('general/delete-theme', [$this, 'deleteTheme'])->name('api.tools.general.delete-theme');
     }
 
     /**
@@ -316,5 +320,481 @@ class General extends AbstractService
             'siteurl' => $siteurl,
             'home'    => $home,
         ]);
+    }
+
+    /**
+     * Create a new plugin with folder structure (classes, assets) and main file with headers.
+     * Input: plugin_name (display name), folder_name (slug), version.
+     * Creates under wp-content/plugins/{folder_name}/.
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function createPlugin(Request $request): array
+    {
+        $pluginName = $request->str('plugin_name', '');
+        $folderName = $request->str('folder_name', '');
+        $version    = $request->str('version', '1.0.0');
+
+        $buffer = $this->recordGeneralApi($request, 'general/create-plugin', __('Create plugin', 'plugitify'), [
+            'plugin_name' => $pluginName,
+            'folder_name' => $folderName,
+            'version'     => $version,
+        ]);
+
+        if ($pluginName === '' || $folderName === '') {
+            $buffer->addLog('error', __('plugin_name and folder_name are required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('plugin_name and folder_name are required.', 'plugitify'));
+        }
+
+        $slug = $this->sanitizeSlug($folderName);
+        if ($slug === '') {
+            $buffer->addLog('error', __('Invalid folder_name.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Invalid folder_name.', 'plugitify'));
+        }
+
+        $pluginsDir = WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'plugins';
+        $pluginPath = $pluginsDir . DIRECTORY_SEPARATOR . $slug;
+
+        if (is_dir($pluginPath)) {
+            $buffer->addLog('error', __('Plugin folder already exists.', 'plugitify'), wp_json_encode(['path' => $pluginPath]));
+            $buffer->save();
+            return Response::error(__('Plugin folder already exists.', 'plugitify'), ['path' => $pluginPath]);
+        }
+
+        $templateDir = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR . 'plugin-template';
+        if (!is_dir($templateDir)) {
+            $buffer->addLog('error', __('Plugin template not found.', 'plugitify'), wp_json_encode(['path' => $templateDir]));
+            $buffer->save();
+            return Response::error(__('Plugin template not found.', 'plugitify'), ['path' => $templateDir]);
+        }
+
+        if (!$this->copyTemplateRecursive($templateDir, $pluginPath)) {
+            $buffer->addLog('error', __('Could not copy plugin template.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not copy plugin template.', 'plugitify'));
+        }
+
+        $mainTemplatePath = $pluginPath . DIRECTORY_SEPARATOR . 'plugin-main.php';
+        $mainFile         = $pluginPath . DIRECTORY_SEPARATOR . $slug . '.php';
+        if (is_file($mainTemplatePath)) {
+            rename($mainTemplatePath, $mainFile);
+        }
+
+        $replacements = $this->pluginTemplateReplacements($slug, $pluginName, $version);
+        $this->replaceInPluginFiles($pluginPath, $replacements);
+
+        $buffer->addChange('plugin_created', null, $pluginPath, wp_json_encode(['plugin_name' => $pluginName, 'folder' => $slug]));
+        $buffer->addLog('info', __('Plugin created.', 'plugitify'), wp_json_encode(['path' => $pluginPath]));
+        $buffer->save();
+        return Response::success(__('Plugin created.', 'plugitify'), [
+            'path'         => $pluginPath,
+            'folder_name'  => $slug,
+            'main_file'    => $slug . '.php',
+        ]);
+    }
+
+    /**
+     * Create a new theme with folder structure (style.css, functions.php, index.php, assets).
+     * Input: theme_name (display name), folder_name (slug), version.
+     * Creates under wp-content/themes/{folder_name}/.
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function createTheme(Request $request): array
+    {
+        $themeName  = $request->str('theme_name', '');
+        $folderName = $request->str('folder_name', '');
+        $version    = $request->str('version', '1.0.0');
+
+        $buffer = $this->recordGeneralApi($request, 'general/create-theme', __('Create theme', 'plugitify'), [
+            'theme_name'  => $themeName,
+            'folder_name' => $folderName,
+            'version'     => $version,
+        ]);
+
+        if ($themeName === '' || $folderName === '') {
+            $buffer->addLog('error', __('theme_name and folder_name are required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('theme_name and folder_name are required.', 'plugitify'));
+        }
+
+        $slug = $this->sanitizeSlug($folderName);
+        if ($slug === '') {
+            $buffer->addLog('error', __('Invalid folder_name.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Invalid folder_name.', 'plugitify'));
+        }
+
+        $themesDir = WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'themes';
+        $themePath = $themesDir . DIRECTORY_SEPARATOR . $slug;
+
+        if (is_dir($themePath)) {
+            $buffer->addLog('error', __('Theme folder already exists.', 'plugitify'), wp_json_encode(['path' => $themePath]));
+            $buffer->save();
+            return Response::error(__('Theme folder already exists.', 'plugitify'), ['path' => $themePath]);
+        }
+
+        $templateDir = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR . 'theme-template';
+        if (!is_dir($templateDir)) {
+            $buffer->addLog('error', __('Theme template not found.', 'plugitify'), wp_json_encode(['path' => $templateDir]));
+            $buffer->save();
+            return Response::error(__('Theme template not found.', 'plugitify'), ['path' => $templateDir]);
+        }
+
+        if (!$this->copyTemplateRecursive($templateDir, $themePath)) {
+            $buffer->addLog('error', __('Could not copy theme template.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Could not copy theme template.', 'plugitify'));
+        }
+
+        $replacements = $this->themeTemplateReplacements($slug, $themeName, $version);
+        $this->replaceInPluginFiles($themePath, $replacements);
+
+        $buffer->addChange('theme_created', null, $themePath, wp_json_encode(['theme_name' => $themeName, 'folder' => $slug]));
+        $buffer->addLog('info', __('Theme created.', 'plugitify'), wp_json_encode(['path' => $themePath]));
+        $buffer->save();
+        return Response::success(__('Theme created.', 'plugitify'), [
+            'path'        => $themePath,
+            'folder_name' => $slug,
+        ]);
+    }
+
+    /**
+     * Delete a plugin by folder name (slug). Deactivates first if active.
+     * Input: folder_name (slug under wp-content/plugins).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function deletePlugin(Request $request): array
+    {
+        $folderName = $request->str('folder_name', '');
+
+        $buffer = $this->recordGeneralApi($request, 'general/delete-plugin', __('Delete plugin', 'plugitify'), ['folder_name' => $folderName]);
+
+        if ($folderName === '') {
+            $buffer->addLog('error', __('folder_name is required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('folder_name is required.', 'plugitify'));
+        }
+
+        $slug = $this->sanitizeSlug($folderName);
+        if ($slug === '') {
+            $buffer->addLog('error', __('Invalid folder_name.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Invalid folder_name.', 'plugitify'));
+        }
+
+        $pluginsDir = WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'plugins';
+        $pluginPath = $pluginsDir . DIRECTORY_SEPARATOR . $slug;
+
+        if (!is_dir($pluginPath)) {
+            $buffer->addLog('error', __('Plugin folder not found.', 'plugitify'), wp_json_encode(['path' => $pluginPath]));
+            $buffer->save();
+            return Response::error(__('Plugin folder not found.', 'plugitify'), ['path' => $pluginPath]);
+        }
+
+        $realPath = realpath($pluginPath);
+        $realBase = realpath($pluginsDir);
+        if ($realPath === false || $realBase === false || !str_starts_with(str_replace('\\', '/', $realPath . '/'), str_replace('\\', '/', $realBase . '/'))) {
+            $buffer->addLog('error', __('Plugin path is invalid.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Plugin path is invalid.', 'plugitify'));
+        }
+
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        $all   = get_plugins();
+        $active = (array) get_option('active_plugins', []);
+        foreach ($all as $pluginFile => $info) {
+            if (str_starts_with($pluginFile, $slug . '/') && in_array($pluginFile, $active, true)) {
+                if (function_exists('deactivate_plugins')) {
+                    deactivate_plugins($pluginFile, true);
+                }
+            }
+        }
+
+        if (!$this->deleteDirectoryRecursive($pluginPath)) {
+            $buffer->addLog('error', __('Could not delete plugin directory.', 'plugitify'), wp_json_encode(['path' => $pluginPath]));
+            $buffer->save();
+            return Response::error(__('Could not delete plugin directory.', 'plugitify'), ['path' => $pluginPath]);
+        }
+
+        $buffer->addChange('plugin_deleted', $pluginPath, null, wp_json_encode(['folder' => $slug]));
+        $buffer->addLog('info', __('Plugin deleted.', 'plugitify'), wp_json_encode(['path' => $pluginPath]));
+        $buffer->save();
+        return Response::success(__('Plugin deleted.', 'plugitify'), ['path' => $pluginPath]);
+    }
+
+    /**
+     * Delete a theme by folder name (slug). Fails if it is the active theme.
+     * Input: folder_name (slug under wp-content/themes).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function deleteTheme(Request $request): array
+    {
+        $folderName = $request->str('folder_name', '');
+
+        $buffer = $this->recordGeneralApi($request, 'general/delete-theme', __('Delete theme', 'plugitify'), ['folder_name' => $folderName]);
+
+        if ($folderName === '') {
+            $buffer->addLog('error', __('folder_name is required.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('folder_name is required.', 'plugitify'));
+        }
+
+        $slug = $this->sanitizeSlug($folderName);
+        if ($slug === '') {
+            $buffer->addLog('error', __('Invalid folder_name.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Invalid folder_name.', 'plugitify'));
+        }
+
+        $current = get_stylesheet();
+        if ($slug === $current) {
+            $buffer->addLog('error', __('Cannot delete the active theme. Switch to another theme first.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Cannot delete the active theme. Switch to another theme first.', 'plugitify'));
+        }
+
+        $themesDir = WP_CONTENT_DIR . DIRECTORY_SEPARATOR . 'themes';
+        $themePath = $themesDir . DIRECTORY_SEPARATOR . $slug;
+
+        if (!is_dir($themePath)) {
+            $buffer->addLog('error', __('Theme folder not found.', 'plugitify'), wp_json_encode(['path' => $themePath]));
+            $buffer->save();
+            return Response::error(__('Theme folder not found.', 'plugitify'), ['path' => $themePath]);
+        }
+
+        $realPath = realpath($themePath);
+        $realBase = realpath($themesDir);
+        if ($realPath === false || $realBase === false || !str_starts_with(str_replace('\\', '/', $realPath . '/'), str_replace('\\', '/', $realBase . '/'))) {
+            $buffer->addLog('error', __('Theme path is invalid.', 'plugitify'));
+            $buffer->save();
+            return Response::error(__('Theme path is invalid.', 'plugitify'));
+        }
+
+        if (!$this->deleteDirectoryRecursive($themePath)) {
+            $buffer->addLog('error', __('Could not delete theme directory.', 'plugitify'), wp_json_encode(['path' => $themePath]));
+            $buffer->save();
+            return Response::error(__('Could not delete theme directory.', 'plugitify'), ['path' => $themePath]);
+        }
+
+        $buffer->addChange('theme_deleted', $themePath, null, wp_json_encode(['folder' => $slug]));
+        $buffer->addLog('info', __('Theme deleted.', 'plugitify'), wp_json_encode(['path' => $themePath]));
+        $buffer->save();
+        return Response::success(__('Theme deleted.', 'plugitify'), ['path' => $themePath]);
+    }
+
+    /**
+     * Copy template directory recursively to destination.
+     *
+     * @param string $source
+     * @param string $dest
+     * @return bool
+     */
+    private function copyTemplateRecursive(string $source, string $dest): bool
+    {
+        if (!is_dir($source)) {
+            return false;
+        }
+        if (!is_dir($dest) && !mkdir($dest, 0755, true)) {
+            return false;
+        }
+        $items = array_diff(scandir($source), ['.', '..']);
+        foreach ($items as $item) {
+            $srcPath = $source . DIRECTORY_SEPARATOR . $item;
+            $dstPath = $dest . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($srcPath)) {
+                if (!$this->copyTemplateRecursive($srcPath, $dstPath)) {
+                    return false;
+                }
+            } else {
+                if (!copy($srcPath, $dstPath)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Build replacement map for plugin template (prefix, headers, constants).
+     * Order matters: replace longer strings first to avoid partial replacements.
+     *
+     * @param string $slug
+     * @param string $pluginName
+     * @param string $version
+     * @return array<string, string>
+     */
+    private function pluginTemplateReplacements(string $slug, string $pluginName, string $version): array
+    {
+        $textDomain   = str_replace('-', '_', $slug);
+        $constPrefix  = $this->constantName($slug);
+        $classPrefix  = $this->classPrefix($slug);
+        $funcPrefix   = $this->functionPrefix($slug);
+
+        return [
+            'SAMPLE_PLUGIN'   => $constPrefix,
+            'Sample_Plugin'   => $classPrefix . 'Plugin',
+            'Sample_'        => $classPrefix,
+            'sample_plugin_' => $funcPrefix,
+            'sample_plugin'  => rtrim($funcPrefix, '_'),
+            'Sample Plugin'   => $pluginName,
+            '1.0.0'          => $version,
+            'sample-plugin'  => $textDomain,
+        ];
+    }
+
+    /**
+     * Build replacement map for theme template (prefix, headers, constants).
+     * Order matters: replace longer strings first.
+     *
+     * @param string $slug
+     * @param string $themeName
+     * @param string $version
+     * @return array<string, string>
+     */
+    private function themeTemplateReplacements(string $slug, string $themeName, string $version): array
+    {
+        $textDomain  = str_replace('-', '_', $slug);
+        $constPrefix = $this->constantName($slug);
+        $classPrefix = $this->classPrefix($slug);
+        $funcPrefix  = $this->functionPrefix($slug);
+
+        return [
+            'SAMPLE_THEME'   => $constPrefix,
+            'Sample_Theme'   => $classPrefix . 'Theme',
+            'Sample_'        => $classPrefix,
+            'sample_theme_' => $funcPrefix,
+            'sample_theme'  => rtrim($funcPrefix, '_'),
+            'Sample Theme'   => $themeName,
+            '1.0.0'          => $version,
+            'sample-theme'  => $textDomain,
+        ];
+    }
+
+    /**
+     * Apply replacements to all PHP, CSS, JS files under the plugin path.
+     *
+     * @param string $pluginPath
+     * @param array<string, string> $replacements
+     * @return void
+     */
+    private function replaceInPluginFiles(string $pluginPath, array $replacements): void
+    {
+        $extensions = ['php', 'css', 'js'];
+        try {
+            $it = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($pluginPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+        } catch (\Throwable $e) {
+            return;
+        }
+        foreach ($it as $file) {
+            if (!$file->isFile()) {
+                continue;
+            }
+            $path = $file->getPathname();
+            $ext  = strtolower($file->getExtension());
+            if (!in_array($ext, $extensions, true)) {
+                continue;
+            }
+            $content = file_get_contents($path);
+            if ($content === false) {
+                continue;
+            }
+            foreach ($replacements as $search => $replace) {
+                $content = str_replace($search, $replace, $content);
+            }
+            file_put_contents($path, $content);
+        }
+    }
+
+    /**
+     * Sanitize string to a safe folder/slug (lowercase, alphanumeric, dashes).
+     *
+     * @param string $name
+     * @return string
+     */
+    private function sanitizeSlug(string $name): string
+    {
+        $slug = sanitize_title($name);
+        $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
+        return $slug;
+    }
+
+    /**
+     * Convert slug to UPPER_SNAKE_CASE constant prefix.
+     *
+     * @param string $slug
+     * @return string
+     */
+    private function constantName(string $slug): string
+    {
+        $s = strtoupper(str_replace('-', '_', $slug));
+        return preg_replace('/[^A-Z0-9_]/', '', $s) ?: 'PLUGIN';
+    }
+
+    /**
+     * Convert slug to class prefix (PascalCase with underscores, e.g. My_Plugin_).
+     *
+     * @param string $slug
+     * @return string
+     */
+    private function classPrefix(string $slug): string
+    {
+        $s = ucwords(str_replace('-', ' ', $slug));
+        $s = str_replace(' ', '_', $s);
+        $s = preg_replace('/[^A-Za-z0-9_]/', '', $s);
+        return $s !== '' ? $s . '_' : 'Plugin_';
+    }
+
+    /**
+     * Convert slug to function/variable prefix (lowercase with underscores, e.g. my_plugin_).
+     *
+     * @param string $slug
+     * @return string
+     */
+    private function functionPrefix(string $slug): string
+    {
+        $s = str_replace('-', '_', $slug);
+        $s = preg_replace('/[^a-z0-9_]/', '', strtolower($s));
+        return $s !== '' ? $s . '_' : 'plugin_';
+    }
+
+    /**
+     * Delete directory and all contents recursively. Caller must ensure path is inside allowed base.
+     *
+     * @param string $dir
+     * @return bool
+     */
+    private function deleteDirectoryRecursive(string $dir): bool
+    {
+        if (!is_dir($dir)) {
+            return false;
+        }
+        $items = array_diff(scandir($dir), ['.', '..']);
+        foreach ($items as $item) {
+            $path = $dir . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path)) {
+                if (!$this->deleteDirectoryRecursive($path)) {
+                    return false;
+                }
+            } else {
+                if (!@unlink($path)) {
+                    return false;
+                }
+            }
+        }
+        return @rmdir($dir);
     }
 }
