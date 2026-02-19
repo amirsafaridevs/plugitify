@@ -967,3 +967,229 @@
   padding: 8px 16px;
   font-size: 13px;
 }
+
+/* ========== Settings page (Dashboard UI/UX) ========== */
+/* No skeleton on Settings → content visible immediately (no dashboard.js to add --loaded) */
+.plugifity-dashboard.plugifity-settings-page .plugifity-content {
+  opacity: 1;
+  animation: pfy-fade-in-up 0.5s ease-out;
+}
+
+.plugifity-dashboard.plugifity-settings-page .plugifity-page-title .plugifity-icon {
+  color: var(--pfy-primary);
+}
+
+/* Tabs: pill style, same as dashboard cards */
+.plugifity-settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 4px;
+  background: #f5f5f5;
+  border-radius: var(--pfy-radius);
+  width: fit-content;
+  animation: pfy-fade-in-up 0.5s ease-out 0.08s both;
+}
+
+.plugifity-settings-tab {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: var(--pfy-radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  color: #49454f;
+  transition: background var(--pfy-duration) ease, color var(--pfy-duration) ease;
+}
+
+.plugifity-settings-tab:hover {
+  background: rgba(255, 255, 255, 0.8);
+  color: #1c1b1f;
+}
+
+.plugifity-settings-tab--active {
+  background: #fff;
+  color: var(--pfy-primary);
+  box-shadow: var(--pfy-shadow);
+}
+
+.plugifity-settings-content {
+  margin-top: 0;
+  animation: pfy-fade-in-up 0.5s ease-out 0.12s both;
+}
+
+.plugifity-settings-notice {
+  margin-bottom: 20px;
+  padding: 14px 20px;
+  border-radius: var(--pfy-radius-sm);
+  font-size: 14px;
+  animation: pfy-fade-in 0.4s ease-out;
+}
+
+.plugifity-settings-notice--success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid rgba(46, 125, 50, 0.2);
+}
+
+.plugifity-settings-notice p {
+  margin: 0;
+}
+
+/* Settings card: same as dashboard card */
+.plugifity-settings-card {
+  max-width: 720px;
+}
+
+.plugifity-settings-card .plugifity-card-header {
+  margin-bottom: 8px;
+}
+
+.plugifity-settings-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1c1b1f;
+  letter-spacing: -0.02em;
+}
+
+.plugifity-settings-desc {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #49454f;
+}
+
+/* Endpoint list: row style like dashboard log items */
+.plugifity-settings-list {
+  list-style: none;
+  margin: 0 0 24px 0;
+  padding: 0;
+  border-radius: var(--pfy-radius-sm);
+  overflow: hidden;
+  background: #f8f8f8;
+}
+
+.plugifity-settings-item {
+  margin: 0;
+  border-bottom: 1px solid #eee;
+  transition: background var(--pfy-duration) ease;
+}
+
+.plugifity-settings-item:last-child {
+  border-bottom: none;
+}
+
+.plugifity-settings-item:hover {
+  background: #f0f0f0;
+}
+
+.plugifity-settings-item-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+
+.plugifity-settings-item-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1c1b1f;
+}
+
+/* Toggle switch (checkbox styled as switch) */
+.plugifity-toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.plugifity-toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.plugifity-toggle-track {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border-radius: 9999px;
+  background: #cac4d0;
+  transition: background var(--pfy-duration) ease, box-shadow var(--pfy-duration) ease;
+  flex-shrink: 0;
+}
+
+.plugifity-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform var(--pfy-duration) ease;
+}
+
+.plugifity-toggle-input:checked + .plugifity-toggle-track {
+  background: var(--pfy-primary);
+}
+
+.plugifity-toggle-input:checked + .plugifity-toggle-track::after {
+  transform: translateX(22px);
+}
+
+.plugifity-toggle-input:focus-visible + .plugifity-toggle-track {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--pfy-primary);
+}
+
+.plugifity-toggle-label {
+  font-size: 13px;
+  color: #49454f;
+  min-width: 56px;
+}
+
+/* Submit button: dashboard primary style */
+.plugifity-settings-actions {
+  margin: 0;
+  padding-top: 8px;
+}
+
+.plugifity-settings-actions .plugifity-btn--primary {
+  background: var(--pfy-primary);
+  color: var(--pfy-on-primary);
+}
+
+.plugifity-settings-actions .plugifity-btn--primary:hover {
+  background: #3a9fb8;
+  color: var(--pfy-on-primary);
+  transform: scale(1.02);
+}
+
+.plugifity-settings-card .plugifity-empty {
+  padding: 32px 24px;
+  margin: 0 0 24px 0;
+}
+
+@media (max-width: 600px) {
+  .plugifity-settings-tabs {
+    width: 100%;
+  }
+
+  .plugifity-settings-item-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
