@@ -13,7 +13,8 @@ This document describes all REST API endpoints and tools available for backend/a
 - `http://localhost/wpagentify/wordpress/wp-json/plugitify/v1/api`
 
 **Conventions:**
-- All tool endpoints use **POST** with **Content-Type: application/json** and a JSON body, unless noted.
+- All tool endpoints (Query, File, General) use **POST** with **Content-Type: application/json** and a JSON body, unless noted.
+- **Tools API Token:** Every request to a **tool** endpoint (all of Query, File, and General) must include the Tools API Token in a header. See [§1.3 Tools API Token](#13-tools-api-token-authentication-for-tools).
 - Success responses: `{ "success": true, "message": "...", "data": { ... } }`
 - Error responses: `{ "success": false, "message": "...", "data": { ... } }`
 - File/directory paths can be relative to WordPress root (ABSPATH) or absolute; they must stay inside the WordPress root.
@@ -22,7 +23,7 @@ This document describes all REST API endpoints and tools available for backend/a
 
 ## Table of Contents
 
-1. [Core API](#1-core-api)
+1. [Core API](#1-core-api) (includes [Tools API Token](#13-tools-api-token-authentication-for-tools))
 2. [Query Tools (Database)](#2-query-tools-database)
 3. [File Tools](#3-file-tools)
 4. [General Tools (Plugins, Themes, Debug, URLs, Log)](#4-general-tools)
@@ -98,9 +99,61 @@ GET /wp-json/plugitify/v1/api/ping
 
 ---
 
+### 1.3 Tools API Token (Authentication for Tools)
+
+**Purpose:** All **tool** endpoints (Query, File, General) require a valid Tools API Token. The token is a 64-character value that you configure and view in **Plugifity → Licence** (Tools API Token box). If the token is missing or invalid, the API returns an error and does not run the tool.
+
+| Item    | Value |
+|--------|--------|
+| **Required for** | All endpoints under `/api/query/*`, `/api/file/*`, `/api/general/*` |
+| **Not required for** | `GET /api/ping`, `POST /api/license-check` |
+
+**How to send the token (use one of these):**
+
+1. **Authorization header (Bearer):**
+   ```http
+   Authorization: Bearer YOUR_64_CHARACTER_TOKEN_HERE
+   ```
+
+2. **Custom header:**
+   ```http
+   X-Tools-Api-Token: YOUR_64_CHARACTER_TOKEN_HERE
+   ```
+
+**Example request with token:**
+```http
+POST /wp-json/plugitify/v1/api/query/read
+Content-Type: application/json
+Authorization: Bearer a1b2c3d4e5f6...
+
+{"sql": "SELECT 1", "bindings": []}
+```
+
+**Error when token is missing or invalid:**
+```json
+{
+  "success": false,
+  "message": "Invalid or missing tools API token.",
+  "data": null
+}
+```
+
+**Error when token is not configured on the site:**
+```json
+{
+  "success": false,
+  "message": "Tools API token is not configured. Please set it in Plugifity → Licence.",
+  "data": null
+}
+```
+
+**Use case:** Secure tool access so only clients that know the token (e.g. your backend or AI agent) can run Query, File, and General tools.
+
+---
+
 ## 2. Query Tools (Database)
 
-All query endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/query/{action}` with JSON body.
+All query endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/query/{action}` with JSON body. **Require Tools API Token** (see [§1.3](#13-tools-api-token-authentication-for-tools)).
 
 ### 2.1 Read (SELECT only)
 
@@ -389,7 +442,7 @@ All query endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/query/{act
 
 ## 3. File Tools
 
-All file endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/file/{action}`. Paths are relative to WordPress root (ABSPATH) or absolute; must stay under ABSPATH.
+All file endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/file/{action}`. **Require Tools API Token** (see [§1.3](#13-tools-api-token-authentication-for-tools)). Paths are relative to WordPress root (ABSPATH) or absolute; must stay under ABSPATH.
 
 ### 3.1 WordPress Root Path
 
@@ -790,7 +843,7 @@ All file endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/file/{actio
 
 ## 4. General Tools
 
-All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/{action}`.
+All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/{action}`. **Require Tools API Token** (see [§1.3](#13-tools-api-token-authentication-for-tools)).
 
 ### 4.1 List Plugins
 
@@ -951,7 +1004,142 @@ All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/
 
 ---
 
-### 4.6 Create Plugin
+### 4.6 Read API Requests
+
+**Purpose:** Read the last 200 API request records from the plugin database (table `plugifity_api_requests`). No pagination; returns a fixed slice of the most recent entries.
+
+| Item    | Value |
+|--------|--------|
+| **URL** | `POST {SITE_URL}/wp-json/plugitify/v1/api/general/api-requests` |
+| **Body** | `{}` or empty |
+
+**Example response:**
+```json
+{
+  "success": true,
+  "message": "API requests.",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "url": "general/plugins",
+        "title": "List plugins",
+        "description": null,
+        "from_source": "api.general",
+        "details": null,
+        "created_at": "2026-02-19 10:00:00",
+        "updated_at": "2026-02-19 10:00:00"
+      }
+    ]
+  }
+}
+```
+
+**Use case:** Inspect recent API tool usage and request history stored by the plugin.
+
+---
+
+### 4.7 Read Changes
+
+**Purpose:** Read the last 200 change records from the plugin database (table `plugifity_changes`). No pagination; returns the 200 most recent entries ordered by `created_at` DESC.
+
+| Item    | Value |
+|--------|--------|
+| **URL** | `POST {SITE_URL}/wp-json/plugitify/v1/api/general/changes` |
+| **Body** | `{}` or empty |
+
+**Example response:**
+```json
+{
+  "success": true,
+  "message": "Changes.",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "type": "plugin_created",
+        "from_value": null,
+        "to_value": "C:\\...\\plugins\\my-plugin",
+        "details": "{\"plugin_name\":\"My Plugin\",\"folder\":\"my-plugin\"}",
+        "created_at": "2026-02-19 10:00:00",
+        "updated_at": "2026-02-19 10:00:00"
+      }
+    ]
+  }
+}
+```
+
+**Use case:** Review recent changes (plugin/theme create/delete, debug updates, etc.) recorded by the plugin.
+
+---
+
+### 4.8 Read Errors
+
+**Purpose:** Read the last 200 error log entries from the plugin database (table `plugifity_logs` where `type = 'error'`). No pagination; returns the 200 most recent error records.
+
+| Item    | Value |
+|--------|--------|
+| **URL** | `POST {SITE_URL}/wp-json/plugitify/v1/api/general/errors` |
+| **Body** | `{}` or empty |
+
+**Example response:**
+```json
+{
+  "success": true,
+  "message": "Errors.",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "type": "error",
+        "message": "Plugin folder not found.",
+        "context": "{\"path\":\"C:\\...\\plugins\\missing\"}",
+        "created_at": "2026-02-19 10:00:00",
+        "updated_at": "2026-02-19 10:00:00"
+      }
+    ]
+  }
+}
+```
+
+**Use case:** Inspect recent errors logged by the plugin (e.g. failed file or API operations).
+
+---
+
+### 4.9 Read Logs
+
+**Purpose:** Read the last 200 log entries (all types) from the plugin database (table `plugifity_logs`). No pagination; returns the 200 most recent log records.
+
+| Item    | Value |
+|--------|--------|
+| **URL** | `POST {SITE_URL}/wp-json/plugitify/v1/api/general/logs` |
+| **Body** | `{}` or empty |
+
+**Example response:**
+```json
+{
+  "success": true,
+  "message": "Logs.",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "type": "info",
+        "message": "Plugins list.",
+        "context": "{\"count\":5}",
+        "created_at": "2026-02-19 10:00:00",
+        "updated_at": "2026-02-19 10:00:00"
+      }
+    ]
+  }
+}
+```
+
+**Use case:** Inspect recent activity (info, error, etc.) recorded by the plugin across all tools.
+
+---
+
+### 4.10 Create Plugin
 
 **Purpose:** Create a new WordPress plugin by copying the built-in template to `wp-content/plugins/{folder_name}/`. The template includes a main file (with plugin headers), `classes/`, `assets/css/`, `assets/js/`, and all class/function names use a consistent prefix derived from the folder name.
 
@@ -991,7 +1179,7 @@ All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/
 
 ---
 
-### 4.7 Create Theme
+### 4.11 Create Theme
 
 **Purpose:** Create a new WordPress theme by copying the built-in template to `wp-content/themes/{folder_name}/`. The template includes `style.css` (with theme headers), `functions.php`, `index.php`, `header.php`, `footer.php`, `classes/`, and `assets/`. All class/function names use a consistent prefix derived from the folder name.
 
@@ -1030,7 +1218,7 @@ All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/
 
 ---
 
-### 4.8 Delete Plugin
+### 4.12 Delete Plugin
 
 **Purpose:** Delete a plugin by its folder name (slug). The plugin is deactivated first if it is active, then the entire plugin directory under `wp-content/plugins/{folder_name}/` is removed recursively.
 
@@ -1061,7 +1249,7 @@ All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/
 
 ---
 
-### 4.9 Delete Theme
+### 4.13 Delete Theme
 
 **Purpose:** Delete a theme by its folder name (slug). The entire theme directory under `wp-content/themes/{folder_name}/` is removed recursively. **Fails if the theme is currently active;** switch to another theme first.
 
@@ -1096,6 +1284,8 @@ All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/
 
 ## Quick Reference Table
 
+**Note:** All **Query**, **File**, and **General** endpoints require the [Tools API Token](#13-tools-api-token-authentication-for-tools) in the request header. **Core** endpoints (ping, license-check) do not.
+
 | Category | Endpoint | Method | Purpose |
 |----------|----------|--------|---------|
 | **Core** | `/wp-json/plugitify/v1/api/ping` | GET | Health check |
@@ -1122,20 +1312,24 @@ All general endpoints: **POST** to `{SITE_URL}/wp-json/plugitify/v1/api/general/
 | **File** | `/wp-json/plugitify/v1/api/file/delete` | POST | Delete file or folder |
 | **General** | `/wp-json/plugitify/v1/api/general/plugins` | POST | List plugins |
 | **General** | `/wp-json/plugitify/v1/api/general/themes` | POST | List themes |
+| **General** | `/wp-json/plugitify/v1/api/general/debug` | POST | Get/set debug in wp-config |
+| **General** | `/wp-json/plugitify/v1/api/general/log` | POST | Read log file |
+| **General** | `/wp-json/plugitify/v1/api/general/site-urls` | POST | Get siteurl & home |
+| **General** | `/wp-json/plugitify/v1/api/general/api-requests` | POST | Last 200 API request records (no pagination) |
+| **General** | `/wp-json/plugitify/v1/api/general/changes` | POST | Last 200 change records (no pagination) |
+| **General** | `/wp-json/plugitify/v1/api/general/errors` | POST | Last 200 error log entries (no pagination) |
+| **General** | `/wp-json/plugitify/v1/api/general/logs` | POST | Last 200 log entries (no pagination) |
 | **General** | `/wp-json/plugitify/v1/api/general/create-plugin` | POST | Create plugin from template |
 | **General** | `/wp-json/plugitify/v1/api/general/create-theme` | POST | Create theme from template |
 | **General** | `/wp-json/plugitify/v1/api/general/delete-plugin` | POST | Delete plugin by folder name |
 | **General** | `/wp-json/plugitify/v1/api/general/delete-theme` | POST | Delete theme by folder name |
-| **General** | `/wp-json/plugitify/v1/api/general/debug` | POST | Get/set debug in wp-config |
-| **General** | `/wp-json/plugitify/v1/api/general/log` | POST | Read log file |
-| **General** | `/wp-json/plugitify/v1/api/general/site-urls` | POST | Get siteurl & home |
 
 ---
 
 ## Using This With an AI/Backend Model
 
 1. **Base URL:** Set `{SITE_URL}/wp-json/plugitify/v1/api` as the API base (replace `{SITE_URL}` with the real site URL, e.g. from `general/site-urls`).
-2. **Auth:** If your setup uses nonce or auth, add the required headers/cookies to each request.
+2. **Tools API Token:** For every request to a **tool** endpoint (Query, File, General), send the 64-character Tools API Token in a header: `Authorization: Bearer <token>` or `X-Tools-Api-Token: <token>`. The token is shown in **Plugifity → Licence** (Tools API Token box). Core endpoints (ping, license-check) do not require this token.
 3. **Tools:** Expose each endpoint as a “tool” or “function” with the parameters described above. The model can then choose the right tool (e.g. `file/read` then `file/replace-line`) for the task.
 4. **Order:** For file edits: use `file/read` or `file/read-range` for large files → then `file/search-replace` (preferred for text blocks), `file/replace-lines` (for line ranges), or `file/replace-content` / `file/replace-line` as needed. Use `file/create-with-content` to create a file with content in one call. For DB: `query/tables` or `query/read` → then `query/execute` or `query/backup` / `query/restore` as needed.
 5. **Errors:** On `success: false`, use `message` and `data` to inform the user or retry with corrected parameters.

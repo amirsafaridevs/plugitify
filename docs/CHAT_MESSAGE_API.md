@@ -93,6 +93,9 @@ Both message endpoints (`/messages` and `/messages/stream`) accept the same requ
 | `chat_id`          | string | Yes      | Unique identifier for this chat (e.g. UUID). Used to match stream events to the same conversation. |
 | `task_history`     | array  | No       | Optional list of task context. The server passes it to the model as "Task context". Can be an empty array. |
 | `message_history`  | array  | Yes      | Chat message history (user and assistant). Format of each item is described below. |
+| `tools_api_token`  | string | No       | 64-character Tools API Token from **Plugifity → Licence** (Tools API Token box). When present, the backend sends it in the `Authorization: Bearer` header for every request to plugin **tool** endpoints (Query, File, General). **Security:** The backend uses this value only in-memory during the request and must never store or log it. |
+
+**When to send `tools_api_token`:** If the user can trigger actions that call the WordPress plugin’s tool API (e.g. list plugins, read files, run queries), include the Tools API Token from **Plugifity → Licence** in every `POST /messages` or `POST /messages/stream` body. The backend then adds it to outgoing plugin API requests. The token is **never stored or logged**; it is used only for the duration of that request.
 
 ### 3.1 Format of Each Item in `message_history`
 
@@ -121,7 +124,7 @@ For a new chat, send only the new message(s) in `message_history`. To continue a
 
 - **Path:** `POST {base_url}/messages`
 - **Header:** `Authorization: Bearer <access_token>`
-- **Body:** The same Message Payload above (`site_url`, `chat_id`, `task_history`, `message_history`).
+- **Body:** The same Message Payload as in section 3: `site_url`, `chat_id`, `task_history`, `message_history`. Optionally include **`tools_api_token`** (64-char from Plugifity → Licence) when the agent may call plugin tool endpoints; it is used in-memory only and never stored or logged.
 
 **Response:** A single JSON response with the standard API structure (e.g. `success`, `message`, `data`). The `data` object looks like:
 
@@ -143,7 +146,7 @@ Use this endpoint for live chat, incremental response text, and “thinking” s
 
 - **Path:** `POST {base_url}/messages/stream`
 - **Header:** `Authorization: Bearer <access_token>`
-- **Body:** Same Message Payload as in section 3.
+- **Body:** Same Message Payload as in section 3 (`site_url`, `chat_id`, `task_history`, `message_history`, and optionally **`tools_api_token`** for plugin tool calls; the token is used in-memory only and never stored or logged).
 
 **Response type:** `text/event-stream` (SSE). The response is a sequence of events; each event is a line starting with `data:` containing a JSON object.
 
@@ -202,7 +205,7 @@ data: {"type": "done", "chat_id": "uuid-123"}
 ### 5.4 Client-Side Implementation (WordPress Plugin)
 
 1. **Get token:** Once (or after `expires_in` has passed), call `POST {base_url}/messages/token` with `site_token` and `site_url`, then store `access_token`.
-2. **Send message with stream:** Send `POST {base_url}/messages/stream` with the same chat body and header `Authorization: Bearer <access_token>`.
+2. **Send message with stream:** Send `POST {base_url}/messages/stream` with the same chat body (`site_url`, `chat_id`, `message_history`, and optionally **`tools_api_token`** from Plugifity → Licence when the agent may call plugin tools) and header `Authorization: Bearer <access_token>`.
 3. **Read the stream:** Consume the response as SSE. In JavaScript, `EventSource` is for GET; for POST you typically use `fetch` with `ReadableStream` or an SSE library. Parse each `data:` line and, based on `type`:
    - `start` → Store `chat_id` and prepare the UI.
    - `thinking` → Show “Thinking…” (e.g. spinner or the `content` text).
@@ -220,8 +223,11 @@ data: {"type": "done", "chat_id": "uuid-123"}
 
 1. Configure **base_url** in the plugin.
 2. Call `POST {base_url}/messages/token` with **site_token** and **site_url** to get **access_token**.
-3. For each user message, call `POST {base_url}/messages/stream` with the same token in the header and **site_url**, **chat_id**, **message_history** (and **task_history** if needed).
+3. For each user message, call `POST {base_url}/messages/stream` (or `POST {base_url}/messages`) with:
+   - Header: **`Authorization: Bearer <access_token>`**
+   - Body: **site_url**, **chat_id**, **message_history** (and **task_history** if needed).
+   - If the agent may call plugin tool endpoints (Query, File, General), also send **`tools_api_token`** in the body (64-char from **Plugifity → Licence**). The backend uses it only in-memory and never stores or logs it.
 4. Read the stream line by line and update the UI according to each event **type** (`thinking`, `chunk`, `event`, `error`, `done`).
 5. After **done** or **error**, the stream is over; if the token has expired, repeat step 2.
 
-With this, the WordPress plugin can implement chat against this backend, and any developer or model reading this document knows how to use `/messages/token` and `/messages/stream` (and `/messages` if needed), where to get the token, and how to handle all event types, including `thinking`.
+With this, the WordPress plugin can implement chat against this backend, and any developer or model reading this document knows how to use `/messages/token` and `/messages/stream` (and `/messages` if needed), where to get the token, when to send **tools_api_token** for plugin tools, and how to handle all event types, including `thinking`.

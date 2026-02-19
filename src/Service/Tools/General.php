@@ -12,6 +12,10 @@ use Plugifity\Core\Http\Request;
 use Plugifity\Core\Http\Response;
 use Plugifity\Core\ToolsPolicy;
 use Plugifity\Helper\RecordBuffer;
+use Plugifity\Repository\ApiRequestRepository;
+use Plugifity\Repository\ChangeRepository;
+use Plugifity\Repository\ErrorsRepository;
+use Plugifity\Repository\LogRepository;
 
 /**
  * API Tools Ã¢â‚¬â€œ General service (plugins, themes, debug, site URLs, log).
@@ -58,6 +62,10 @@ class General extends AbstractService
         ApiRouter::post('general/create-theme', [$this, 'createTheme'])->name('api.tools.general.create-theme')->tool('general', 'create-theme');
         ApiRouter::post('general/delete-plugin', [$this, 'deletePlugin'])->name('api.tools.general.delete-plugin')->tool('general', 'delete-plugin');
         ApiRouter::post('general/delete-theme', [$this, 'deleteTheme'])->name('api.tools.general.delete-theme')->tool('general', 'delete-theme');
+        ApiRouter::post('general/api-requests', [$this, 'readApiRequests'])->name('api.tools.general.api-requests')->tool('general', 'api-requests');
+        ApiRouter::post('general/changes', [$this, 'readChanges'])->name('api.tools.general.changes')->tool('general', 'changes');
+        ApiRouter::post('general/errors', [$this, 'readErrors'])->name('api.tools.general.errors')->tool('general', 'errors');
+        ApiRouter::post('general/logs', [$this, 'readLogs'])->name('api.tools.general.logs')->tool('general', 'logs');
     }
 
     /**
@@ -336,6 +344,74 @@ class General extends AbstractService
             'siteurl' => $siteurl,
             'home'    => $home,
         ]);
+    }
+
+    /**
+     * Read last 200 API requests from database (no pagination).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function readApiRequests(Request $request): array
+    {
+        $buffer = $this->recordGeneralApi($request, 'general/api-requests', __('Read API requests', 'plugitify'));
+        $repo   = new ApiRequestRepository();
+        $items  = $repo->query()->orderBy('created_at', 'DESC')->limit(200)->get();
+        $data   = array_map(static fn($model) => $model->toArray(), $items);
+        $buffer->addLog('info', __('API requests read.', 'plugitify'), wp_json_encode(['count' => count($data)]));
+        $buffer->save();
+        return Response::success(__('API requests.', 'plugitify'), ['items' => $data]);
+    }
+
+    /**
+     * Read last 200 changes from database (no pagination).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function readChanges(Request $request): array
+    {
+        $buffer = $this->recordGeneralApi($request, 'general/changes', __('Read changes', 'plugitify'));
+        $repo   = new ChangeRepository();
+        $items  = $repo->query()->orderBy('created_at', 'DESC')->limit(200)->get();
+        $data   = array_map(static fn($model) => $model->toArray(), $items);
+        $buffer->addLog('info', __('Changes read.', 'plugitify'), wp_json_encode(['count' => count($data)]));
+        $buffer->save();
+        return Response::success(__('Changes.', 'plugitify'), ['items' => $data]);
+    }
+
+    /**
+     * Read last 200 error logs from database (no pagination).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function readErrors(Request $request): array
+    {
+        $buffer = $this->recordGeneralApi($request, 'general/errors', __('Read errors', 'plugitify'));
+        $repo   = new ErrorsRepository();
+        $items  = $repo->query()->orderBy('created_at', 'DESC')->limit(200)->get();
+        $data   = array_map(static fn($model) => $model->toArray(), $items);
+        $buffer->addLog('info', __('Errors read.', 'plugitify'), wp_json_encode(['count' => count($data)]));
+        $buffer->save();
+        return Response::success(__('Errors.', 'plugitify'), ['items' => $data]);
+    }
+
+    /**
+     * Read last 200 logs from database (no pagination).
+     *
+     * @param Request $request
+     * @return array{success: bool, message: string, data: mixed}
+     */
+    public function readLogs(Request $request): array
+    {
+        $buffer = $this->recordGeneralApi($request, 'general/logs', __('Read logs', 'plugitify'));
+        $repo   = new LogRepository();
+        $items  = $repo->query()->orderBy('created_at', 'DESC')->limit(200)->get();
+        $data   = array_map(static fn($model) => $model->toArray(), $items);
+        $buffer->addLog('info', __('Logs read.', 'plugitify'), wp_json_encode(['count' => count($data)]));
+        $buffer->save();
+        return Response::success(__('Logs.', 'plugitify'), ['items' => $data]);
     }
 
     /**

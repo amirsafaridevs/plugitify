@@ -14,11 +14,10 @@ if (!defined('ABSPATH')) {
 $stats = $stats ?? [];
 $logs = $logs ?? [];
 $has_logs = count($logs) > 0;
-
-$view_more_logs = '#';
-$view_more_api = '#';
-$view_more_changes = '#';
-$view_more_errors = '#';
+$view_more_logs = $view_more_logs ?? '#';
+$view_more_api = $view_more_api ?? '#';
+$view_more_changes = $view_more_changes ?? '#';
+$view_more_errors = $view_more_errors ?? '#';
 ?>
 <div class="wrap plugifity-dashboard">
     <!-- Inline SVG sprite (local, no CDN) -->
@@ -32,6 +31,8 @@ $view_more_errors = '#';
         <symbol id="pfy-icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
         <symbol id="pfy-icon-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
         <symbol id="pfy-icon-article" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+        <symbol id="pfy-icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+        <symbol id="pfy-icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
     </svg>
 
     <div class="plugifity-skeleton">

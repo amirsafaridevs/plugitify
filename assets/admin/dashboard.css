@@ -403,6 +403,162 @@
 .plugifity-dashboard .plugifity-log-item:nth-child(9) { animation-delay: 0.45s; }
 .plugifity-dashboard .plugifity-log-item:nth-child(10) { animation-delay: 0.5s; }
 
+/* ========== Tools API Token box (dashboard) ========== */
+.plugifity-tools-key-section {
+  margin-bottom: 28px;
+  animation: pfy-fade-in-up 0.5s ease-out 0.15s both;
+}
+
+.plugifity-tools-key-card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: box-shadow var(--pfy-duration) ease, transform var(--pfy-duration) ease;
+  max-width: 720px;
+}
+
+.plugifity-tools-key-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.plugifity-tools-key-inner {
+  padding: 28px 24px;
+}
+
+.plugifity-tools-key-header {
+  margin-bottom: 20px;
+}
+
+.plugifity-tools-key-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 0 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, var(--pfy-primary-container) 0%, rgba(75, 182, 211, 0.18) 100%);
+  color: var(--pfy-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plugifity-tools-key-icon .plugifity-icon {
+  width: 26px;
+  height: 26px;
+  stroke: var(--pfy-primary);
+}
+
+.plugifity-tools-key-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1c1b1f;
+  letter-spacing: -0.02em;
+}
+
+.plugifity-tools-key-desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #49454f;
+}
+
+.plugifity-tools-key-field {
+  margin-bottom: 16px;
+}
+
+.plugifity-tools-key-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1c1b1f;
+  margin-bottom: 8px;
+}
+
+.plugifity-tools-key-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plugifity-tools-key-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 2px solid #e8e8e8;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  background: #fafafa;
+  color: #1c1b1f;
+}
+
+.plugifity-tools-key-input:focus {
+  outline: none;
+  border-color: var(--pfy-primary);
+  box-shadow: 0 0 0 4px rgba(75, 182, 211, 0.16);
+}
+
+.plugifity-tools-key-copy {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 2px solid #e8e8e8;
+  background: #fff;
+  color: #49454f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--pfy-duration) ease, background var(--pfy-duration) ease, color var(--pfy-duration) ease;
+}
+
+.plugifity-tools-key-copy:hover {
+  border-color: var(--pfy-primary);
+  background: var(--pfy-primary-container);
+  color: var(--pfy-primary);
+}
+
+.plugifity-tools-key-copy .plugifity-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.plugifity-tools-key-actions {
+  padding-top: 8px;
+}
+
+.plugifity-tools-key-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--pfy-radius-btn);
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  background: var(--pfy-primary);
+  color: var(--pfy-on-primary);
+  transition: background var(--pfy-duration) ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.plugifity-tools-key-btn:hover {
+  background: #3a9fb8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(75, 182, 211, 0.35);
+}
+
+.plugifity-tools-key-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* ========== Licence page (two cards side by side) ========== */
 .plugifity-dashboard.plugifity-licence-page {
   max-width: 100%;
@@ -434,6 +590,17 @@
     grid-template-columns: 1fr;
     max-width: 520px;
   }
+}
+
+/* Tools API Token as separate card on licence page (full-width row, same style as licence card) */
+.plugifity-licence-page .plugifity-tools-key-section {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.plugifity-licence-page .plugifity-licence-page-tools-card {
+  max-width: 100%;
+  animation: pfy-licence-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
 }
 
 /* Shared card style – both boxes */
@@ -708,4 +875,95 @@
   height: 16px;
   opacity: 0.95;
   stroke: currentColor;
+}
+
+/* ========== List page (Logs / API Requests / Changes / Errors) ========== */
+.plugifity-list-page .plugifity-list-toolbar {
+  margin-bottom: 24px;
+}
+
+.plugifity-list-page .plugifity-search-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.plugifity-list-page .plugifity-search-input {
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: var(--pfy-radius-sm);
+  font-size: 14px;
+  min-width: 220px;
+  transition: border-color var(--pfy-duration) ease;
+}
+
+.plugifity-list-page .plugifity-search-input:focus {
+  border-color: var(--pfy-primary);
+  outline: none;
+}
+
+.plugifity-list-page .plugifity-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plugifity-list-page .plugifity-pagination {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.plugifity-list-page .plugifity-pagination-info {
+  font-size: 13px;
+  color: #79747e;
+}
+
+.plugifity-list-page .plugifity-pagination-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plugifity-list-page .plugifity-pagination-links li {
+  margin: 0;
+}
+
+.plugifity-list-page .plugifity-pagination-current {
+  display: inline-block;
+  padding: 8px 14px;
+  background: var(--pfy-primary);
+  color: var(--pfy-on-primary);
+  border-radius: var(--pfy-radius-sm);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.plugifity-list-page .plugifity-pagination-link {
+  display: inline-block;
+  padding: 8px 14px;
+  color: var(--pfy-primary);
+  text-decoration: none;
+  border-radius: var(--pfy-radius-sm);
+  font-size: 14px;
+  transition: background var(--pfy-duration) ease;
+}
+
+.plugifity-list-page .plugifity-pagination-link:hover {
+  background: var(--pfy-primary-container);
+}
+
+.plugifity-list-page .plugifity-pagination-prev,
+.plugifity-list-page .plugifity-pagination-next {
+  padding: 8px 16px;
+  font-size: 13px;
 }

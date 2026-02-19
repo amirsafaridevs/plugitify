@@ -538,11 +538,6 @@
 
       if (hasThoughts) {
         var thinkingPreview = thinking || reasoning || '';
-        if (thinkingPreview) {
-          var lines = thinkingPreview.split(/\n/).slice(0, 4).join('\n');
-          if (thinkingPreview.split(/\n/).length > 4) lines += '…';
-          thinkingPreview = lines;
-        }
         html +=
           '<div class="pfy-thinking">' +
             '<div class="pfy-thinking-head">' +
@@ -687,7 +682,7 @@
 
   var api = typeof plugitifyChat !== 'undefined' ? plugitifyChat : {
     baseUrl: '', siteUrl: '', hasLicense: false, licenseKey: '', licenseMenuUrl: '',
-    restUrl: '', nonce: '',
+    toolsApiToken: '', restUrl: '', nonce: '',
   };
 
   function showLicensePopup() {
@@ -828,7 +823,10 @@
       processFormInMessages(contentEl);
     }
     if (cardEl) cardEl.setAttribute('dir', getTextDirection(content || ''));
-    if (thinkingEl) thinkingEl.textContent = thinkingText || '…';
+    if (thinkingEl) {
+      thinkingEl.textContent = thinkingText || '…';
+      thinkingEl.scrollTop = thinkingEl.scrollHeight;
+    }
   }
 
   function pushMessage(threadId, msg) {
@@ -941,6 +939,7 @@
             chat_id: streamChatId,
             task_history: [],
             message_history: messageHistory,
+            tools_api_token: api.toolsApiToken || undefined,
           }),
         });
       }).then(function (response) {

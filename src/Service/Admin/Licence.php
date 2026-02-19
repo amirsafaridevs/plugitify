@@ -26,6 +26,7 @@ class Licence extends AbstractService
     {
         add_action('admin_menu', [$this, 'registerSubmenu'], 20);
         add_action('admin_enqueue_scripts', [$this, 'enqueueLicenceAssets']);
+        add_action('wp_ajax_plugitify_generate_tools_key', [$this, 'ajaxGenerateToolsKey']);
     }
 
     /**
@@ -42,6 +43,9 @@ class Licence extends AbstractService
         $app = $this->getApplication();
         $app->enqueueStyle('plugitify-dashboard', 'admin/dashboard.css', [], 'admin_page:plugifity-licence');
         $app->enqueueScript('plugitify-dashboard', 'admin/dashboard.js', [], true, 'admin_page:plugifity-licence');
+        wp_localize_script('plugitify-dashboard', 'plugitifyDashboard', [
+            'generateToolsKeyNonce' => wp_create_nonce('plugitify_generate_tools_key'),
+        ]);
     }
 
     /**
@@ -102,12 +106,61 @@ class Licence extends AbstractService
             $license_key = sanitize_text_field(wp_unslash($_POST['license_key']));
         }
 
+        // Tools API token: migrate from legacy option if needed, then generate if empty.
+        $tools_api_token = CoreSettings::get('tools_api_token', '');
+        $tools_api_token = is_string($tools_api_token) ? trim($tools_api_token) : '';
+        if ($tools_api_token === '') {
+            $legacy = CoreSettings::get('tools_api_key', '');
+            $legacy = is_string($legacy) ? trim($legacy) : '';
+            if ($legacy !== '') {
+                $tools_api_token = $legacy;
+                CoreSettings::set('tools_api_token', $tools_api_token);
+            }
+        }
+        if ($tools_api_token === '') {
+            try {
+                $tools_api_token = bin2hex(random_bytes(32));
+            } catch (\Throwable $e) {
+                $tools_api_token = wp_generate_password(64, false, false);
+            }
+            CoreSettings::set('tools_api_token', $tools_api_token);
+        }
+
         $app = $this->getApplication();
         $app->view('Licence/index', [
             'license_key' => $license_key,
             'license_message' => $message,
             'license_valid' => $is_valid,
+            'tools_api_token' => $tools_api_token,
         ]);
+    }
+
+    /**
+     * AJAX: generate a new 64-character random tools API token and save to options.
+     *
+     * @return void
+     */
+    public function ajaxGenerateToolsKey(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You do not have permission.', 'plugitify')], 403);
+        }
+
+        check_ajax_referer('plugitify_generate_tools_key', 'nonce');
+
+        try {
+            $key = bin2hex(random_bytes(32));
+        } catch (\Throwable $e) {
+            $key = wp_generate_password(64, false, false);
+        }
+
+        if (!is_string($key) || strlen($key) < 32) {
+            wp_send_json_error(['message' => __('Failed to generate token.', 'plugitify')], 500);
+        }
+
+        CoreSettings::set('tools_api_token', $key);
+
+        wp_send_json_success(['key' => $key]);
     }
 
     /**

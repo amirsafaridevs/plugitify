@@ -444,6 +444,11 @@ class File extends AbstractService
                 $result['debug']
             );
         }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
+        }
         $dir = dirname($resolved);
         if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
             $buffer->addLog('error', __('Could not create parent directory.', 'plugitify'), wp_json_encode(['resolved' => $resolved]));
@@ -495,6 +500,11 @@ class File extends AbstractService
                 $result['debug']
             );
         }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
+        }
         if (is_dir($resolved)) {
             $buffer->addLog('error', __('Directory already exists.', 'plugitify'), wp_json_encode(['resolved' => $resolved]));
             $buffer->save();
@@ -539,6 +549,11 @@ class File extends AbstractService
                 __('Path is outside WordPress root or could not be resolved.', 'plugitify'),
                 $result['debug']
             );
+        }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
         }
         $baseReal = rtrim(realpath(ABSPATH) ?: ABSPATH, '/\\');
         if ($resolved === $baseReal || !$this->pathIsInside($resolved, $baseReal)) {
@@ -638,6 +653,11 @@ class File extends AbstractService
                 $result['debug']
             );
         }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
+        }
         if (!is_file($resolved)) {
             $buffer->addLog('error', __('Path is not a file or does not exist.', 'plugitify'), wp_json_encode(array_merge($result['debug'], ['resolved' => $resolved])));
             $buffer->save();
@@ -701,6 +721,11 @@ class File extends AbstractService
                 $result['debug']
             );
         }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
+        }
         if (!is_file($resolved)) {
             $buffer->addLog('error', __('Path is not a file or does not exist.', 'plugitify'), wp_json_encode(array_merge($result['debug'], ['resolved' => $resolved])));
             $buffer->save();
@@ -763,6 +788,11 @@ class File extends AbstractService
             $buffer->addLog('error', __('Path is outside WordPress root or could not be resolved.', 'plugitify'), wp_json_encode($result['debug']));
             $buffer->save();
             return Response::error(__('Path is outside WordPress root or could not be resolved.', 'plugitify'), $result['debug']);
+        }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
         }
         if (!is_file($resolved)) {
             $buffer->addLog('error', __('Path is not a file or does not exist.', 'plugitify'));
@@ -886,6 +916,11 @@ class File extends AbstractService
             $buffer->save();
             return Response::error(__('Path is outside WordPress root or could not be resolved.', 'plugitify'), $result['debug']);
         }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
+        }
         $dir = dirname($resolved);
         if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
             $buffer->addLog('error', __('Could not create parent directory.', 'plugitify'));
@@ -937,6 +972,11 @@ class File extends AbstractService
             $buffer->addLog('error', __('Path is not a valid file.', 'plugitify'));
             $buffer->save();
             return Response::error(__('Path is not a valid file.', 'plugitify'));
+        }
+        if (($r = ToolsPolicy::getActivePluginOrThemeEditDisabledResponse($resolved)) !== null) {
+            $buffer->addLog('error', $r['message'], wp_json_encode(['resolved' => $resolved]));
+            $buffer->save();
+            return $r;
         }
         $lines = file($resolved, FILE_IGNORE_NEW_LINES);
         if ($lines === false) {

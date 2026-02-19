@@ -152,17 +152,17 @@ class ApiRoute
 		}
 		if ( is_array( $action ) && count( $action ) >= 2 ) {
 			[ $controller, $method ] = $action;
-			return function ( Request $request, array $params ) use ( $controller, $method ) {
+			return function ( Request $request, ...$params ) use ( $controller, $method ) {
 				$instance = is_object( $controller ) ? $controller : new $controller();
-				return $instance->{$method}( $request, ...array_values( $params ) );
+				return $instance->{$method}( $request, ...$params );
 			};
 		}
 		// "Controller@method" string
 		if ( is_string( $action ) && str_contains( $action, '@' ) ) {
 			[ $class, $method ] = explode( '@', $action, 2 );
-			return function ( Request $request, array $params ) use ( $class, $method ) {
+			return function ( Request $request, ...$params ) use ( $class, $method ) {
 				$instance = new $class();
-				return $instance->{$method}( $request, ...array_values( $params ) );
+				return $instance->{$method}( $request, ...$params );
 			};
 		}
 		return function () {

@@ -265,6 +265,9 @@ class Chat extends AbstractService
         $license_key = is_string($license_key) ? trim($license_key) : '';
         $has_license = $license_key !== '';
 
+        $tools_api_token = CoreSettings::get('tools_api_token', '');
+        $tools_api_token = is_string($tools_api_token) ? trim($tools_api_token) : '';
+
         $rest_base = rest_url('plugitify/v1/api');
         wp_localize_script('plugitify-chat', 'plugitifyChat', [
             'baseUrl'        => $backend_main_address,
@@ -272,6 +275,7 @@ class Chat extends AbstractService
             'hasLicense'    => $has_license,
             'licenseKey'    => $license_key,
             'licenseMenuUrl' => admin_url('admin.php?page=plugifity-licence'),
+            'toolsApiToken'  => $tools_api_token,
             'restUrl'       => rtrim($rest_base, '/'),
             'nonce'         => wp_create_nonce('wp_rest'),
         ]);

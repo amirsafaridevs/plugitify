@@ -2,6 +2,8 @@
 
 namespace Plugifity\Core\Http;
 
+use Plugifity\Core\ToolsPolicy;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -233,7 +235,7 @@ class ApiRouter
 		$action   = $route->resolveAction( $resolver );
 		$paramNames = $route->getParameterNames();
 
-		return function ( \WP_REST_Request $wpRequest ) use ( $action, $paramNames ) {
+		return function ( \WP_REST_Request $wpRequest ) use ( $action, $paramNames, $route ) {
 			$request = self::requestFromWpRest( $wpRequest );
 			$params  = [];
 			foreach ( $paramNames as $name ) {
@@ -241,6 +243,15 @@ class ApiRouter
 			}
 			foreach ( $params as $key => $value ) {
 				$request->setAttribute( $key, $value );
+			}
+
+			// Tools API token: required for all tool routes (policy applied centrally).
+			if ( $route->getTool() !== null ) {
+				$token = $request->bearerToken() ?? $request->header( ToolsPolicy::TOOLS_TOKEN_HEADER );
+				$tokenError = ToolsPolicy::getTokenMismatchResponse( $token );
+				if ( $tokenError !== null ) {
+					return rest_ensure_response( $tokenError );
+				}
 			}
 
 			$result = $action( $request, ...array_values( $params ) );
@@ -266,7 +277,48 @@ class ApiRouter
 		$server = $_SERVER ?? [];
 		$server['REQUEST_METHOD'] = $wpRequest->get_method();
 
+		// Apache (and some servers) often strip Authorization from $_SERVER; fallback to getallheaders() or WP request.
+		self::injectMissingAuthHeaders( $server, $wpRequest );
+
 		$request = new Request( $query, $body, $_COOKIE ?? [], $_FILES ?? [], $server );
 		return $request;
+	}
+
+	/**
+	 * Put Authorization and X-Tools-Api-Token into $server when missing (e.g. Apache strips Authorization).
+	 *
+	 * @param array<string, mixed> $server   Server vars (modified in place).
+	 * @param \WP_REST_Request    $wpRequest WordPress REST request (may have headers from getallheaders).
+	 */
+	private static function injectMissingAuthHeaders( array &$server, \WP_REST_Request $wpRequest ): void
+	{
+		$needAuth = empty( $server['HTTP_AUTHORIZATION'] ) && empty( $server['REDIRECT_HTTP_AUTHORIZATION'] );
+		$needTools = empty( $server['HTTP_X_TOOLS_API_TOKEN'] );
+
+		if ( ! $needAuth && ! $needTools ) {
+			return;
+		}
+
+		$headers = null;
+		if ( function_exists( 'getallheaders' ) ) {
+			$headers = getallheaders();
+		}
+		if ( $headers === null || $headers === false ) {
+			$headers = [];
+		}
+
+		// getallheaders() keys can be "Authorization" or "Authorization: Bearer ..." depending on SAPI; normalize.
+		$byLower = [];
+		foreach ( $headers as $name => $value ) {
+			$byLower[ strtolower( trim( $name ) ) ] = $value;
+		}
+
+		if ( $needAuth && isset( $byLower['authorization'] ) && $byLower['authorization'] !== '' ) {
+			$server['HTTP_AUTHORIZATION'] = $byLower['authorization'];
+		}
+
+		if ( $needTools && isset( $byLower['x-tools-api-token'] ) && $byLower['x-tools-api-token'] !== '' ) {
+			$server['HTTP_X_TOOLS_API_TOKEN'] = $byLower['x-tools-api-token'];
+		}
 	}
 }
