@@ -22,12 +22,14 @@ class CreateChangesTable extends AbstractMigration
     {
         DB::schema()->create($this->getTableName('changes'), function ($table) {
             $table->id();
+            $table->foreignId('chat_id')->nullable();
             $table->string('type', 100)->nullable();
             $table->longText('from_value')->nullable();
             $table->longText('to_value')->nullable();
             $table->longText('details')->nullable();
             $table->timestamps();
             $table->index('type');
+            $table->index('chat_id');
         });
     }
 

@@ -41,7 +41,7 @@ class App extends AbstractSingleton
         $this->application = Application::get();
         $this->application->setProperty('basePath', plugin_dir_path(PLUGITIFY_PLUGIN_FILE));
         $this->application->setProperty('version', '0.0.1');
-        $this->application->setProperty('prefix', 'plugifity');
+        $this->application->setProperty('prefix', 'plugitify');
         $this->application->setProperty('textdomain', 'plugifity');
         $this->application->setProperty('migration_folder', $this->application->path('src' . DIRECTORY_SEPARATOR . 'Migration'));
         $this->application->setProperty('backend_main_address', 'http://127.0.0.1:8000/');

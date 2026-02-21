@@ -11,6 +11,7 @@ use Plugifity\Core\Http\ApiRouter;
 use Plugifity\Core\Http\Request;
 use Plugifity\Core\Settings as CoreSettings;
 use Plugifity\Repository\ChatRepository;
+use Plugifity\Repository\LogRepository;
 use Plugifity\Repository\MessageRepository;
 
 /**
@@ -59,6 +60,10 @@ class Chat extends AbstractService
         ApiRouter::get('chat/{id}/messages', [$this, 'apiGetMessages'])
             ->permission($permission)
             ->name('api.chat.getMessages');
+
+        ApiRouter::get('chat/{id}/task-history', [$this, 'apiGetTaskHistory'])
+            ->permission($permission)
+            ->name('api.chat.getTaskHistory');
 
         ApiRouter::delete('chat/{id}', [$this, 'apiDeleteChat'])
             ->permission($permission)
@@ -212,6 +217,26 @@ class Chat extends AbstractService
         }
 
         return ['messages' => $messages];
+    }
+
+    /**
+     * GET /chat/{id}/task-history — Last 20 logs for this chat (for task_history in stream).
+     *
+     * @param Request $request
+     * @param string $id Chat ID from route
+     * @return array{task_history: list<string>}|array{error: string, task_history: array}
+     */
+    public function apiGetTaskHistory(Request $request, string $id): array
+    {
+        $chatId = (int) $id;
+        if ($chatId <= 0) {
+            return ['error' => 'Invalid chat id', 'task_history' => []];
+        }
+
+        $logRepo = $this->container->get(LogRepository::class);
+        $taskHistory = $logRepo->getLastTaskHistoryForChat($chatId, 20);
+
+        return ['task_history' => $taskHistory];
     }
 
     /**

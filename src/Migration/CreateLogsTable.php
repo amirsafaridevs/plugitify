@@ -21,11 +21,13 @@ class CreateLogsTable extends AbstractMigration
     {
         DB::schema()->create($this->getTableName('logs'), function ($table) {
             $table->id();
+            $table->foreignId('chat_id')->nullable();
             $table->string('type', 100);
             $table->text('message')->nullable();
             $table->longText('context')->nullable();
             $table->timestamps();
             $table->index('type');
+            $table->index('chat_id');
         });
     }
 

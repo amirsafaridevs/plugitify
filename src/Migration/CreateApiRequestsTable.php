@@ -22,12 +22,14 @@ class CreateApiRequestsTable extends AbstractMigration
     {
         DB::schema()->create($this->getTableName('api_requests'), function ($table) {
             $table->id();
+            $table->foreignId('chat_id')->nullable();
             $table->string('url', 2048)->nullable();
             $table->string('title', 500)->nullable();
             $table->text('description')->nullable();
             $table->string('from_source', 255)->nullable();
             $table->longText('details')->nullable();
             $table->timestamps();
+            $table->index('chat_id');
         });
     }
 

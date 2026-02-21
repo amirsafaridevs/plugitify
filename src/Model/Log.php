@@ -16,6 +16,7 @@ class Log extends AbstractModel
     public const TABLE = 'logs';
 
     public ?int $id = null;
+    public ?int $chat_id = null;
     public ?string $type = null;
     public ?string $message = null;
     public ?string $context = null;
@@ -26,6 +27,7 @@ class Log extends AbstractModel
     {
         $model = new static();
         $model->id = isset($row->id) ? (int) $row->id : null;
+        $model->chat_id = isset($row->chat_id) ? (int) $row->chat_id : null;
         $model->type = isset($row->type) ? (string) $row->type : null;
         $model->message = isset($row->message) ? (string) $row->message : null;
         $model->context = isset($row->context) ? (string) $row->context : null;
@@ -41,6 +43,7 @@ class Log extends AbstractModel
     {
         return [
             'id'         => $this->id,
+            'chat_id'    => $this->chat_id,
             'type'       => $this->type,
             'message'    => $this->message,
             'context'    => $this->context,

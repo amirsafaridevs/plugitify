@@ -167,7 +167,7 @@ class DB
      * Update table (direct wpdb->update).
      * When $format / $where_format are null, defaults are applied so the query is always properly prepared.
      *
-     * @param string $table Table name with or without WordPress prefix (e.g. plugifity_chats or wp_plugifity_chats).
+     * @param string $table Table name with or without WordPress prefix (e.g. plugitify_chats or wp_plugitify_chats).
      * @param array<string, mixed> $data Column => value to set.
      * @param array<string, mixed> $where Column => value for WHERE.
      * @param array<int, string>|null $format Format for $data (e.g. ['%s', '%d']). Default: all '%s'.

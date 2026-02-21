@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
 
 use Plugifity\Contract\Abstract\AbstractSingleton;
 use Plugifity\Core\Application;
+use Plugifity\Core\RequestContext;
 use Plugifity\Core\DB;
 use Plugifity\Repository\ApiRequestRepository;
 use Plugifity\Repository\ChangeRepository;
@@ -132,34 +133,48 @@ class RecordBuffer extends AbstractSingleton
         /** @var ChangeRepository $changeRepo */
         $changeRepo = $app->make(ChangeRepository::class);
 
+        $chatId = RequestContext::getChatIdForStorage();
+
         $started = DB::beginTransaction();
 
         try {
             foreach ($this->logs as $item) {
-                $logRepo->create([
+                $data = [
                     'type'    => $item['type'],
                     'message' => $item['message'],
                     'context' => $item['context'],
-                ]);
+                ];
+                if ($chatId !== null) {
+                    $data['chat_id'] = $chatId;
+                }
+                $logRepo->create($data);
             }
 
             foreach ($this->apiRequests as $item) {
-                $apiRequestRepo->create([
+                $data = [
                     'url'          => $item['url'],
                     'title'        => $item['title'],
                     'description'  => $item['description'],
                     'from_source'  => $item['from'],
                     'details'      => $item['details'],
-                ]);
+                ];
+                if ($chatId !== null) {
+                    $data['chat_id'] = $chatId;
+                }
+                $apiRequestRepo->create($data);
             }
 
             foreach ($this->changes as $item) {
-                $changeRepo->create([
+                $data = [
                     'type'       => $item['type'],
                     'from_value' => $item['from_value'],
                     'to_value'   => $item['to_value'],
                     'details'    => $item['details'],
-                ]);
+                ];
+                if ($chatId !== null) {
+                    $data['chat_id'] = $chatId;
+                }
+                $changeRepo->create($data);
             }
 
             if ($started) {

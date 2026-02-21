@@ -2,6 +2,7 @@
 
 namespace Plugifity\Core\Http;
 
+use Plugifity\Core\RequestContext;
 use Plugifity\Core\ToolsPolicy;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -245,18 +246,29 @@ class ApiRouter
 				$request->setAttribute( $key, $value );
 			}
 
-			// Tools API token: required for all tool routes (policy applied centrally).
 			if ( $route->getTool() !== null ) {
-				$token = $request->bearerToken() ?? $request->header( ToolsPolicy::TOOLS_TOKEN_HEADER );
-				$tokenError = ToolsPolicy::getTokenMismatchResponse( $token );
-				if ( $tokenError !== null ) {
-					return rest_ensure_response( $tokenError );
-				}
+				$chatId = $request->header( 'X-Chat-Id' );
+				RequestContext::setChatId( $chatId );
 			}
 
-			$result = $action( $request, ...array_values( $params ) );
+			try {
+				// Tools API token: required for all tool routes (policy applied centrally).
+				if ( $route->getTool() !== null ) {
+					$token = $request->bearerToken() ?? $request->header( ToolsPolicy::TOOLS_TOKEN_HEADER );
+					$tokenError = ToolsPolicy::getTokenMismatchResponse( $token );
+					if ( $tokenError !== null ) {
+						return rest_ensure_response( $tokenError );
+					}
+				}
 
-			return rest_ensure_response( $result );
+				$result = $action( $request, ...array_values( $params ) );
+
+				return rest_ensure_response( $result );
+			} finally {
+				if ( $route->getTool() !== null ) {
+					RequestContext::clear();
+				}
+			}
 		};
 	}
 
@@ -294,8 +306,9 @@ class ApiRouter
 	{
 		$needAuth = empty( $server['HTTP_AUTHORIZATION'] ) && empty( $server['REDIRECT_HTTP_AUTHORIZATION'] );
 		$needTools = empty( $server['HTTP_X_TOOLS_API_TOKEN'] );
+		$needChatId = empty( $server['HTTP_X_CHAT_ID'] );
 
-		if ( ! $needAuth && ! $needTools ) {
+		if ( ! $needAuth && ! $needTools && ! $needChatId ) {
 			return;
 		}
 
@@ -319,6 +332,10 @@ class ApiRouter
 
 		if ( $needTools && isset( $byLower['x-tools-api-token'] ) && $byLower['x-tools-api-token'] !== '' ) {
 			$server['HTTP_X_TOOLS_API_TOKEN'] = $byLower['x-tools-api-token'];
+		}
+
+		if ( $needChatId && isset( $byLower['x-chat-id'] ) && $byLower['x-chat-id'] !== '' ) {
+			$server['HTTP_X_CHAT_ID'] = $byLower['x-chat-id'];
 		}
 	}
 }

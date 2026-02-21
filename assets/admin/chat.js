@@ -1,7 +1,7 @@
 /**
- * Plugifity Chat - UI interactions (local-only demo state + UX behaviors).
+ * Plugitify Chat - UI interactions (in-memory state; chats and messages from DB).
  *
- * This script intentionally does NOT call any backend yet; it focuses on UX:
+ * UX and behavior:
  * - Sidebar threads list + New chat
  * - Composer (Enter to send, Shift+Enter newline, autogrow)
  * - Message rendering with thinking + reasoning_content (under Thinking)
@@ -33,7 +33,6 @@
     return;
   }
 
-  var STORAGE_KEY = 'plugitify_chat_demo_v1';
   var THEME_STORAGE_KEY = 'plugitify_chat_theme';
   /** Id for "new chat" not yet in list – only added when user sends first message */
   var NEW_CHAT_PLACEHOLDER_ID = '__new__';
@@ -160,21 +159,62 @@
     return Array.prototype.map.call(doc.childNodes, walk).join('');
   }
 
-  /** Detect if content looks like HTML we allow (model can send table, form, lists, etc.). */
-  function looksLikeAllowedHtml(text) {
-    if (!text || typeof text !== 'string') return false;
-    return /<(?:table|form|ul|ol|select|h[1-6]|a\s|div\s|p\s|li\s|tr\s|td\s|th\s)\b/i.test(text);
+  /** Block-level HTML tags we allow to be rendered as HTML when they appear as complete blocks. */
+  var ALLOWED_HTML_BLOCK_TAGS = ['form', 'table'];
+
+  /**
+   * Find the next allowed HTML block (e.g. <form>...</form>) in str starting from startIndex.
+   * Returns { start, end, tag } or null. Search is case-insensitive.
+   * If closing tag is missing (e.g. truncated response), treat from opening tag to end of string as block.
+   */
+  function findNextHtmlBlock(str, startIndex) {
+    if (startIndex >= str.length) return null;
+    var lower = str.toLowerCase();
+    var nextForm = lower.indexOf('<form', startIndex);
+    var nextTable = lower.indexOf('<table', startIndex);
+    var next = -1;
+    var tag = '';
+    if (nextForm !== -1 && (nextTable === -1 || nextForm <= nextTable)) {
+      next = nextForm;
+      tag = 'form';
+    } else if (nextTable !== -1) {
+      next = nextTable;
+      tag = 'table';
+    }
+    if (next === -1) return null;
+    var openEnd = str.indexOf('>', next);
+    if (openEnd === -1) return null;
+    var closeTag = '</' + tag + '>';
+    var closeIndex = lower.indexOf(closeTag, openEnd + 1);
+    var end = closeIndex === -1 ? str.length : closeIndex + closeTag.length;
+    return { start: next, end: end, tag: tag };
   }
 
   /**
-   * Render message content: if it contains allowed HTML, sanitize and use; else markdown.
-   * Use for assistant messages so the model can send tables, forms, links, lists, headings.
+   * Render message content: markdown segments are rendered as markdown; allowed HTML blocks
+   * (<form>...</form>, <table>...</table>) are sanitized and rendered as HTML. This way
+   * both **bold** and embedded forms/tables work in the same message.
    */
   function messageContentToHtml(text) {
     if (text == null || text === '') return '';
     var s = String(text);
-    if (looksLikeAllowedHtml(s)) return sanitizeHtml(s);
-    return markdownToHtml(s);
+    var segments = [];
+    var pos = 0;
+    while (pos < s.length) {
+      var block = findNextHtmlBlock(s, pos);
+      if (!block) {
+        segments.push({ type: 'markdown', text: s.slice(pos) });
+        break;
+      }
+      if (block.start > pos) {
+        segments.push({ type: 'markdown', text: s.slice(pos, block.start) });
+      }
+      segments.push({ type: 'html', text: s.slice(block.start, block.end) });
+      pos = block.end;
+    }
+    return segments.map(function (seg) {
+      return seg.type === 'markdown' ? markdownToHtml(seg.text) : sanitizeHtml(seg.text);
+    }).join('');
   }
 
   /**
@@ -196,8 +236,58 @@
   }
 
   /**
+   * Convert markdown table blocks (| A | B | ... |) to <table> HTML.
+   * Runs of lines that look like table rows (contain |) are wrapped in table/thead/tbody/tr/td.
+   */
+  function markdownTablesToHtml(block) {
+    if (!block || typeof block !== 'string') return block;
+    var lines = block.split('\n');
+    var result = [];
+    var i = 0;
+    while (i < lines.length) {
+      var line = lines[i];
+      var isSeparator = /^\s*\|[\s\-:|]+\|\s*$/.test(line);
+      var isTableRow = /^\s*\|.+\|\s*$/.test(line) && (line.match(/\|/g) || []).length >= 2;
+      if (!isTableRow) {
+        result.push(line);
+        i++;
+        continue;
+      }
+      var tableRows = [];
+      if (isSeparator) {
+        i++;
+        continue;
+      }
+      while (i < lines.length) {
+        var rowLine = lines[i];
+        var sep = /^\s*\|[\s\-:|]+\|\s*$/.test(rowLine);
+        var row = /^\s*\|.+\|\s*$/.test(rowLine) && (rowLine.match(/\|/g) || []).length >= 2;
+        if (sep) { i++; continue; }
+        if (!row) break;
+        tableRows.push(rowLine);
+        i++;
+      }
+      if (tableRows.length === 0) continue;
+      var tableHtml = '<table class="pfy-md-table"><thead>';
+      for (var r = 0; r < tableRows.length; r++) {
+        var cells = tableRows[r].split('|').slice(1, -1).map(function (c) { return c.trim(); });
+        var tag = r === 0 ? 'th' : 'td';
+        if (r === 1) tableHtml += '</thead><tbody>';
+        tableHtml += '<tr>';
+        for (var c = 0; c < cells.length; c++) {
+          tableHtml += '<' + tag + ' class="pfy-md-' + tag + '">' + cells[c] + '</' + tag + '>';
+        }
+        tableHtml += '</tr>';
+      }
+      tableHtml += '</tbody></table>';
+      result.push(tableHtml);
+    }
+    return result.join('\n');
+  }
+
+  /**
    * Convert markdown to safe HTML for message display.
-   * Escapes HTML first, then applies markdown (code, bold, italic, links, headers, lists, line breaks).
+   * Escapes HTML first, then applies markdown (code, bold, italic, links, headers, lists, tables, line breaks).
    */
   function markdownToHtml(text) {
     if (text == null || text === '') return '';
@@ -228,6 +318,7 @@
     out = out.replace(/^## (.+)$/gm, '<h2 class="pfy-md-h2">$1</h2>');
     out = out.replace(/^# (.+)$/gm, '<h1 class="pfy-md-h1">$1</h1>');
     out = out.replace(/^\s*[-*] (.+)$/gm, '<li class="pfy-md-li">$1</li>');
+    out = markdownTablesToHtml(out);
     out = out.replace(/\n/g, '<br>\n');
     for (var i = 0; i < codeBlockPlaceholders.length; i++) {
       out = out.replace('\x00P' + i + 'P\x00', codeBlockPlaceholders[i]);
@@ -303,20 +394,7 @@
       });
     }
 
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if (parsed && parsed.threads && parsed.messagesByThread) {
-          var normalized = normalizeState(parsed);
-          if (normalized.threads.length > 0) {
-            return normalized;
-          }
-        }
-      }
-    } catch (e) {}
-
-    // No chats from server and nothing in storage: show empty state (new chat not in list)
+    // No chats from server: show empty state (new chat not in list). All data from DB only.
     messagesByThread[NEW_CHAT_PLACEHOLDER_ID] = [];
     return normalizeState({
       activeThreadId: NEW_CHAT_PLACEHOLDER_ID,
@@ -334,9 +412,7 @@
   }
 
   function saveState() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {}
+    // Chat/message state is not persisted to localStorage; all data comes from DB.
   }
 
   function getActiveThread() {
@@ -891,7 +967,6 @@
     }
 
     var dbChatId = getDbChatId(thread);
-    var streamChatId = thread.backendChatId || String(thread.id);
 
     var ensureChatThenStream = function (accessToken) {
       if (dbChatId) {
@@ -928,19 +1003,31 @@
         var msgs = state.messagesByThread[threadId];
         if (!msgs) msgs = state.messagesByThread[thread.id];
         var messageHistory = buildMessageHistory(msgs || [], true);
-        return window.fetch(streamUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + accessToken,
-          },
-          body: JSON.stringify({
-            site_url: api.siteUrl || window.location.origin,
-            chat_id: streamChatId,
-            task_history: [],
-            message_history: messageHistory,
-            tools_api_token: api.toolsApiToken || undefined,
-          }),
+        var streamChatId = (dbChatId != null) ? String(dbChatId) : (thread.backendChatId || String(thread.id));
+        var taskHistoryPromise = /^\d+$/.test(streamChatId) && api.restUrl
+          ? window.fetch(api.restUrl + '/chat/' + streamChatId + '/task-history', {
+              method: 'GET',
+              credentials: 'same-origin',
+              headers: { 'X-WP-Nonce': api.nonce || '' },
+            }).then(function (r) { return r.ok ? r.json() : {}; })
+              .then(function (data) { return Array.isArray(data.task_history) ? data.task_history : []; })
+              .catch(function () { return []; })
+          : Promise.resolve([]);
+        return taskHistoryPromise.then(function (taskHistory) {
+          return window.fetch(streamUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + accessToken,
+            },
+            body: JSON.stringify({
+              site_url: api.siteUrl || window.location.origin,
+              chat_id: streamChatId,
+              task_history: taskHistory,
+              message_history: messageHistory,
+              tools_api_token: api.toolsApiToken || undefined,
+            }),
+          });
         });
       }).then(function (response) {
       if (!response.ok) {
