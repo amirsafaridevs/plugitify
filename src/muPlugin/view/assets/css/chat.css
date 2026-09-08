@@ -1,0 +1,721 @@
+@font-face {
+    font-family: "Vazirmatn";
+    src: url("../font/Vazirmatn-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: "Vazirmatn", Tahoma, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: #000;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --pi-sidebar-width: 420px;
+    --pi-sidebar-min: 280px;
+    --pi-sidebar-max: 70vw;
+    --pi-black: #000000;
+    --pi-surface: #0a0a0a;
+    --pi-elevated: #141414;
+    --pi-elevated-2: #1a1a1a;
+    --pi-border: #222222;
+    --pi-border-soft: #1c1c1c;
+    --pi-text: #d4d4d4;
+    --pi-text-muted: #8a8a8a;
+    --pi-text-strong: #f0f0f0;
+    --pi-accent: #2a9d98;
+    --pi-accent-hover: #34b3ad;
+    --pi-accent-soft: rgba(42, 157, 152, 0.14);
+    --pi-radius: 10px;
+    --pi-radius-sm: 7px;
+}
+
+.pi-chat-layout {
+    direction: ltr;
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--pi-black);
+    font-family: "Vazirmatn", Tahoma, sans-serif;
+    color: var(--pi-text);
+}
+
+/* ── Browser pane ─────────────────────────────────────────────── */
+
+.pi-chat-browser {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    background: #fff;
+}
+
+.pi-browser-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--pi-black);
+    border-bottom: 1px solid var(--pi-border);
+}
+
+.pi-browser-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #9a9a9a;
+    cursor: pointer;
+    transition: color 0.12s ease, background 0.12s ease;
+}
+
+.pi-browser-btn:hover {
+    color: var(--pi-accent);
+    background: transparent;
+}
+
+.pi-browser-url-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.pi-browser-url {
+    width: 100%;
+    height: 28px;
+    padding: 0 11px;
+    border: 1px solid #1f1f1f;
+    border-radius: 6px;
+    background: #0f0f0f;
+    color: #c8c8c8;
+    font-size: 12.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    outline: none;
+}
+
+.pi-browser-url::placeholder {
+    color: #555;
+}
+
+.pi-browser-url:focus {
+    border-color: #2a2a2a;
+    color: #eee;
+}
+
+.pi-browser-frame-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.pi-browser-frame-wrap iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* ── Resizer ──────────────────────────────────────────────────── */
+
+.pi-chat-resizer {
+    flex: 0 0 4px;
+    position: relative;
+    z-index: 2;
+    width: 4px;
+    margin: 0 -2px;
+    cursor: col-resize;
+    background: transparent;
+    touch-action: none;
+    user-select: none;
+}
+
+.pi-chat-resizer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+    transition: background 0.12s ease;
+}
+
+.pi-chat-resizer:hover::before,
+.pi-chat-resizer:focus-visible::before,
+.pi-chat-layout.is-resizing .pi-chat-resizer::before {
+    background: #333;
+}
+
+.pi-chat-layout.is-resizing {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.pi-chat-layout.is-resizing iframe {
+    pointer-events: none;
+}
+
+/* ── Chat sidebar ─────────────────────────────────────────────── */
+
+.pi-chat-sidebar {
+    direction: rtl;
+    flex: 0 0 var(--pi-sidebar-width);
+    width: var(--pi-sidebar-width);
+    max-width: var(--pi-sidebar-max);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: var(--pi-black);
+    color: var(--pi-text);
+    border-left: 1px solid #111;
+}
+
+.pi-chat-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    direction: ltr;
+    padding: 10px 12px 4px;
+}
+
+.pi-chat-new-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: auto;
+    height: 28px;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #8f8f8f;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color 0.12s ease;
+}
+
+.pi-chat-new-btn:hover {
+    background: transparent;
+    color: #e8e8e8;
+}
+
+.pi-chat-new-btn:active {
+    color: var(--pi-accent);
+}
+
+.pi-chat-new-btn svg {
+    flex: 0 0 auto;
+}
+
+.pi-chat-new-btn__label {
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.72;
+}
+
+.pi-chat-new-btn:hover .pi-chat-new-btn__label {
+    opacity: 0.95;
+}
+
+.pi-chat-messages {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 8px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2a transparent;
+}
+
+.pi-chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.pi-chat-messages::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 999px;
+}
+
+.pi-chat-messages > * {
+    flex: 0 0 auto;
+}
+
+.pi-msg {
+    max-width: 100%;
+    min-width: 0;
+    font-size: 13.5px;
+    line-height: 1.7;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.pi-msg--user {
+    align-self: stretch;
+    background: var(--pi-elevated);
+    border: 0;
+    border-radius: var(--pi-radius);
+    padding: 10px 12px;
+    color: var(--pi-text-strong);
+    white-space: pre-wrap;
+}
+
+.pi-msg--assistant {
+    padding: 0 2px;
+    color: var(--pi-text);
+}
+
+.pi-msg--streaming > :last-child::after {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    margin-inline-start: 2px;
+    vertical-align: text-bottom;
+    background: var(--pi-accent);
+    animation: pi-caret 1s steps(2) infinite;
+}
+
+@keyframes pi-caret {
+    0%, 50% { opacity: 1; }
+    50.01%, 100% { opacity: 0; }
+}
+
+/* ── Rendered markdown ────────────────────────────────────────── */
+
+.pi-msg--assistant p,
+.pi-think-body p {
+    margin: 0 0 8px;
+}
+
+.pi-msg--assistant > :last-child,
+.pi-think-body > :last-child {
+    margin-bottom: 0;
+}
+
+.pi-msg--assistant h3,
+.pi-msg--assistant h4,
+.pi-msg--assistant h5,
+.pi-msg--assistant h6 {
+    margin: 14px 0 6px;
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--pi-text-strong);
+}
+
+.pi-msg--assistant ul,
+.pi-msg--assistant ol {
+    margin: 0 0 8px;
+    padding-inline-start: 20px;
+}
+
+.pi-msg--assistant li {
+    margin-bottom: 3px;
+}
+
+.pi-msg--assistant a {
+    color: var(--pi-accent);
+    text-decoration: none;
+}
+
+.pi-msg--assistant a:hover {
+    text-decoration: underline;
+}
+
+.pi-msg--assistant code,
+.pi-think-body code {
+    direction: ltr;
+    unicode-bidi: embed;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #151515;
+    border: 0;
+    color: #cfcfcf;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+
+.pi-code {
+    direction: ltr;
+    text-align: left;
+    margin: 8px 0;
+    padding: 10px 12px;
+    border: 1px solid #1c1c1c;
+    border-radius: var(--pi-radius-sm);
+    background: #0f0f0f;
+    overflow-x: auto;
+    max-width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre;
+    tab-size: 4;
+    color: #c8c8c8;
+}
+
+.pi-code code {
+    padding: 0;
+    background: none;
+    border: 0;
+    font-size: inherit;
+}
+
+/* ── Reasoning ────────────────────────────────────────────────── */
+
+.pi-think {
+    border-inline-start: 1px solid #2a2a2a;
+    padding-inline-start: 10px;
+    color: var(--pi-text-muted);
+    font-size: 12.5px;
+}
+
+.pi-think > summary {
+    cursor: pointer;
+    list-style: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.pi-think > summary::-webkit-details-marker {
+    display: none;
+}
+
+.pi-think-icon {
+    color: #666;
+}
+
+.pi-think-body {
+    margin-top: 6px;
+    line-height: 1.7;
+}
+
+/* ── Tool calls ───────────────────────────────────────────────── */
+
+.pi-tool {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: 12px;
+    overflow: visible;
+    max-width: 100%;
+}
+
+.pi-tool > summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 22px;
+    padding: 3px 0;
+    cursor: pointer;
+    list-style: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.pi-tool > summary::-webkit-details-marker {
+    display: none;
+}
+
+.pi-tool > summary:hover {
+    background: transparent;
+}
+
+.pi-tool > summary:hover .pi-tool-name {
+    color: #d0d0d0;
+}
+
+.pi-tool-name {
+    direction: ltr;
+    flex: 0 0 auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    color: #8f8f8f;
+}
+
+.pi-tool-summary {
+    direction: ltr;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    color: #555;
+    font-size: 11.5px;
+}
+
+/* Timing used to render here; keep hidden if an old DOM node still has it. */
+.pi-tool-time {
+    display: none !important;
+}
+
+.pi-tool-status {
+    flex: 0 0 auto;
+    width: 12px;
+    text-align: center;
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.pi-tool--ok .pi-tool-status { color: #5a5a5a; }
+.pi-tool--error .pi-tool-status { color: #c46a6a; opacity: 1; }
+.pi-tool--error { background: transparent; }
+
+.pi-tool--error .pi-tool-name {
+    color: #c46a6a;
+}
+
+.pi-tool-spinner {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border: 1px solid #333;
+    border-top-color: #888;
+    border-radius: 50%;
+    animation: pi-spin 0.7s linear infinite;
+}
+
+@keyframes pi-spin {
+    to { transform: rotate(360deg); }
+}
+
+.pi-tool-body {
+    margin-top: 4px;
+    margin-inline-start: 19px;
+    padding: 0;
+    border-top: 0;
+    min-width: 0;
+}
+
+.pi-tool-label {
+    margin: 8px 0 2px;
+    color: #555;
+    font-size: 10.5px;
+}
+
+.pi-tool-body .pi-code {
+    margin: 0;
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: transparent;
+    border-color: #1a1a1a;
+}
+
+/* ── Notices ──────────────────────────────────────────────────── */
+
+.pi-notice {
+    padding: 8px 11px;
+    border-radius: var(--pi-radius-sm);
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+
+.pi-notice--info {
+    background: #111;
+    border: 0;
+    color: var(--pi-text-muted);
+}
+
+.pi-notice--error {
+    background: #160f0f;
+    border: 1px solid #3a1c1c;
+    color: #e08a8a;
+}
+
+/* Transient states: a retry in flight, or a conversation trimmed to fit. */
+.pi-notice--warn {
+    background: #17140d;
+    border: 1px solid #3a301c;
+    color: #d9b26a;
+}
+
+/* Errors carry the raw provider text in a disclosure, so the transcript stays
+   calm without hiding anything the user might need. */
+.pi-notice--expandable > summary {
+    cursor: pointer;
+    list-style: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.pi-notice--expandable > summary::-webkit-details-marker {
+    display: none;
+}
+
+.pi-notice--expandable > summary::after {
+    content: ' ⌄';
+    opacity: 0.6;
+}
+
+.pi-notice--expandable[open] > summary::after {
+    content: ' ⌃';
+}
+
+.pi-notice--expandable .pi-code {
+    margin: 8px 0 0;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.pi-chat-input-wrap {
+    flex: 0 0 auto;
+    padding: 8px 12px 12px;
+}
+
+.pi-chat-input-box {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px 8px 8px 10px;
+    border: 1px solid #1c1c1c;
+    border-radius: 12px;
+    background: #0f0f0f;
+    transition: border-color 0.12s ease;
+}
+
+.pi-chat-input-box:focus-within {
+    border-color: #2a2a2a;
+}
+
+#pi-chat-textarea {
+    flex: 1 1 auto;
+    resize: none;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--pi-text-strong);
+    font-size: 13.5px;
+    font-family: inherit;
+    line-height: 1.65;
+    max-height: 160px;
+    padding: 4px 2px;
+}
+
+#pi-chat-textarea::placeholder {
+    color: #555;
+}
+
+.pi-chat-send-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--pi-accent);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.12s ease, opacity 0.12s ease;
+}
+
+.pi-chat-send-btn:hover {
+    background: var(--pi-accent-hover);
+}
+
+.pi-chat-send-btn--stop {
+    background: #fff;
+    color: #111;
+}
+
+.pi-chat-send-btn--stop:hover {
+    background: #f0f0f0;
+}
+
+.pi-chat-send-btn--stop svg {
+    display: none;
+}
+
+.pi-chat-send-btn--stop::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 1.5px;
+    background: #111;
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+    :root {
+        --pi-sidebar-min: 240px;
+        --pi-sidebar-max: 60vw;
+    }
+}
+
+@media (max-width: 700px) {
+    .pi-chat-layout {
+        flex-direction: column;
+    }
+
+    .pi-chat-browser {
+        flex: 1 1 45%;
+        min-height: 180px;
+    }
+
+    .pi-chat-resizer {
+        flex: 0 0 4px;
+        width: 100%;
+        height: 4px;
+        margin: -2px 0;
+        cursor: row-resize;
+    }
+
+    .pi-chat-resizer::before {
+        top: 50%;
+        bottom: auto;
+        left: 0;
+        right: 0;
+        width: auto;
+        height: 1px;
+        transform: translateY(-50%);
+    }
+
+    .pi-chat-layout.is-resizing {
+        cursor: row-resize;
+    }
+
+    .pi-chat-sidebar {
+        flex: 0 0 var(--pi-sidebar-height, 55%);
+        width: 100%;
+        max-width: none;
+        height: var(--pi-sidebar-height, 55%);
+        border-left: 0;
+        border-top: 1px solid #111;
+    }
+}

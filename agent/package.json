@@ -1,0 +1,21 @@
+{
+  "name": "plugitify-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-side coding agent for Plugitify, built on the OpenAI Agents SDK.",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openai/agents": "^0.17.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.0"
+  }
+}

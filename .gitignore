@@ -1,0 +1,4 @@
+/vendor/
+node_modules/
+languages/*.mo
+.DS_Store

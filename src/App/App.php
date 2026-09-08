@@ -1,71 +1,64 @@
 <?php
-namespace Plugifity\App;
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+namespace Plugitify\App;
 
-use Plugifity\Contract\Abstract\AbstractSingleton;
-use Plugifity\Core\Application;
-use Plugifity\Provider\AdminServiceProvider;
-use Plugifity\Provider\APIServiceProvider;
-/**
- * App Class
- * 
- * Main application class for Easy Stock and Price Control plugin
- */
-class App extends AbstractSingleton
+use Plugitify\Providers\AdminServiceProvider;
+
+final class App
 {
-    /** @var static|null */
-    protected static ?self $instance = null;
+	private static ?App $instance = null;
 
-    /**
-     * Service registry instance
-     *
-     * @var 
-     */
-    protected  $providers = [];
-    /**
-     * Application instance
-     *
-     * @var Application
-     */
-    protected Application $application;
+	/**
+	 * @var string[] Fully qualified class names of service providers to boot.
+	 */
+	private array $providers = [
+		AdminServiceProvider::class,
+	];
 
-    /**
-     * Get the singleton instance
-     *
-     * @return self
-     */
-    public function __construct() {
-        $this->application = Application::get();
-        $this->application->setProperty('basePath', plugin_dir_path(PLUGITIFY_PLUGIN_FILE));
-        $this->application->setProperty('version', '0.0.1');
-        $this->application->setProperty('prefix', 'plugitify');
-        $this->application->setProperty('textdomain', 'plugifity');
-        $this->application->setProperty('migration_folder', $this->application->path('src' . DIRECTORY_SEPARATOR . 'Migration'));
-        $this->application->setProperty('backend_main_address', 'http://127.0.0.1:8000/');
-        $this->init();
-    }
+	public static function getInstance(): App
+	{
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
 
-    /**
-     * Initialize the application
-     *
-     * @return void
-     */
-    private function init(): void
-    {
-       
-        $this->application->registerProvider(AdminServiceProvider::class);
-        $this->application->registerProvider(APIServiceProvider::class);
-        $this->application->boot();
-    }
+		return self::$instance;
+	}
 
-    /**
-     * Run migrations (e.g. on plugin activation).
-     */
-    public function runMigrations(): void
-    {
-        $this->application->runMigrations();
-    }
+	private function __construct()
+	{
+		$this->boot();
+	}
+
+	private function __clone()
+	{
+	}
+
+	public function __wakeup()
+	{
+		throw new \Exception( 'Cannot unserialize a singleton.' );
+	}
+
+	private function boot(): void
+	{
+		add_action( 'init', [ $this, 'loadTextdomain' ] );
+
+		$this->registerProviders();
+	}
+
+	public function loadTextdomain(): void
+	{
+		load_plugin_textdomain(
+			'plugitify',
+			false,
+			dirname( plugin_basename( PLUGITIFY_FILE ) ) . '/languages'
+		);
+	}
+
+	private function registerProviders(): void
+	{
+		foreach ( $this->providers as $providerClass ) {
+			$provider = new $providerClass();
+			$provider->register();
+		}
+	}
 }

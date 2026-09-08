@@ -1,0 +1,437 @@
+.plugitify-plugins {
+	--plugitify-border: #e2e4e7;
+	--plugitify-border-strong: #c3c4c7;
+	--plugitify-text: #1e1e1e;
+	--plugitify-text-muted: #757575;
+	--plugitify-accent: #2271b1;
+	--plugitify-danger: #d63638;
+	--plugitify-danger-bg: #fcf0f1;
+	--plugitify-danger-border: #f2b9ba;
+	--plugitify-radius: 8px;
+	--plugitify-radius-sm: 6px;
+}
+
+/* Intro */
+
+.plugitify-plugins__intro {
+	margin: 12px 0 0;
+	font-size: 13px;
+	color: var( --plugitify-text-muted );
+}
+
+/* Toolbar */
+
+.plugitify-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 20px 0 16px;
+}
+
+.plugitify-toolbar__search {
+	position: relative;
+	display: flex;
+	align-items: center;
+	flex: 1 1 240px;
+	max-width: 320px;
+}
+
+.plugitify-toolbar__search .dashicons {
+	position: absolute;
+	inset-inline-start: 10px;
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+	color: var( --plugitify-text-muted );
+	pointer-events: none;
+}
+
+.plugitify-toolbar__search input[type="search"] {
+	width: 100%;
+	padding: 8px 12px;
+	padding-inline-start: 34px;
+	font-size: 13px;
+	border: 1px solid var( --plugitify-border-strong );
+	border-radius: var( --plugitify-radius-sm );
+	box-shadow: none;
+}
+
+.plugitify-toolbar__search input[type="search"]:focus {
+	border-color: var( --plugitify-accent );
+	box-shadow: 0 0 0 1px var( --plugitify-accent );
+	outline: none;
+}
+
+.plugitify-toolbar__bulk {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.plugitify-toolbar__select-all {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	color: var( --plugitify-text );
+	cursor: pointer;
+}
+
+.plugitify-button--danger {
+	color: var( --plugitify-danger );
+	border-color: var( --plugitify-danger-border ) !important;
+}
+
+.plugitify-button--danger:hover {
+	background: var( --plugitify-danger-bg );
+	color: var( --plugitify-danger );
+	border-color: var( --plugitify-danger ) !important;
+}
+
+/* Plugin list */
+
+.plugitify-plugins__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+
+.plugitify-plugins__item {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 14px 18px;
+	background: #fff;
+	border: 1px solid var( --plugitify-border );
+	border-radius: var( --plugitify-radius );
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.plugitify-plugins__item:hover {
+	border-color: var( --plugitify-border-strong );
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.06 );
+}
+
+.plugitify-plugins__item[hidden] {
+	display: none;
+}
+
+.plugitify-plugins__select {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.plugitify-plugins__select input[type="checkbox"] {
+	margin: 0;
+}
+
+.plugitify-plugins__info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.plugitify-plugins__name {
+	font-size: 14px;
+	font-weight: 600;
+	color: var( --plugitify-text );
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.plugitify-plugins__version {
+	font-size: 12px;
+	color: var( --plugitify-text-muted );
+}
+
+.plugitify-plugins__description {
+	margin: 4px 0 0;
+	font-size: 12px;
+	color: var( --plugitify-text-muted );
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.plugitify-plugins__no-results {
+	margin: 16px 0 0;
+	font-size: 13px;
+	color: var( --plugitify-text-muted );
+	text-align: center;
+}
+
+.plugitify-plugins__actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-inline-start: auto;
+	flex-shrink: 0;
+}
+
+/* Status switch */
+
+.plugitify-switch {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	width: 36px;
+	height: 20px;
+	padding: 2px;
+	border: none;
+	border-radius: 999px;
+	background: var( --plugitify-border-strong );
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.plugitify-switch.is-active {
+	background: var( --plugitify-accent );
+}
+
+.plugitify-switch:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.plugitify-switch__thumb {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba( 0, 0, 0, 0.2 );
+	transform: translateX( 0 );
+	transition: transform 0.15s ease;
+}
+
+.plugitify-switch.is-active .plugitify-switch__thumb {
+	transform: translateX( 16px );
+}
+
+body.rtl .plugitify-switch.is-active .plugitify-switch__thumb {
+	transform: translateX( -16px );
+}
+
+/* Icon buttons */
+
+.plugitify-icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: var( --plugitify-radius-sm );
+	background: transparent;
+	color: #50575e;
+	cursor: pointer;
+	text-decoration: none;
+	transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.plugitify-icon-button:hover,
+.plugitify-icon-button:focus-visible {
+	background: #f0f0f1;
+	border-color: var( --plugitify-border );
+	color: var( --plugitify-text );
+}
+
+.plugitify-icon-button .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+}
+
+.plugitify-icon-button--danger:hover,
+.plugitify-icon-button--danger:focus-visible {
+	background: var( --plugitify-danger-bg );
+	border-color: var( --plugitify-danger-border );
+	color: var( --plugitify-danger );
+}
+
+.plugitify-icon-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Empty state */
+
+.plugitify-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	margin: 24px 0 0;
+	padding: 64px 24px;
+	border: 1px dashed var( --plugitify-border );
+	border-radius: var( --plugitify-radius );
+	color: var( --plugitify-text-muted );
+	text-align: center;
+}
+
+.plugitify-empty .dashicons {
+	width: 32px;
+	height: 32px;
+	font-size: 32px;
+	color: var( --plugitify-border-strong );
+}
+
+.plugitify-empty p {
+	margin: 0;
+	font-size: 13px;
+}
+
+/* Notices injected by JS */
+
+.plugitify-notice {
+	margin: 16px 0 0;
+}
+
+/* Modal */
+
+.plugitify-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+}
+
+.plugitify-modal[hidden] {
+	display: none;
+}
+
+.plugitify-modal__overlay {
+	position: absolute;
+	inset: 0;
+	background: rgba( 30, 30, 30, 0.48 );
+}
+
+.plugitify-modal__dialog {
+	position: relative;
+	width: 100%;
+	max-width: 440px;
+	max-height: calc( 100vh - 48px );
+	overflow-y: auto;
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 12px 32px rgba( 0, 0, 0, 0.18 );
+}
+
+.plugitify-modal__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20px 24px;
+	border-bottom: 1px solid var( --plugitify-border );
+}
+
+.plugitify-modal__header h2 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: var( --plugitify-text );
+}
+
+.plugitify-modal__close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: var( --plugitify-radius-sm );
+	background: transparent;
+	color: var( --plugitify-text-muted );
+	font-size: 20px;
+	line-height: 1;
+	cursor: pointer;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.plugitify-modal__close:hover {
+	background: #f0f0f1;
+	color: var( --plugitify-text );
+}
+
+.plugitify-modal__body {
+	padding: 24px;
+}
+
+.plugitify-field {
+	margin: 0 0 18px;
+}
+
+.plugitify-field:last-of-type {
+	margin-bottom: 0;
+}
+
+.plugitify-field label {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: var( --plugitify-text );
+	margin-bottom: 6px;
+}
+
+.plugitify-field input[type="text"] {
+	width: 100%;
+	padding: 8px 12px;
+	font-size: 14px;
+	border: 1px solid var( --plugitify-border-strong );
+	border-radius: var( --plugitify-radius-sm );
+	box-shadow: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.plugitify-field input[type="text"]:focus {
+	border-color: var( --plugitify-accent );
+	box-shadow: 0 0 0 1px var( --plugitify-accent );
+	outline: none;
+}
+
+.plugitify-field .description {
+	display: block;
+	margin-top: 6px;
+	font-size: 12px;
+	color: var( --plugitify-text-muted );
+}
+
+.plugitify-modal__error {
+	margin: 0 0 16px;
+	padding: 10px 12px;
+	font-size: 13px;
+	color: var( --plugitify-danger );
+	background: var( --plugitify-danger-bg );
+	border: 1px solid var( --plugitify-danger-border );
+	border-radius: var( --plugitify-radius-sm );
+}
+
+.plugitify-modal__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 24px;
+}
+
+body.plugitify-modal-open {
+	overflow: hidden;
+}
