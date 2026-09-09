@@ -230,9 +230,37 @@ html, body {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     direction: ltr;
     padding: 10px 12px 4px;
+    gap: 8px;
+}
+
+.pi-chat-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.pi-chat-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: #6e6e6e;
+    text-decoration: none;
+    transition: color 0.12s ease, background 0.12s ease;
+}
+
+.pi-chat-header-icon:hover {
+    color: #e8e8e8;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.pi-chat-header-icon:active {
+    color: var(--pi-accent);
 }
 
 .pi-chat-new-btn {
@@ -840,6 +868,26 @@ html, body {
     line-height: 1.65;
     max-height: 160px;
     padding: 4px 2px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+#pi-chat-textarea::-webkit-scrollbar {
+    width: 3px;
+}
+
+#pi-chat-textarea::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#pi-chat-textarea::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+}
+
+#pi-chat-textarea::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.22);
 }
 
 #pi-chat-textarea::placeholder {

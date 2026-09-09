@@ -29,7 +29,7 @@ class ComposerStaticInit364d044784bcbda03752248478172680
         ),
         'Plugitify\\' =>
         array (
-            0 => __DIR__ . '/../../../../../../..'.'/wamp64/www/wpagentify/wordpress/wp-content/plugins/plugitify' . '/src',
+            0 => __DIR__ . '/../..' . '/src',
         ),
         'Peast\\' =>
         array (

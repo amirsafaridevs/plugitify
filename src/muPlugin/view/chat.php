@@ -1,11 +1,13 @@
 <?php
 use Plugitify\muPlugin\Core\View;
 
-$pi_locale    = get_locale();
-$pi_lang_attr = str_replace('_', '-', $pi_locale);
-$pi_slug      = (string) ($slug ?? '');
-$pi_iframe    = (string) ($iframeUrl ?? '');
-$pi_config    = is_array($agentConfig ?? null) ? $agentConfig : [];
+$pi_locale         = get_locale();
+$pi_lang_attr      = str_replace('_', '-', $pi_locale);
+$pi_slug           = (string) ($slug ?? '');
+$pi_iframe         = (string) ($iframeUrl ?? '');
+$pi_config         = is_array($agentConfig ?? null) ? $agentConfig : [];
+$pi_dashboard_url  = admin_url( 'admin.php?page=plugitify' );
+$pi_settings_url   = admin_url( 'admin.php?page=plugitify-settings' );
 ?>
 <html lang="<?php echo esc_attr($pi_lang_attr); ?>" dir="rtl">
     <head>
@@ -52,6 +54,22 @@ $pi_config    = is_array($agentConfig ?? null) ? $agentConfig : [];
                         </svg>
                         <span class="pi-chat-new-btn__label"><?php esc_html_e( 'چت جدید', 'plugitify' ); ?></span>
                     </button>
+                    <div class="pi-chat-header-actions">
+                        <a href="<?php echo esc_url( $pi_settings_url ); ?>" class="pi-chat-header-icon" title="<?php esc_attr_e( 'تنظیمات', 'plugitify' ); ?>" aria-label="<?php esc_attr_e( 'تنظیمات', 'plugitify' ); ?>">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                        </a>
+                        <a href="<?php echo esc_url( $pi_dashboard_url ); ?>" class="pi-chat-header-icon" title="<?php esc_attr_e( 'پیشخوان', 'plugitify' ); ?>" aria-label="<?php esc_attr_e( 'پیشخوان', 'plugitify' ); ?>">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="3" width="7" height="9" rx="1.5"></rect>
+                                <rect x="14" y="3" width="7" height="5" rx="1.5"></rect>
+                                <rect x="14" y="12" width="7" height="9" rx="1.5"></rect>
+                                <rect x="3" y="16" width="7" height="5" rx="1.5"></rect>
+                            </svg>
+                        </a>
+                    </div>
                 </div>
 
                 <div class="pi-chat-messages" id="pi-chat-messages">
