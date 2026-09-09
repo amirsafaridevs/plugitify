@@ -26,6 +26,7 @@ const MAX_ATTEMPTS = 3;
 
 function main(): void {
   const messagesEl = document.getElementById('pi-chat-messages');
+  const noticesEl = document.getElementById('pi-chat-notices');
   const textarea = document.getElementById('pi-chat-textarea') as HTMLTextAreaElement | null;
   const sendBtn = document.getElementById('pi-chat-send') as HTMLButtonElement | null;
   const newChatBtn = document.getElementById('pi-chat-new');
@@ -34,7 +35,7 @@ function main(): void {
     return;
   }
 
-  const transcript = new Transcript(messagesEl);
+  const transcript = new Transcript(messagesEl, noticesEl);
 
   let config: ReturnType<typeof loadConfig>;
   let agent: ReturnType<typeof buildAgent>;
@@ -92,12 +93,44 @@ function main(): void {
     }
   };
 
+  const browserPane = document.getElementById('pi-chat-browser');
+  const browserLock = document.getElementById('pi-browser-lock');
+  const browserToolbar = browserPane?.querySelector('.pi-browser-toolbar') as HTMLElement | null;
+  const browserFrame = browserPane?.querySelector('.pi-browser-frame-wrap') as HTMLElement | null;
+
+  const setBrowserLocked = (locked: boolean) => {
+    browserPane?.classList.toggle('is-busy', locked);
+
+    if (browserLock) {
+      browserLock.hidden = !locked;
+      browserLock.setAttribute('aria-hidden', locked ? 'false' : 'true');
+    }
+
+    // Keep focus out of the preview while the agent is driving it.
+    if (browserToolbar) {
+      if (locked) {
+        browserToolbar.setAttribute('inert', '');
+      } else {
+        browserToolbar.removeAttribute('inert');
+      }
+    }
+
+    if (browserFrame) {
+      if (locked) {
+        browserFrame.setAttribute('inert', '');
+      } else {
+        browserFrame.removeAttribute('inert');
+      }
+    }
+  };
+
   const setRunning = (value: boolean) => {
     running = value;
     sendBtn.classList.toggle('pi-chat-send-btn--stop', value);
     sendBtn.title = value ? 'توقف' : 'ارسال';
     sendBtn.setAttribute('aria-label', value ? 'توقف' : 'ارسال');
     textarea.placeholder = value ? 'در حال کار…' : 'پیام خود را بنویسید...';
+    setBrowserLocked(value);
   };
 
   const send = async (text: string): Promise<void> => {
@@ -160,7 +193,7 @@ function main(): void {
           // — otherwise a cancelled run is indistinguishable from a finished one.
           if (controller.signal.aborted) {
             transcript.cancelPendingTools();
-            transcript.addNotice('اجرا متوقف شد. وضعیت تا همین‌جا ذخیره شد.', 'info');
+            transcript.addNotice('اجرا متوقف شد. وضعیت تا همین‌جا ذخیره شد.', 'warn');
           }
 
           return;
@@ -170,7 +203,7 @@ function main(): void {
           transcript.finalizeAssistantMessage();
 
           if (controller.signal.aborted) {
-            transcript.addNotice('اجرا متوقف شد. وضعیت تا همین‌جا ذخیره شد.', 'info');
+            transcript.addNotice('اجرا متوقف شد. وضعیت تا همین‌جا ذخیره شد.', 'warn');
 
             return;
           }
@@ -197,7 +230,7 @@ function main(): void {
           await delay(backoffMs(attempt), controller.signal);
 
           if (controller.signal.aborted) {
-            transcript.addNotice('اجرا متوقف شد. وضعیت تا همین‌جا ذخیره شد.', 'info');
+            transcript.addNotice('اجرا متوقف شد. وضعیت تا همین‌جا ذخیره شد.', 'warn');
 
             return;
           }

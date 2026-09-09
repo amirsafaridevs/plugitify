@@ -53,12 +53,49 @@ html, body {
 /* ── Browser pane ─────────────────────────────────────────────── */
 
 .pi-chat-browser {
+    position: relative;
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-width: 0;
     background: #fff;
+}
+
+/* Blocks pointer/keyboard use of toolbar + iframe while the agent runs. */
+.pi-browser-lock {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+    cursor: wait;
+    pointer-events: auto;
+}
+
+.pi-browser-lock[hidden] {
+    display: none;
+}
+
+.pi-browser-lock__spinner {
+    width: 52px;
+    height: 52px;
+    background: url('../img/grid-loding.svg') center / contain no-repeat;
+    opacity: 0.85;
+}
+
+.pi-chat-browser.is-busy .pi-browser-toolbar,
+.pi-chat-browser.is-busy .pi-browser-frame-wrap {
+    pointer-events: none;
+    user-select: none;
+}
+
+.pi-chat-browser.is-busy .pi-browser-frame-wrap iframe {
+    pointer-events: none;
 }
 
 .pi-browser-toolbar {
@@ -256,6 +293,11 @@ html, body {
     scrollbar-color: #2a2a2a transparent;
 }
 
+.pi-chat-messages:not(:has(.pi-msg, .pi-tool, .pi-think)) {
+    justify-content: center;
+    align-items: center;
+}
+
 .pi-chat-messages::-webkit-scrollbar {
     width: 6px;
 }
@@ -267,6 +309,55 @@ html, body {
 
 .pi-chat-messages > * {
     flex: 0 0 auto;
+}
+
+.pi-chat-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    pointer-events: none;
+    user-select: none;
+}
+
+.pi-chat-messages:has(.pi-msg, .pi-tool, .pi-think) .pi-chat-empty {
+    display: none;
+}
+
+.pi-chat-empty__icon {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    margin-bottom: 2px;
+    border-radius: 16px;
+    background: #121212;
+    color: #5a5a5a;
+    border: 1px solid #1c1c1c;
+}
+
+.pi-chat-empty__icon svg {
+    display: block;
+    opacity: 0.9;
+}
+
+.pi-chat-empty__text {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #9a9a9a;
+    line-height: 1.4;
+}
+
+.pi-chat-empty__hint {
+    margin: 0;
+    font-size: 11.5px;
+    color: #555;
+    line-height: 1.45;
+    max-width: 220px;
 }
 
 .pi-msg {
@@ -532,37 +623,92 @@ html, body {
     border-color: #1a1a1a;
 }
 
-/* ── Notices ──────────────────────────────────────────────────── */
+/* ── Notices (toast above composer) ───────────────────────────── */
 
-.pi-notice {
-    padding: 8px 11px;
-    border-radius: var(--pi-radius-sm);
-    font-size: 12.5px;
-    line-height: 1.6;
+.pi-chat-notices {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
 }
 
-.pi-notice--info {
-    background: #111;
-    border: 0;
-    color: var(--pi-text-muted);
+.pi-chat-notices:empty {
+    display: none;
+    margin: 0;
+}
+
+.pi-notice {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 11px;
+    border-radius: 9px;
+    font-size: 11.5px;
+    line-height: 1.45;
+    border: 1px solid transparent;
+}
+
+.pi-notice__icon {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    color: #0c0c0c;
+}
+
+.pi-notice__icon svg {
+    display: block;
+    width: 10px;
+    height: 10px;
+}
+
+.pi-notice__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    word-break: break-word;
 }
 
 .pi-notice--error {
-    background: #160f0f;
-    border: 1px solid #3a1c1c;
-    color: #e08a8a;
+    background: rgba(180, 48, 48, 0.12);
+    border-color: rgba(180, 48, 48, 0.28);
+    color: #e8a0a0;
 }
 
-/* Transient states: a retry in flight, or a conversation trimmed to fit. */
+.pi-notice--error .pi-notice__icon {
+    background: #e07070;
+}
+
 .pi-notice--warn {
-    background: #17140d;
-    border: 1px solid #3a301c;
-    color: #d9b26a;
+    background: rgba(180, 130, 40, 0.12);
+    border-color: rgba(180, 130, 40, 0.28);
+    color: #e0c080;
 }
 
-/* Errors carry the raw provider text in a disclosure, so the transcript stays
-   calm without hiding anything the user might need. */
+.pi-notice--warn .pi-notice__icon {
+    background: #d4a84b;
+}
+
+.pi-notice--success {
+    background: rgba(42, 157, 152, 0.12);
+    border-color: rgba(42, 157, 152, 0.28);
+    color: #8fd4d0;
+}
+
+.pi-notice--success .pi-notice__icon {
+    background: var(--pi-accent);
+}
+
+.pi-notice--expandable {
+    flex-direction: column;
+    align-items: stretch;
+}
+
 .pi-notice--expandable > summary {
+    display: flex;
+    align-items: center;
+    gap: 9px;
     cursor: pointer;
     list-style: none;
     -webkit-user-select: none;
@@ -574,20 +720,25 @@ html, body {
 }
 
 .pi-notice--expandable > summary::after {
-    content: ' ⌄';
-    opacity: 0.6;
+    content: '⌄';
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    opacity: 0.55;
+    font-size: 11px;
+    line-height: 1;
 }
 
 .pi-notice--expandable[open] > summary::after {
-    content: ' ⌃';
+    content: '⌃';
 }
 
 .pi-notice--expandable .pi-code {
-    margin: 8px 0 0;
-    max-height: 220px;
+    margin: 7px 0 0;
+    max-height: 180px;
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-word;
+    font-size: 11px;
 }
 
 .pi-chat-input-wrap {

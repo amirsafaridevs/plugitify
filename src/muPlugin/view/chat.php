@@ -16,7 +16,7 @@ $pi_config    = is_array($agentConfig ?? null) ? $agentConfig : [];
     </head>
     <body>
         <div id="pi-chat-app" class="pi-chat-layout">
-            <div class="pi-chat-browser">
+            <div class="pi-chat-browser" id="pi-chat-browser">
                 <div class="pi-browser-toolbar">
                     <button type="button" id="pi-browser-reload" class="pi-browser-btn" title="<?php esc_attr_e( 'بارگذاری مجدد', 'plugitify' ); ?>">
                         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -37,6 +37,9 @@ $pi_config    = is_array($agentConfig ?? null) ? $agentConfig : [];
                 <div class="pi-browser-frame-wrap">
                     <iframe id="pi-chat-iframe" src="<?php echo $pi_iframe !== '' ? esc_url( $pi_iframe ) : 'about:blank'; ?>" title="<?php esc_attr_e( 'Browser', 'plugitify' ); ?>"></iframe>
                 </div>
+                <div class="pi-browser-lock" id="pi-browser-lock" hidden aria-hidden="true">
+                    <div class="pi-browser-lock__spinner" role="status" aria-label="<?php esc_attr_e( 'در حال کار…', 'plugitify' ); ?>"></div>
+                </div>
             </div>
 
             <div class="pi-chat-resizer" id="pi-chat-resizer" role="separator" aria-orientation="vertical" aria-label="<?php esc_attr_e( 'تغییر عرض سایدبار', 'plugitify' ); ?>" tabindex="0"></div>
@@ -51,9 +54,20 @@ $pi_config    = is_array($agentConfig ?? null) ? $agentConfig : [];
                     </button>
                 </div>
 
-                <div class="pi-chat-messages" id="pi-chat-messages"></div>
+                <div class="pi-chat-messages" id="pi-chat-messages">
+                    <div class="pi-chat-empty" aria-hidden="true">
+                        <div class="pi-chat-empty__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <p class="pi-chat-empty__text"><?php esc_html_e( 'هنوز پیامی نیست', 'plugitify' ); ?></p>
+                        <p class="pi-chat-empty__hint"><?php esc_html_e( 'پیام خود را بنویسید تا گفتگو شروع شود', 'plugitify' ); ?></p>
+                    </div>
+                </div>
 
                 <div class="pi-chat-input-wrap">
+                    <div class="pi-chat-notices" id="pi-chat-notices" aria-live="polite"></div>
                     <div class="pi-chat-input-box">
                         <textarea id="pi-chat-textarea" rows="1" placeholder="<?php esc_attr_e( 'پیام خود را بنویسید...', 'plugitify' ); ?>"></textarea>
                         <button type="button" id="pi-chat-send" class="pi-chat-send-btn" title="<?php esc_attr_e( 'ارسال', 'plugitify' ); ?>">

@@ -8,25 +8,40 @@ import type { ToolEndEvent, ToolStartEvent } from './bus';
  * The transcript is append-only. Every method is safe to call while replaying a
  * restored conversation, which is how a reloaded page redraws itself.
  */
+export type NoticeKind = 'error' | 'warn' | 'success';
+
+/** How many toast notices to keep above the composer. */
+const MAX_NOTICES = 3;
+
 export class Transcript {
   private root: HTMLElement;
+  private noticesHost: HTMLElement | null;
   private toolCards = new Map<string, HTMLElement>();
   private streamingBubble: HTMLElement | null = null;
   private streamingText = '';
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, noticesHost: HTMLElement | null = null) {
     this.root = root;
+    this.noticesHost = noticesHost;
   }
 
   clear(): void {
-    this.root.innerHTML = '';
+    // Keep the empty-state placeholder; wipe everything else.
+    for (const child of Array.from(this.root.children)) {
+      if (!child.classList.contains('pi-chat-empty')) {
+        child.remove();
+      }
+    }
+    if (this.noticesHost) {
+      this.noticesHost.innerHTML = '';
+    }
     this.toolCards.clear();
     this.streamingBubble = null;
     this.streamingText = '';
   }
 
   get isEmpty(): boolean {
-    return this.root.childElementCount === 0;
+    return !this.root.querySelector('.pi-msg, .pi-tool, .pi-think');
   }
 
   addUserMessage(text: string): void {
@@ -151,27 +166,41 @@ export class Transcript {
   }
 
   /**
-   * A one-line status line. `detail` (the raw provider text) is tucked into a
-   * disclosure so the surface stays calm but nothing is actually hidden.
+   * Toast above the composer. `detail` (raw provider text) stays in a
+   * disclosure so the bar stays calm without hiding anything useful.
    */
-  addNotice(text: string, kind: 'info' | 'error' | 'warn' = 'info', detail?: string): void {
+  addNotice(text: string, kind: NoticeKind = 'error', detail?: string): void {
     this.closeStream();
 
-    if (!detail) {
-      const el = document.createElement('div');
-      el.className = `pi-notice pi-notice--${kind}`;
-      el.textContent = text;
-      this.append(el);
+    const host = this.noticesHost ?? this.root;
+    const icon = noticeIcon(kind);
 
-      return;
+    let el: HTMLElement;
+
+    if (!detail) {
+      el = document.createElement('div');
+      el.className = `pi-notice pi-notice--${kind}`;
+      el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+      el.innerHTML =
+        `<span class="pi-notice__icon" aria-hidden="true">${icon}</span>`
+        + `<span class="pi-notice__text">${escapeHtml(text)}</span>`;
+    } else {
+      el = document.createElement('details');
+      el.className = `pi-notice pi-notice--${kind} pi-notice--expandable`;
+      el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+      el.innerHTML =
+        '<summary>'
+        + `<span class="pi-notice__icon" aria-hidden="true">${icon}</span>`
+        + `<span class="pi-notice__text">${escapeHtml(text)}</span>`
+        + '</summary>'
+        + `<pre class="pi-code"><code>${escapeHtml(truncate(detail, 2000))}</code></pre>`;
     }
 
-    const el = document.createElement('details');
-    el.className = `pi-notice pi-notice--${kind} pi-notice--expandable`;
-    el.innerHTML =
-      `<summary>${escapeHtml(text)}</summary>`
-      + `<pre class="pi-code"><code>${escapeHtml(truncate(detail, 2000))}</code></pre>`;
-    this.append(el);
+    host.appendChild(el);
+
+    while (host.childElementCount > MAX_NOTICES) {
+      host.firstElementChild?.remove();
+    }
   }
 
   /** Marks any still-running tool cards as interrupted after an aborted run. */
@@ -322,4 +351,17 @@ function formatArgs(args: Record<string, unknown>): string {
 
 function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max)}\n… (${text.length - max} کاراکتر دیگر)`;
+}
+
+function noticeIcon(kind: NoticeKind): string {
+  // Compact filled glyphs sit on the colored badge circle from CSS.
+  if (kind === 'success') {
+    return '<svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5.2 3.8 7.5 8.5 2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  if (kind === 'warn') {
+    return '<svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><rect x="4.25" y="2" width="1.5" height="4.2" rx="0.75"/><circle cx="5" cy="8" r="0.95"/></svg>';
+  }
+
+  return '<svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2.5 2.5 7.5 7.5M7.5 2.5 2.5 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 }

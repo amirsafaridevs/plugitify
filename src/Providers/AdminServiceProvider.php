@@ -14,10 +14,13 @@ class AdminServiceProvider extends ServiceProvider
 {
 	private string $pluginsPageHook = '';
 
+	private string $settingsPageHook = '';
+
 	public function register(): void
 	{
 		add_action( 'admin_menu', [ $this, 'registerMenus' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueAssets' ] );
+		add_action( 'admin_post_plugitify_save_settings', [ new SettingsService(), 'handleSave' ] );
 		add_action( 'wp_ajax_plugitify_create_plugin', [ new PluginCreationService(), 'handleAjaxCreate' ] );
 		add_action( 'wp_ajax_plugitify_delete_plugin', [ new PluginDeletionService(), 'handleAjaxDelete' ] );
 		add_action( 'wp_ajax_plugitify_toggle_plugin', [ new PluginActivationService(), 'handleAjaxToggle' ] );
@@ -38,7 +41,7 @@ class AdminServiceProvider extends ServiceProvider
 			65
 		);
 
-		add_submenu_page(
+		$this->settingsPageHook = (string) add_submenu_page(
 			'plugitify',
 			__( 'تنظیمات', 'plugitify' ),
 			__( 'تنظیمات', 'plugitify' ),
@@ -50,7 +53,10 @@ class AdminServiceProvider extends ServiceProvider
 
 	public function enqueueAssets( string $hook ): void
 	{
-		if ( $hook !== $this->pluginsPageHook ) {
+		$isPluginsPage  = $hook === $this->pluginsPageHook;
+		$isSettingsPage = $hook === $this->settingsPageHook;
+
+		if ( ! $isPluginsPage && ! $isSettingsPage ) {
 			return;
 		}
 
@@ -69,24 +75,34 @@ class AdminServiceProvider extends ServiceProvider
 			true
 		);
 
-		wp_localize_script(
-			'plugitify-admin',
-			'plugitifyAdmin',
-			[
-				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
-				'nonce'       => wp_create_nonce( 'plugitify_create_plugin' ),
-				'deleteNonce' => wp_create_nonce( 'plugitify_delete_plugin' ),
-				'toggleNonce' => wp_create_nonce( 'plugitify_toggle_plugin' ),
-				'bulkNonce'   => wp_create_nonce( 'plugitify_bulk_action' ),
-				'strings'     => [
-					'errorName'         => __( 'نام افزونه را وارد کنید.', 'plugitify' ),
-					'errorSlug'         => __( 'اسلاگ باید انگلیسی باشد و فقط شامل حروف کوچک، عدد و خط تیره باشد.', 'plugitify' ),
-					'errorDescription'  => __( 'توضیحات افزونه را وارد کنید.', 'plugitify' ),
-					'errorGeneric'      => __( 'خطایی رخ داد، دوباره تلاش کنید.', 'plugitify' ),
-					'confirmDelete'     => __( 'آیا از حذف «%s» مطمئن هستید؟ این کار غیرقابل بازگشت است.', 'plugitify' ),
-					'confirmBulkDelete' => __( 'آیا از حذف افزونه‌های انتخاب‌شده مطمئن هستید؟ این کار غیرقابل بازگشت است.', 'plugitify' ),
-				],
-			]
-		);
+		$localize = [
+			'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+			'nonce'       => wp_create_nonce( 'plugitify_create_plugin' ),
+			'deleteNonce' => wp_create_nonce( 'plugitify_delete_plugin' ),
+			'toggleNonce' => wp_create_nonce( 'plugitify_toggle_plugin' ),
+			'bulkNonce'   => wp_create_nonce( 'plugitify_bulk_action' ),
+			'strings'     => [
+				'errorName'         => __( 'نام افزونه را وارد کنید.', 'plugitify' ),
+				'errorSlug'         => __( 'اسلاگ باید انگلیسی باشد و فقط شامل حروف کوچک، عدد و خط تیره باشد.', 'plugitify' ),
+				'errorDescription'  => __( 'توضیحات افزونه را وارد کنید.', 'plugitify' ),
+				'errorGeneric'      => __( 'خطایی رخ داد، دوباره تلاش کنید.', 'plugitify' ),
+				'confirmDelete'     => __( 'آیا از حذف «%s» مطمئن هستید؟ این کار غیرقابل بازگشت است.', 'plugitify' ),
+				'confirmBulkDelete' => __( 'آیا از حذف افزونه‌های انتخاب‌شده مطمئن هستید؟ این کار غیرقابل بازگشت است.', 'plugitify' ),
+			],
+		];
+
+		if ( $isSettingsPage ) {
+			$providerModels = [];
+
+			foreach ( SettingsService::providers() as $providerId => $provider ) {
+				$providerModels[ $providerId ] = $provider['models'];
+			}
+
+			$localize['providers']     = $providerModels;
+			$localize['currentModel']  = SettingsService::getSettings()['model'];
+			$localize['settingsPage']  = true;
+		}
+
+		wp_localize_script( 'plugitify-admin', 'plugitifyAdmin', $localize );
 	}
 }

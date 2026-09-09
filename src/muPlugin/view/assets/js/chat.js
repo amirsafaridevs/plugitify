@@ -179,7 +179,14 @@
         return 'https://' + value;
     }
 
+    function isBrowserBusy() {
+        return !!(layout && layout.querySelector('.pi-chat-browser.is-busy'));
+    }
+
     function navigate() {
+        if (isBrowserBusy()) {
+            return;
+        }
         var target = normalizeUrl(urlInput.value);
         if (!target) {
             return;
@@ -201,6 +208,9 @@
 
     if (reloadBtn) {
         reloadBtn.addEventListener('click', function () {
+            if (isBrowserBusy()) {
+                return;
+            }
             // Re-assigning .src re-fetches even when the URL is unchanged,
             // which is the point after the agent has edited plugin files.
             iframe.src = iframe.src;

@@ -1,25 +1,73 @@
 ( function () {
 	'use strict';
 
-	function insertNotice( message, type ) {
-		var wrap = document.querySelector( '.plugitify-plugins' );
-		var anchor = wrap && wrap.querySelector( '.wp-header-end' );
+	function showToast( message ) {
+		var toast = document.querySelector( '[data-pty-toast]' );
 
-		if ( ! wrap || ! anchor ) {
+		if ( ! toast ) {
 			return;
 		}
 
-		var notice = document.createElement( 'div' );
-		notice.className = 'notice notice-' + type + ' is-dismissible plugitify-notice';
+		toast.textContent = message;
+		toast.hidden = false;
 
-		var text = document.createElement( 'p' );
-		text.textContent = message;
-		notice.appendChild( text );
+		window.clearTimeout( showToast._timer );
+		showToast._timer = window.setTimeout( function () {
+			toast.hidden = true;
+			toast.textContent = '';
+		}, 3200 );
+	}
 
-		anchor.insertAdjacentElement( 'afterend', notice );
+	function initSettingsPage() {
+		var root = document.getElementById( 'pty-settings' );
+
+		if ( ! root || ! window.plugitifyAdmin || ! plugitifyAdmin.providers ) {
+			return;
+		}
+
+		var providerSelect = root.querySelector( '[data-pty-provider]' );
+		var modelSelect = root.querySelector( '[data-pty-model]' );
+
+		if ( ! providerSelect || ! modelSelect ) {
+			return;
+		}
+
+		function fillModels( providerId, preferredModel ) {
+			var models = plugitifyAdmin.providers[ providerId ] || {};
+			var modelIds = Object.keys( models );
+
+			modelSelect.innerHTML = '';
+
+			modelIds.forEach( function ( modelId ) {
+				var option = document.createElement( 'option' );
+				option.value = modelId;
+				option.textContent = models[ modelId ];
+				modelSelect.appendChild( option );
+			} );
+
+			if ( preferredModel && models[ preferredModel ] ) {
+				modelSelect.value = preferredModel;
+			} else if ( modelIds.length ) {
+				modelSelect.value = modelIds[0];
+			}
+		}
+
+		providerSelect.addEventListener( 'change', function () {
+			fillModels( providerSelect.value, '' );
+		} );
+
+		fillModels( providerSelect.value, plugitifyAdmin.currentModel || '' );
 	}
 
 	document.addEventListener( 'DOMContentLoaded', function () {
+		initSettingsPage();
+
+		var root = document.getElementById( 'pty-dashboard' );
+
+		if ( ! root ) {
+			return;
+		}
+
 		document.addEventListener( 'click', function ( event ) {
 			var deleteButton = event.target.closest( '[data-plugitify-delete]' );
 
@@ -61,11 +109,11 @@
 						? response.data.message
 						: plugitifyAdmin.strings.errorGeneric;
 
-					insertNotice( message, 'error' );
+					showToast( message );
 					deleteButton.disabled = false;
 				} )
 				.catch( function () {
-					insertNotice( plugitifyAdmin.strings.errorGeneric, 'error' );
+					showToast( plugitifyAdmin.strings.errorGeneric );
 					deleteButton.disabled = false;
 				} );
 		} );
@@ -107,41 +155,64 @@
 						? response.data.message
 						: plugitifyAdmin.strings.errorGeneric;
 
-					insertNotice( message, 'error' );
+					showToast( message );
 				} )
 				.catch( function () {
 					toggle.disabled = false;
-					insertNotice( plugitifyAdmin.strings.errorGeneric, 'error' );
+					showToast( plugitifyAdmin.strings.errorGeneric );
 				} );
 		} );
 
 		var searchInput = document.getElementById( 'plugitify-search' );
 		var rows        = document.querySelectorAll( '[data-plugitify-row]' );
 		var noResults   = document.getElementById( 'plugitify-no-results' );
+		var tabButtons  = document.querySelectorAll( '[data-pty-tab]' );
+		var activeTab   = 'all';
 
-		if ( searchInput ) {
-			searchInput.addEventListener( 'input', function () {
-				var query = searchInput.value.trim().toLowerCase();
-				var visibleCount = 0;
+		function applyFilters() {
+			var query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+			var visibleCount = 0;
 
-				Array.prototype.forEach.call( rows, function ( row ) {
-					var matches = '' === query || ( row.getAttribute( 'data-search' ) || '' ).indexOf( query ) !== -1;
-					row.hidden = ! matches;
+			Array.prototype.forEach.call( rows, function ( row ) {
+				var status = row.getAttribute( 'data-status' ) || '';
+				var matchesTab = 'all' === activeTab || status === activeTab;
+				var matchesSearch = '' === query || ( row.getAttribute( 'data-search' ) || '' ).indexOf( query ) !== -1;
+				var matches = matchesTab && matchesSearch;
 
-					if ( matches ) {
-						visibleCount++;
-					}
-				} );
+				row.hidden = ! matches;
 
-				if ( noResults ) {
-					noResults.hidden = 0 !== visibleCount;
+				if ( matches ) {
+					visibleCount++;
 				}
 			} );
+
+			if ( noResults ) {
+				noResults.hidden = 0 !== visibleCount || 0 === rows.length;
+			}
 		}
 
-		var selectAll      = document.getElementById( 'plugitify-select-all' );
-		var bulkButtons    = document.querySelectorAll( '[data-plugitify-bulk]' );
-		var rowCheckboxes  = document.querySelectorAll( '[data-plugitify-row-checkbox]' );
+		Array.prototype.forEach.call( tabButtons, function ( button ) {
+			button.addEventListener( 'click', function () {
+				activeTab = button.getAttribute( 'data-pty-tab' ) || 'all';
+
+				Array.prototype.forEach.call( tabButtons, function ( tab ) {
+					var isActive = tab === button;
+					tab.classList.toggle( 'is-active', isActive );
+					tab.setAttribute( 'aria-pressed', isActive ? 'true' : 'false' );
+				} );
+
+				applyFilters();
+			} );
+		} );
+
+		if ( searchInput ) {
+			searchInput.addEventListener( 'input', applyFilters );
+		}
+
+		var selectAll     = document.getElementById( 'plugitify-select-all' );
+		var bulkButtons   = document.querySelectorAll( '[data-plugitify-bulk]' );
+		var rowCheckboxes = document.querySelectorAll( '[data-plugitify-row-checkbox]' );
+		var bulkBar       = document.querySelector( '[data-pty-bulk-bar]' );
 
 		function getSelectedSlugs() {
 			return Array.prototype.filter.call( rowCheckboxes, function ( checkbox ) {
@@ -153,6 +224,10 @@
 
 		function updateBulkButtons() {
 			var hasSelection = getSelectedSlugs().length > 0;
+
+			if ( bulkBar ) {
+				bulkBar.hidden = ! hasSelection;
+			}
 
 			Array.prototype.forEach.call( bulkButtons, function ( button ) {
 				button.disabled = ! hasSelection;
@@ -172,6 +247,10 @@
 		if ( selectAll ) {
 			selectAll.addEventListener( 'change', function () {
 				Array.prototype.forEach.call( rowCheckboxes, function ( checkbox ) {
+					var row = checkbox.closest( '[data-plugitify-row]' );
+					if ( row && row.hidden ) {
+						return;
+					}
 					checkbox.checked = selectAll.checked;
 				} );
 
@@ -226,20 +305,20 @@
 							? response.data.message
 							: plugitifyAdmin.strings.errorGeneric;
 
-						insertNotice( message, 'error' );
+						showToast( message );
 					} )
 					.catch( function () {
 						updateBulkButtons();
-						insertNotice( plugitifyAdmin.strings.errorGeneric, 'error' );
+						showToast( plugitifyAdmin.strings.errorGeneric );
 					} );
 			} );
 		} );
 
-		var openButton = document.getElementById( 'plugitify-open-create-modal' );
-		var modal      = document.getElementById( 'plugitify-create-modal' );
-		var form       = document.getElementById( 'plugitify-create-form' );
+		var modal = document.getElementById( 'plugitify-create-modal' );
+		var form  = document.getElementById( 'plugitify-create-form' );
+		var createTriggers = document.querySelectorAll( '[data-pty-create], #plugitify-open-create-modal' );
 
-		if ( ! openButton || ! modal || ! form ) {
+		if ( ! modal || ! form || 0 === createTriggers.length ) {
 			return;
 		}
 
@@ -247,8 +326,8 @@
 		var slugField        = document.getElementById( 'plugitify-plugin-slug' );
 		var descriptionField = document.getElementById( 'plugitify-plugin-description' );
 		var errorBox         = document.getElementById( 'plugitify-create-error' );
-		var submitButton = form.querySelector( 'button[type="submit"]' );
-		var slugTouched = false;
+		var submitButton     = form.querySelector( 'button[type="submit"]' );
+		var slugTouched      = false;
 
 		function slugify( value ) {
 			return value
@@ -271,20 +350,22 @@
 
 		function openModal() {
 			modal.hidden = false;
-			document.body.classList.add( 'plugitify-modal-open' );
+			document.body.classList.add( 'pty-modal-open' );
 			nameField.focus();
 		}
 
 		function closeModal() {
 			modal.hidden = true;
-			document.body.classList.remove( 'plugitify-modal-open' );
+			document.body.classList.remove( 'pty-modal-open' );
 			form.reset();
 			slugTouched = false;
 			hideError();
 			submitButton.disabled = false;
 		}
 
-		openButton.addEventListener( 'click', openModal );
+		Array.prototype.forEach.call( createTriggers, function ( trigger ) {
+			trigger.addEventListener( 'click', openModal );
+		} );
 
 		Array.prototype.forEach.call( modal.querySelectorAll( '[data-plugitify-close]' ), function ( el ) {
 			el.addEventListener( 'click', closeModal );

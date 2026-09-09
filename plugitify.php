@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PLUGITIFY_VERSION', '1.0.0' );
+define( 'PLUGITIFY_VERSION', '1.0.4' );
 define( 'PLUGITIFY_FILE', __FILE__ );
 define( 'PLUGITIFY_PATH', plugin_dir_path( __FILE__ ) );
 define( 'PLUGITIFY_URL', plugin_dir_url( __FILE__ ) );
