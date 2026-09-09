@@ -226,7 +226,7 @@ export class Transcript {
       el.classList.add('pi-think--done');
       const label = el.querySelector('.pi-think-label');
       if (label) {
-        label.textContent = 'فکر کرد';
+        label.textContent = 'فکر کردن';
       }
     }
   }

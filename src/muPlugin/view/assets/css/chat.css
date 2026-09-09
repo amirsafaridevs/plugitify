@@ -483,23 +483,28 @@ html, body {
 /* ── Agent step timeline (think + tools) ──────────────────────── */
 
 .pi-timeline {
+    --pi-tl-gutter: 26px;
+    --pi-tl-dot-size: 9px;
+    --pi-tl-rail: 6px; /* center of the vertical rail inside the gutter */
     position: relative;
     display: flex;
     flex-direction: column;
     gap: 0;
     width: 100%;
     min-width: 0;
+    padding-inline-start: var(--pi-tl-gutter);
 }
 
-/* One continuous rail behind all step dots */
+/* Continuous rail in the outer gutter (right side in RTL sidebar) */
 .pi-timeline::before {
     content: '';
     position: absolute;
-    inset-inline-start: 5px;
-    top: 11px;
-    bottom: 11px;
+    inset-inline-start: calc(var(--pi-tl-rail) - 0.5px);
+    /* Align with first/last summary midlines: pad 10px + ~12px half-row */
+    top: 22px;
+    bottom: 22px;
     width: 1px;
-    background: #2e2e2e;
+    background: #3f3f3f;
     pointer-events: none;
     z-index: 0;
 }
@@ -507,19 +512,23 @@ html, body {
 .pi-timeline > .pi-think,
 .pi-timeline > .pi-tool {
     position: relative;
-    padding-inline-start: 18px;
     margin: 0;
+    padding-inline-start: 0;
+    padding-block: 10px;
 }
 
 .pi-tl-dot {
     position: absolute;
-    inset-inline-start: 2px;
-    top: 7px;
-    width: 8px;
-    height: 8px;
+    inset-inline-start: calc(-1 * var(--pi-tl-gutter) + var(--pi-tl-rail) - var(--pi-tl-dot-size) / 2);
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--pi-tl-dot-size);
+    height: var(--pi-tl-dot-size);
     border-radius: 50%;
     background: #6a6a6a;
-    box-shadow: 0 0 0 3px #0a0a0a;
+    border: 2px solid var(--pi-black);
+    box-sizing: content-box;
+    margin-inline: -2px;
     flex: 0 0 auto;
     z-index: 1;
     pointer-events: none;
@@ -541,8 +550,8 @@ html, body {
 }
 
 @keyframes pi-tl-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
+    0%, 100% { opacity: 1; transform: translateY(-50%); }
+    50% { opacity: 0.45; transform: translateY(-50%); }
 }
 
 /* ── Reasoning ────────────────────────────────────────────────── */
@@ -559,7 +568,7 @@ html, body {
     display: flex;
     align-items: center;
     gap: 0;
-    min-height: 22px;
+    min-height: 24px;
     padding: 2px 0;
     cursor: pointer;
     list-style: none;
@@ -580,7 +589,7 @@ html, body {
 }
 
 .pi-think-body {
-    margin-top: 4px;
+    margin-top: 6px;
     line-height: 1.7;
 }
 
@@ -600,8 +609,8 @@ html, body {
     display: flex;
     align-items: center;
     gap: 7px;
-    min-height: 22px;
-    padding: 3px 0;
+    min-height: 24px;
+    padding: 2px 0;
     cursor: pointer;
     list-style: none;
     -webkit-user-select: none;
