@@ -120,6 +120,35 @@ export function clearChat(slug: string): void {
   }
 }
 
+/** Dedicated key so the preview URL survives even when chat history is empty. */
+function previewUrlKey(slug: string): string {
+  return `plugitify:previewUrl:v${VERSION}:${slug}`;
+}
+
+export function loadPreviewUrl(slug: string): string | null {
+  try {
+    const raw = window.localStorage.getItem(previewUrlKey(slug));
+    if (!raw || raw === 'about:blank') {
+      return null;
+    }
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+export function savePreviewUrl(slug: string, url: string): void {
+  if (!url || url === 'about:blank') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(previewUrlKey(slug), url);
+  } catch {
+    // Quota / private mode — preview restore is best-effort.
+  }
+}
+
 function isQuotaError(error: unknown): boolean {
   return (
     error instanceof DOMException

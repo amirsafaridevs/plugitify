@@ -554,6 +554,23 @@ html, body {
     50% { opacity: 0.45; transform: translateY(-50%); }
 }
 
+/* ── Working indicator (under live model output) ─────────────── */
+
+.pi-working {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 4px 2px 2px;
+    min-height: 28px;
+}
+
+.pi-working__dots {
+    display: block;
+    width: 28px;
+    height: 14px;
+    fill: #8a8a8a;
+}
+
 /* ── Reasoning ────────────────────────────────────────────────── */
 
 .pi-think {
@@ -604,6 +621,7 @@ html, body {
     max-width: 100%;
 }
 
+.pi-tool-head,
 .pi-tool > summary {
     position: relative;
     display: flex;
@@ -611,7 +629,7 @@ html, body {
     gap: 7px;
     min-height: 24px;
     padding: 2px 0;
-    cursor: pointer;
+    cursor: default;
     list-style: none;
     -webkit-user-select: none;
     user-select: none;
@@ -621,10 +639,7 @@ html, body {
     display: none;
 }
 
-.pi-tool > summary:hover {
-    background: transparent;
-}
-
+.pi-tool-head:hover .pi-tool-name,
 .pi-tool > summary:hover .pi-tool-name {
     color: #d0d0d0;
 }
@@ -669,28 +684,10 @@ html, body {
     color: #c46a6a;
 }
 
-.pi-tool-body {
-    margin-top: 4px;
-    margin-inline-start: 0;
-    padding: 0;
-    border-top: 0;
-    min-width: 0;
-}
-
+/* Legacy expandable tool payloads — no longer rendered. */
+.pi-tool-body,
 .pi-tool-label {
-    margin: 8px 0 2px;
-    color: #555;
-    font-size: 10.5px;
-}
-
-.pi-tool-body .pi-code {
-    margin: 0;
-    max-height: 240px;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
-    background: transparent;
-    border-color: #1a1a1a;
+    display: none !important;
 }
 
 /* ── Notices (toast above composer) ───────────────────────────── */

@@ -4,19 +4,40 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit171c4a0bf7942febbf9634f8ea5e19bc
+class ComposerStaticInit364d044784bcbda03752248478172680
 {
     public static $prefixLengthsPsr4 = array (
+        'S' =>
+        array (
+            'Sabberworm\\CSS\\' => 15,
+        ),
         'P' =>
         array (
             'Plugitify\\' => 10,
+            'Peast\\' => 6,
+        ),
+        'M' =>
+        array (
+            'Masterminds\\' => 12,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
+        'Sabberworm\\CSS\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/sabberworm/php-css-parser/src',
+        ),
         'Plugitify\\' =>
         array (
-            0 => __DIR__ . '/../..' . '/src',
+            0 => __DIR__ . '/../../../../../../..'.'/wamp64/www/wpagentify/wordpress/wp-content/plugins/plugitify' . '/src',
+        ),
+        'Peast\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/mck89/peast/lib/Peast',
+        ),
+        'Masterminds\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/masterminds/html5/src',
         ),
     );
 
@@ -27,9 +48,9 @@ class ComposerStaticInit171c4a0bf7942febbf9634f8ea5e19bc
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit171c4a0bf7942febbf9634f8ea5e19bc::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit171c4a0bf7942febbf9634f8ea5e19bc::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit171c4a0bf7942febbf9634f8ea5e19bc::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit364d044784bcbda03752248478172680::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit364d044784bcbda03752248478172680::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit364d044784bcbda03752248478172680::$classMap;
 
         }, null, ClassLoader::class);
     }

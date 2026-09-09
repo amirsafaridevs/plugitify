@@ -25,6 +25,7 @@ class AgentController
     /** Tool name -> AgentTools method. Anything not listed here is not callable. */
     private const TOOLS = [
         'workspace_info'   => 'workspace_info',
+        'site_extensions'  => 'site_extensions',
         'list_files'       => 'list_files',
         'read_file'        => 'read_file',
         'search_files'     => 'search_files',

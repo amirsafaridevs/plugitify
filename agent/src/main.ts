@@ -7,7 +7,7 @@ import { isEmptyHistory, sanitizeHistory } from './history';
 import { Preview } from './preview';
 import { replayHistory } from './restore';
 import { setRunSignal } from './runControl';
-import { clearChat, loadChat, saveChat, type ToolMetaEntry } from './storage';
+import { clearChat, loadChat, loadPreviewUrl, saveChat, savePreviewUrl, type ToolMetaEntry } from './storage';
 import { Transcript } from './ui';
 
 /**
@@ -40,10 +40,16 @@ function main(): void {
   let config: ReturnType<typeof loadConfig>;
   let agent: ReturnType<typeof buildAgent>;
   let preview: Preview;
+  /** Gate: don't write preview URL until after restore, or home clobbers storage. */
+  let previewPersist = false;
 
   try {
     config = loadConfig();
-    preview = new Preview();
+    preview = new Preview((url) => {
+      if (previewPersist) {
+        savePreviewUrl(config.slug, url);
+      }
+    });
     configureProvider(config);
     agent = buildAgent(config, preview);
   } catch (error) {
@@ -77,8 +83,11 @@ function main(): void {
   });
 
   const persist = () => {
+    const url = preview.currentUrl();
+    savePreviewUrl(config.slug, url);
+
     const outcome = saveChat(config.slug, {
-      previewUrl: preview.currentUrl(),
+      previewUrl: url,
       history,
       toolMeta,
     });
@@ -131,6 +140,12 @@ function main(): void {
     sendBtn.setAttribute('aria-label', value ? 'توقف' : 'ارسال');
     textarea.placeholder = value ? 'در حال کار…' : 'پیام خود را بنویسید...';
     setBrowserLocked(value);
+
+    if (value) {
+      transcript.showWorking();
+    } else {
+      transcript.hideWorking();
+    }
   };
 
   const send = async (text: string): Promise<void> => {
@@ -301,7 +316,38 @@ function main(): void {
     replayHistory(transcript, history, toolMeta);
   }
 
+  // Last preview URL wins: dedicated key, then chat sidecar, then site home.
+  const restoredUrl =
+    loadPreviewUrl(config.slug)
+    || (saved?.previewUrl && saved.previewUrl !== 'about:blank' ? saved.previewUrl : '')
+    || config.siteUrl
+    || config.previewUrl;
+
+  if (restoredUrl && !samePreviewUrl(preview.currentUrl(), restoredUrl)) {
+    void preview.navigate(restoredUrl).finally(() => {
+      previewPersist = true;
+      savePreviewUrl(config.slug, preview.currentUrl());
+    });
+  } else {
+    previewPersist = true;
+    if (restoredUrl) {
+      savePreviewUrl(config.slug, restoredUrl);
+    }
+  }
+
   textarea.focus();
+}
+
+/** Loose compare so trailing-slash / encoding differences don't force a reload. */
+function samePreviewUrl(a: string, b: string): boolean {
+  try {
+    const left = new URL(a);
+    const right = new URL(b);
+    const norm = (u: URL) => `${u.origin}${u.pathname.replace(/\/$/, '') || ''}${u.search}${u.hash}`;
+    return norm(left) === norm(right);
+  } catch {
+    return a === b;
+  }
 }
 
 /**

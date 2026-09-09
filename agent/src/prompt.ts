@@ -107,8 +107,10 @@ These are not stylistic suggestions. Code that violates them is wrong.
 
 - read_file returns numbered lines. The numbers are a reading aid — never include them in the
   old_string you pass to edit_file.
-- edit_file needs old_string to be unique in the file. If it reports an ambiguous match, add more
-  surrounding context; do not switch to write_file just to get around it.
+- edit_file safely tolerates LF/CRLF and indentation-only differences, but old_string still needs
+  to identify one block. If it reports an ambiguous match, add more surrounding context; do not
+  switch to write_file just to get around it. Retrying a completed edit is safe because the tool
+  reports when new_string is already present.
 - If a tool returns an error, read it — the errors are written to tell you exactly what to do
   differently. Fix the cause. Do not retry the identical call and do not silently give up.
 - A reported PHP syntax error is the most urgent thing on your list. Fix it before anything else.

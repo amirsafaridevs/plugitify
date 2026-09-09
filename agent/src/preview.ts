@@ -22,8 +22,9 @@ export class Preview {
   private errors: PageError[] = [];
   /** Documents already instrumented, so a re-hook doesn't double-wrap console. */
   private hooked = new WeakSet<Document>();
+  private onUrlChange: ((url: string) => void) | null;
 
-  constructor() {
+  constructor(onUrlChange?: (url: string) => void) {
     const iframe = document.getElementById('pi-chat-iframe');
 
     if (!(iframe instanceof HTMLIFrameElement)) {
@@ -32,6 +33,7 @@ export class Preview {
 
     this.iframe = iframe;
     this.urlInput = document.getElementById('pi-browser-url') as HTMLInputElement | null;
+    this.onUrlChange = onUrlChange ?? null;
 
     this.iframe.addEventListener('load', () => {
       this.syncUrlBar();
@@ -132,8 +134,14 @@ export class Preview {
   }
 
   private syncUrlBar(): void {
+    const url = this.currentUrl();
+
     if (this.urlInput) {
-      this.urlInput.value = this.currentUrl();
+      this.urlInput.value = url;
+    }
+
+    if (url && url !== 'about:blank') {
+      this.onUrlChange?.(url);
     }
   }
 

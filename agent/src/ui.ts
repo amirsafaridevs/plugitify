@@ -19,6 +19,7 @@ export class Transcript {
   private toolCards = new Map<string, HTMLElement>();
   private streamingBubble: HTMLElement | null = null;
   private streamingText = '';
+  private workingEl: HTMLElement | null = null;
 
   constructor(root: HTMLElement, noticesHost: HTMLElement | null = null) {
     this.root = root;
@@ -38,6 +39,7 @@ export class Transcript {
     this.toolCards.clear();
     this.streamingBubble = null;
     this.streamingText = '';
+    this.workingEl = null;
   }
 
   get isEmpty(): boolean {
@@ -115,20 +117,21 @@ export class Transcript {
     this.appendStep(el);
   }
 
-  /** Draws a pending card the moment a tool starts, so latency is visible. */
+  /** Draws a pending step the moment a tool starts, so latency is visible. */
   startTool(event: ToolStartEvent): void {
     this.closeStream();
     this.settleOpenSteps();
 
-    const card = document.createElement('details');
+    // One-line timeline only — args/output stay out of the UI (they still
+    // live in history for the model and for restore cosmetics).
+    const card = document.createElement('div');
     card.className = 'pi-tool pi-tool--running';
     card.innerHTML =
-      '<summary>'
+      '<div class="pi-tool-head">'
       + '<span class="pi-tl-dot" aria-hidden="true"></span>'
       + `<span class="pi-tool-name">${escapeHtml(event.tool)}</span>`
       + `<span class="pi-tool-summary">${escapeHtml(summarizeArgs(event.tool, event.args))}</span>`
-      + '</summary>'
-      + `<div class="pi-tool-body"><pre class="pi-code"><code>${escapeHtml(formatArgs(event.args))}</code></pre></div>`;
+      + '</div>';
 
     this.toolCards.set(event.id, card);
     this.appendStep(card);
@@ -147,21 +150,6 @@ export class Transcript {
     const summary = card.querySelector('.pi-tool-summary');
     if (summary) {
       summary.textContent = summarizeResult(event);
-    }
-
-    const body = card.querySelector('.pi-tool-body');
-    if (body) {
-      body.innerHTML =
-        '<div class="pi-tool-label">آرگومان‌ها</div>'
-        + `<pre class="pi-code"><code>${escapeHtml(formatArgs(event.args))}</code></pre>`
-        + '<div class="pi-tool-label">نتیجه</div>'
-        + `<pre class="pi-code"><code>${escapeHtml(truncate(event.result.output, 4000))}</code></pre>`;
-    }
-
-    // A failed tool call is the one thing worth opening automatically — the
-    // user should not have to hunt for why the agent changed course.
-    if (!event.result.ok) {
-      card.setAttribute('open', '');
     }
 
     this.scroll();
@@ -231,6 +219,25 @@ export class Transcript {
     }
   }
 
+  /** Keeps the dots loader pinned under the latest model output for the whole run. */
+  showWorking(): void {
+    if (!this.workingEl) {
+      this.workingEl = document.createElement('div');
+      this.workingEl.className = 'pi-working';
+      this.workingEl.setAttribute('role', 'status');
+      this.workingEl.setAttribute('aria-label', 'در حال کار');
+      this.workingEl.innerHTML = WORKING_DOTS_SVG;
+    }
+
+    this.root.appendChild(this.workingEl);
+    this.scroll();
+  }
+
+  hideWorking(): void {
+    this.workingEl?.remove();
+    this.workingEl = null;
+  }
+
   scrollToEnd(): void {
     this.root.scrollTop = this.root.scrollHeight;
   }
@@ -245,24 +252,46 @@ export class Transcript {
   private appendStep(el: HTMLElement): void {
     const timeline = this.ensureTimeline();
     timeline.appendChild(el);
+    this.pinWorking();
     this.scroll();
   }
 
   private ensureTimeline(): HTMLElement {
-    const last = this.root.lastElementChild;
-    if (last?.classList.contains('pi-timeline')) {
-      return last as HTMLElement;
+    for (let i = this.root.children.length - 1; i >= 0; i--) {
+      const child = this.root.children[i] as HTMLElement;
+      if (child.classList.contains('pi-working')) {
+        continue;
+      }
+      if (child.classList.contains('pi-timeline')) {
+        return child;
+      }
+      break;
     }
 
     const wrap = document.createElement('div');
     wrap.className = 'pi-timeline';
-    this.root.appendChild(wrap);
+    this.insertBeforeWorking(wrap);
     return wrap;
   }
 
   private append(el: HTMLElement): void {
-    this.root.appendChild(el);
+    this.insertBeforeWorking(el);
     this.scroll();
+  }
+
+  private insertBeforeWorking(el: HTMLElement): void {
+    if (this.workingEl?.parentElement === this.root) {
+      this.root.insertBefore(el, this.workingEl);
+      return;
+    }
+
+    this.root.appendChild(el);
+  }
+
+  private pinWorking(): void {
+    if (this.workingEl) {
+      this.root.appendChild(this.workingEl);
+    }
   }
 
   private scroll(): void {
@@ -273,6 +302,20 @@ export class Transcript {
     }
   }
 }
+
+/** Inline so the animation works without depending on a public asset URL. */
+const WORKING_DOTS_SVG =
+  '<svg class="pi-working__dots" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+  + '<circle cx="4" cy="12" r="3" opacity="1">'
+  + '<animate id="pi_dot_a" begin="0;pi_dot_c.end-0.25s" attributeName="opacity" dur="0.75s" values="1;.2" fill="freeze"/>'
+  + '</circle>'
+  + '<circle cx="12" cy="12" r="3" opacity=".4">'
+  + '<animate begin="pi_dot_a.begin+0.15s" attributeName="opacity" dur="0.75s" values="1;.2" fill="freeze"/>'
+  + '</circle>'
+  + '<circle cx="20" cy="12" r="3" opacity=".3">'
+  + '<animate id="pi_dot_c" begin="pi_dot_a.begin+0.3s" attributeName="opacity" dur="0.75s" values="1;.2" fill="freeze"/>'
+  + '</circle>'
+  + '</svg>';
 
 /** The one-line "what is this call doing" label shown before the result lands. */
 function summarizeArgs(tool: string, args: Record<string, unknown>): string {
@@ -362,21 +405,6 @@ function summarizeResult(event: ToolEndEvent): string {
     default:
       return summarizeArgs(tool, args) || truncate(result.output, 80);
   }
-}
-
-function formatArgs(args: Record<string, unknown>): string {
-  const entries = Object.entries(args).filter(([, value]) => value !== '' && value !== undefined);
-
-  if (!entries.length) {
-    return '{}';
-  }
-
-  return entries
-    .map(([key, value]) => {
-      const text = typeof value === 'string' ? value : JSON.stringify(value);
-      return `${key}: ${truncate(text, 2000)}`;
-    })
-    .join('\n');
 }
 
 function truncate(text: string, max: number): string {

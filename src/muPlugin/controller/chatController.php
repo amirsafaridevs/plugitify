@@ -22,7 +22,7 @@ class ChatController
         // the plugin directory actually exists.
         new PluginWorkspace($slug);
 
-        $iframeUrl = $this->resolve_iframe_url($slug);
+        $iframeUrl = home_url('/');
 
         return View::render('chat', [
             'slug'        => $slug,
@@ -49,22 +49,9 @@ class ChatController
                 'apiBase'    => home_url('/plugitify/v1'),
                 'nonce'      => wp_create_nonce(AgentController::NONCE_ACTION),
                 'locale'     => get_locale(),
+                'siteUrl'    => home_url('/'),
                 'previewUrl' => $iframeUrl,
             ]
         );
-    }
-
-    private function resolve_iframe_url(string $slug): string
-    {
-        $post = get_page_by_path($slug, OBJECT, ['page', 'post']);
-
-        if ($post instanceof \WP_Post) {
-            $permalink = get_permalink($post);
-            if (is_string($permalink) && $permalink !== '') {
-                return $permalink;
-            }
-        }
-
-        return home_url('/' . ltrim($slug, '/') . '/');
     }
 }

@@ -26,6 +26,8 @@ export interface AgentConfig {
   apiKey: string;
   /** UI locale, used to tell the agent which language to answer in. */
   locale: string;
+  /** WordPress site home URL — fallback when no preview URL is stored. */
+  siteUrl: string;
   /** URL shown in the preview iframe. */
   previewUrl: string;
 }
@@ -50,11 +52,16 @@ export function loadConfig(): AgentConfig {
     reasoning: parsed.reasoning ?? 'medium',
     apiKey: parsed.apiKey ?? '',
     locale: parsed.locale ?? 'fa_IR',
+    siteUrl: parsed.siteUrl ?? '',
     previewUrl: parsed.previewUrl ?? '',
   };
 
   if (!config.slug) {
     throw new Error('No plugin slug in the agent configuration.');
+  }
+
+  if (!config.siteUrl) {
+    config.siteUrl = `${window.location.origin}/`;
   }
 
   return config;

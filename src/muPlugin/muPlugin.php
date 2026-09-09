@@ -9,6 +9,7 @@ require_once __DIR__ . '/core/registerRoute.php';
 require_once __DIR__ . '/core/registerController.php';
 require_once __DIR__ . '/core/view.php';
 require_once __DIR__ . '/core/pluginWorkspace.php';
+require_once __DIR__ . '/core/syntaxValidator.php';
 require_once __DIR__ . '/core/agentTools.php';
 
 use Plugitify\muPlugin\Core\RegisterRoute;

@@ -86,6 +86,133 @@ class AgentTools
         ];
     }
 
+    /**
+     * Return the installed plugins and themes for the whole WordPress site.
+     *
+     * This is intentionally read-only. The current plugin workspace remains
+     * scoped to the selected plugin, but this inventory is useful when the
+     * agent needs to understand the site's available dependencies.
+     *
+     * @param array<string, mixed> $args
+     * @return array{output:string, meta:array<string, mixed>}
+     */
+    public function site_extensions(array $args): array
+    {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+        $activePlugins       = array_map('strval', (array) get_option('active_plugins', []));
+        $networkActive       = is_multisite()
+            ? array_map('strval', array_keys((array) get_site_option('active_sitewide_plugins', [])))
+            : [];
+        $plugins              = get_plugins();
+        $muPlugins            = function_exists('get_mu_plugins') ? get_mu_plugins() : [];
+        $themes               = wp_get_themes();
+        $activeStylesheet     = get_stylesheet();
+        $activeTemplate       = get_template();
+
+        $lines = [
+            'Installed plugins (' . (count($plugins) + count($muPlugins)) . ' total):',
+        ];
+
+        $activePluginCount = 0;
+        foreach ($plugins as $file => $plugin) {
+            $isNetworkActive = in_array($file, $networkActive, true);
+            $isActive        = $isNetworkActive || in_array($file, $activePlugins, true);
+            $status           = $isNetworkActive ? 'NETWORK ACTIVE' : ($isActive ? 'ACTIVE' : 'INACTIVE');
+            $activePluginCount += $isActive ? 1 : 0;
+
+            $lines[] = $this->extension_line(
+                $status,
+                (string) ($plugin['Name'] ?? ''),
+                [
+                    'Version'              => $plugin['Version'] ?? '',
+                    'Author'               => $plugin['Author'] ?? '',
+                    'Description'          => $plugin['Description'] ?? '',
+                    'Plugin URI'           => $plugin['PluginURI'] ?? '',
+                    'Requires WordPress'   => $plugin['RequiresWP'] ?? '',
+                    'Requires PHP'         => $plugin['RequiresPHP'] ?? '',
+                    'Text Domain'          => $plugin['TextDomain'] ?? '',
+                    'File'                 => $file,
+                ]
+            );
+        }
+
+        foreach ($muPlugins as $file => $plugin) {
+            $lines[] = $this->extension_line(
+                'MUST-USE ACTIVE',
+                (string) ($plugin['Name'] ?? ''),
+                [
+                    'Version'              => $plugin['Version'] ?? '',
+                    'Author'               => $plugin['Author'] ?? '',
+                    'Description'          => $plugin['Description'] ?? '',
+                    'Plugin URI'           => $plugin['PluginURI'] ?? '',
+                    'Requires WordPress'   => $plugin['RequiresWP'] ?? '',
+                    'Requires PHP'         => $plugin['RequiresPHP'] ?? '',
+                    'Text Domain'          => $plugin['TextDomain'] ?? '',
+                    'File'                 => 'mu-plugins/' . $file,
+                ]
+            );
+        }
+
+        $lines[] = 'Plugin status summary: ' . ($activePluginCount + count($muPlugins))
+            . ' active, ' . (count($plugins) + count($muPlugins) - $activePluginCount - count($muPlugins))
+            . ' inactive.';
+
+        if (count($plugins) + count($muPlugins) === 0) {
+            $lines[] = '- None found.';
+        }
+
+        $activeThemeCount = 0;
+        $lines[] = '';
+        $lines[] = 'Installed themes (' . count($themes) . ' total):';
+
+        foreach ($themes as $stylesheet => $theme) {
+            $isActive = $stylesheet === $activeStylesheet;
+            $isParent = !$isActive && $stylesheet === $activeTemplate;
+            $status   = $isActive ? 'ACTIVE' : ($isParent ? 'PARENT OF ACTIVE' : 'INACTIVE');
+            $activeThemeCount += $isActive ? 1 : 0;
+
+            $lines[] = $this->extension_line(
+                $status,
+                (string) $theme->get('Name'),
+                [
+                    'Version'              => $theme->get('Version'),
+                    'Author'               => $theme->get('Author'),
+                    'Description'          => $theme->get('Description'),
+                    'Theme URI'            => $theme->get('ThemeURI'),
+                    'Author URI'           => $theme->get('AuthorURI'),
+                    'Requires WordPress'   => $theme->get('RequiresWP'),
+                    'Requires PHP'         => $theme->get('RequiresPHP'),
+                    'Template'             => $theme->get_template(),
+                    'Stylesheet'           => $stylesheet,
+                    'Text Domain'          => $theme->get('TextDomain'),
+                ]
+            );
+        }
+
+        $lines[] = 'Theme status summary: ' . $activeThemeCount . ' active, '
+            . (count($themes) - $activeThemeCount) . ' inactive/parent.';
+
+        if ($themes === []) {
+            $lines[] = '- None found.';
+        }
+
+        $lines[] = '';
+        $lines[] = 'Active theme stylesheet: ' . ($activeStylesheet ?: '(none)');
+        $lines[] = 'Active theme template: ' . ($activeTemplate ?: '(none)');
+
+        return [
+            'output' => $this->truncate(implode("\n", $lines)),
+            'meta'   => [
+                'plugins_total'  => count($plugins) + count($muPlugins),
+                'plugins_active' => $activePluginCount + count($muPlugins),
+                'themes_total'   => count($themes),
+                'themes_active'  => $activeThemeCount,
+                'multisite'      => is_multisite(),
+            ],
+        ];
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Reading
     // ─────────────────────────────────────────────────────────────────────
@@ -363,9 +490,14 @@ class AgentTools
     }
 
     /**
-     * Exact-string replacement. Refuses ambiguous edits: if old_string occurs
-     * more than once the agent must either disambiguate with more context or
-     * pass replace_all explicitly.
+     * Replace text without guessing.
+     *
+     * Exact matching is attempted first. If the model copied a multi-line
+     * snippet from read_file, LF/CRLF differences are normalized because
+     * read_file intentionally returns platform-neutral line endings. As a
+     * final safe fallback, only indentation and trailing whitespace may differ;
+     * the fallback still has to produce one unambiguous match (or replace_all
+     * must be explicit).
      *
      * @param array<string, mixed> $args
      * @return array{output:string, meta:array<string, mixed>}
@@ -392,17 +524,135 @@ class AgentTools
             throw new HttpException(404, 'file_not_found', [], 'File not found: ' . $relative);
         }
 
-        $contents = (string) file_get_contents($absolute);
-        $count    = substr_count($contents, $oldString);
+        if (PluginWorkspace::is_binary_path($absolute)) {
+            throw new HttpException(422, 'binary_file', [], 'Refusing to edit binary file as text: ' . $relative);
+        }
 
-        if ($count === 0) {
+        $size = (int) filesize($absolute);
+        if ($size > PluginWorkspace::MAX_FILE_BYTES) {
             throw new HttpException(
                 422,
-                'no_match',
+                'file_too_large',
                 [],
-                'old_string was not found in ' . $relative . '. Read the file again — it may have changed, '
-                . 'or the whitespace/indentation in old_string may not match exactly.'
+                'File is too large to edit (' . size_format($size) . '). Limit is '
+                . size_format(PluginWorkspace::MAX_FILE_BYTES) . '.'
             );
+        }
+
+        $contents = file_get_contents($absolute);
+        if ($contents === false) {
+            throw new HttpException(500, 'read_failed', [], 'Could not read: ' . $relative);
+        }
+
+        $originalContents = $contents;
+        $count     = substr_count($contents, $oldString);
+        $matchMode = 'exact';
+        $lineNo    = $this->line_number_of($contents, $oldString);
+
+        if ($count === 0) {
+            /*
+             * read_file joins lines with "\n", while files on Windows are
+             * commonly stored with "\r\n". Match in normalized form, then
+             * restore the file's dominant line ending before writing.
+             */
+            $normalizedContents = $this->normalize_newlines($contents);
+            $normalizedOld      = $this->normalize_newlines($oldString);
+            $normalizedNew      = $this->normalize_newlines($newString);
+            $normalizedCount    = substr_count($normalizedContents, $normalizedOld);
+
+            if ($normalizedCount > 0) {
+                $contents = $normalizedContents;
+                $oldString = $normalizedOld;
+                $newString = $normalizedNew;
+                $count     = $normalizedCount;
+                $matchMode = 'newline_normalized';
+                $lineNo    = $this->line_number_of($contents, $oldString);
+            } else {
+                /*
+                 * Models sometimes reproduce the same code with a different
+                 * indentation style. Do not ignore arbitrary whitespace:
+                 * only leading and trailing whitespace on each line is
+                 * normalized, and only an unambiguous block is accepted.
+                 */
+                $matches = $this->find_indentation_matches($normalizedContents, $normalizedOld);
+
+                if ($matches !== []) {
+                    if (count($matches) > 1 && !$replaceAll) {
+                        throw new HttpException(
+                            422,
+                            'ambiguous_match',
+                            [],
+                            'old_string matches ' . count($matches) . ' blocks in ' . $relative
+                            . ' when indentation is ignored. Include more surrounding context or pass '
+                            . 'replace_all: true.'
+                        );
+                    }
+
+                    $updated = $normalizedContents;
+                    foreach (array_reverse($matches) as $match) {
+                        $updated = substr_replace(
+                            $updated,
+                            $normalizedNew,
+                            $match['offset'],
+                            $match['length']
+                        );
+                    }
+
+                    $updated = $this->restore_line_endings($updated, $originalContents);
+                    if (file_put_contents($absolute, $updated, LOCK_EX) === false) {
+                        throw new HttpException(500, 'write_failed', [], 'Could not write: ' . $relative);
+                    }
+
+                    $replaced = count($matches);
+                    $lineNo   = $matches[0]['line'];
+
+                    return [
+                        'output' => 'Edited ' . $relative . ': replaced ' . $replaced
+                            . ' occurrence(s) using indentation-tolerant matching'
+                            . ' (first at line ' . $lineNo . ').'
+                            . $this->lint_hint($absolute),
+                        'meta' => [
+                            'path'         => $relative,
+                            'action'       => 'edit',
+                            'replacements' => $replaced,
+                            'line'         => $lineNo,
+                            'match_mode'   => 'indentation_normalized',
+                        ],
+                    ];
+                }
+
+                /*
+                 * A retry after a successful request should be harmless. A
+                 * unique new_string means the requested edit is already
+                 * present; report that state instead of making the model fail
+                 * and retry the same call forever.
+                 */
+                $alreadyApplied = $normalizedNew !== ''
+                    && substr_count($normalizedContents, $normalizedNew) === 1;
+                if ($alreadyApplied) {
+                    $lineNo = $this->line_number_of($normalizedContents, $normalizedNew);
+
+                    return [
+                        'output' => $relative . ' already contains the requested new text; no change was needed.',
+                        'meta'   => [
+                            'path'         => $relative,
+                            'action'       => 'noop',
+                            'replacements' => 0,
+                            'line'         => $lineNo,
+                            'match_mode'   => 'already_applied',
+                        ],
+                    ];
+                }
+
+                throw new HttpException(
+                    422,
+                    'no_match',
+                    [],
+                    'old_string was not found in ' . $relative . '. The tool tried exact matching, '
+                    . 'LF/CRLF normalization, and indentation-only normalization. Read the file again '
+                    . 'and copy the current code exactly, without read_file line-number prefixes.'
+                );
+            }
         }
 
         if ($count > 1 && !$replaceAll) {
@@ -419,22 +669,27 @@ class AgentTools
             ? str_replace($oldString, $newString, $contents)
             : $this->replace_first($contents, $oldString, $newString);
 
-        if (file_put_contents($absolute, $updated) === false) {
+        if ($matchMode === 'newline_normalized') {
+            $updated = $this->restore_line_endings($updated, $originalContents);
+        }
+
+        if (file_put_contents($absolute, $updated, LOCK_EX) === false) {
             throw new HttpException(500, 'write_failed', [], 'Could not write: ' . $relative);
         }
 
         $replaced = $replaceAll ? $count : 1;
-        $lineNo   = $this->line_number_of($contents, $oldString);
 
         return [
             'output' => 'Edited ' . $relative . ': replaced ' . $replaced . ' occurrence(s)'
-                . ($lineNo > 0 ? ' (first at line ' . $lineNo . ')' : '') . '.'
+                . ($lineNo > 0 ? ' (first at line ' . $lineNo . ')' : '')
+                . ' [' . $matchMode . '].'
                 . $this->lint_hint($absolute),
             'meta'   => [
                 'path'         => $relative,
                 'action'       => 'edit',
                 'replacements' => $replaced,
                 'line'         => $lineNo,
+                'match_mode'   => $matchMode,
             ],
         ];
     }
@@ -879,6 +1134,36 @@ class AgentTools
     // ─────────────────────────────────────────────────────────────────────
 
     /**
+     * Format one plugin/theme without leaking markup or multiline text into
+     * the model's inventory response.
+     *
+     * @param array<string, mixed> $fields
+     */
+    private function extension_line(string $status, string $name, array $fields): string
+    {
+        $parts = ['- [' . ($status !== '' ? $status : 'UNKNOWN') . '] ' . $this->clean_inventory_text($name)];
+
+        foreach ($fields as $label => $value) {
+            $value = is_array($value) ? implode(', ', array_map('strval', $value)) : (string) $value;
+            $value = $this->clean_inventory_text($value);
+
+            if ($value !== '') {
+                $parts[] = $label . ': ' . $value;
+            }
+        }
+
+        return implode(' | ', $parts);
+    }
+
+    private function clean_inventory_text(string $value): string
+    {
+        $value = wp_strip_all_tags($value);
+        $value = trim((string) preg_replace('/\s+/', ' ', $value));
+
+        return strlen($value) > 500 ? substr($value, 0, 500) . '…' : $value;
+    }
+
+    /**
      * Depth-limited ASCII tree. $count accumulates the number of entries shown.
      */
     private function build_tree(string $dir, int $maxDepth, int $depth, ?int &$count = null): string
@@ -1005,13 +1290,16 @@ class AgentTools
      */
     private function lint_hint(string $absolute): string
     {
-        if (strtolower((string) pathinfo($absolute, PATHINFO_EXTENSION)) !== 'php') {
-            return '';
+        $extension = strtolower((string) pathinfo($absolute, PATHINFO_EXTENSION));
+        $relative  = $this->workspace->relative($absolute);
+
+        if ($extension !== 'php') {
+            return SyntaxValidator::hint($absolute, $relative);
         }
 
         $binary = $this->php_binary();
         if ($binary === null) {
-            return '';
+            return ' Syntax check (PHP) unavailable: no reachable PHP CLI binary, or exec() is disabled.';
         }
 
         $output = [];
@@ -1020,13 +1308,13 @@ class AgentTools
         exec(escapeshellarg($binary) . ' -l ' . escapeshellarg($absolute) . ' 2>&1', $output, $status);
 
         if ($status === 0) {
-            return ' Syntax OK.';
+            return ' Syntax check (PHP): no syntax errors found.';
         }
 
         $message = implode(' ', $output);
-        $message = str_replace([$absolute, str_replace('/', '\\', $absolute)], $this->workspace->relative($absolute), $message);
+        $message = str_replace([$absolute, str_replace('/', '\\', $absolute)], $relative, $message);
 
-        return ' *** PHP SYNTAX ERROR — fix this now: ' . $message . ' ***';
+        return ' *** SYNTAX ERRORS (PHP) in ' . $relative . ': ' . $message . ' ***';
     }
 
     /**
@@ -1156,6 +1444,78 @@ class AgentTools
         return $position === false
             ? $haystack
             : substr_replace($haystack, $replacement, $position, strlen($needle));
+    }
+
+    /**
+     * Convert all supported line endings to LF for safe comparisons.
+     */
+    private function normalize_newlines(string $contents): string
+    {
+        return str_replace(["\r\n", "\r"], "\n", $contents);
+    }
+
+    /**
+     * Restore the dominant line ending used by the original file.
+     */
+    private function restore_line_endings(string $contents, string $original): string
+    {
+        $contents = $this->normalize_newlines($contents);
+
+        return strpos($original, "\r\n") !== false
+            ? str_replace("\n", "\r\n", $contents)
+            : $contents;
+    }
+
+    /**
+     * Find blocks where only per-line indentation/trailing whitespace differs.
+     *
+     * @return array<int, array{offset:int, length:int, line:int}>
+     */
+    private function find_indentation_matches(string $contents, string $oldString): array
+    {
+        $contentLines = explode("\n", $contents);
+        $oldLines     = explode("\n", $oldString);
+        $oldCount     = count($oldLines);
+
+        if ($oldCount === 0 || $oldCount > count($contentLines)) {
+            return [];
+        }
+
+        $normalizedOld = [];
+        foreach ($oldLines as $line) {
+            $normalizedOld[] = $this->normalize_indentation_line($line);
+        }
+
+        $matches = [];
+        $lineCount = count($contentLines);
+        $offset = 0;
+
+        for ($start = 0; $start <= $lineCount - $oldCount; $start++) {
+            $candidate = [];
+            for ($index = 0; $index < $oldCount; $index++) {
+                $candidate[] = $this->normalize_indentation_line($contentLines[$start + $index]);
+            }
+
+            if ($candidate === $normalizedOld) {
+                $block = implode("\n", array_slice($contentLines, $start, $oldCount));
+                $matches[] = [
+                    'offset' => $offset,
+                    'length' => strlen($block),
+                    'line'   => $start + 1,
+                ];
+            }
+
+            $offset += strlen($contentLines[$start]) + 1;
+        }
+
+        return $matches;
+    }
+
+    private function normalize_indentation_line(string $line): string
+    {
+        $line = rtrim($line);
+
+        return (string) preg_replace('/^[ \t]+/', '', $line);
     }
 
     private function line_number_of(string $haystack, string $needle): int

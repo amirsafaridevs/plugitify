@@ -37,6 +37,16 @@ export function buildTools(config: AgentConfig, preview: Preview) {
 
     backendTool(
       config,
+      'site_extensions',
+      'List every installed WordPress plugin and theme on the site. The result includes each item\'s '
+        + 'active/inactive status, name, version, description, author, URI, requirements, and file or '
+        + 'stylesheet details. This is read-only and covers the whole site, not only the current plugin '
+        + 'workspace. Must-use plugins are included as always active.',
+      z.object({}),
+    ),
+
+    backendTool(
+      config,
       'list_files',
       'List the plugin\'s files and directories as a tree. Use it to explore structure; use read_file '
         + 'to see contents.',
@@ -88,8 +98,9 @@ export function buildTools(config: AgentConfig, preview: Preview) {
       'write_file',
       'Create a new file, or completely replace an existing one. Parent directories are created '
         + 'automatically. Use edit_file instead when changing part of a file that already exists — '
-        + 'rewriting a whole file to change three lines loses work and risks dropping code. PHP files '
-        + 'are syntax-checked automatically and the result is reported back to you.',
+        + 'rewriting a whole file to change three lines loses work and risks dropping code. After the '
+        + 'file is saved, supported PHP, HTML, CSS, and JavaScript files are syntax-checked automatically. '
+        + 'The result is informational only: syntax errors do not prevent the save.',
       z.object({
         path: z.string().describe('File path relative to the plugin root.'),
         content: z.string().describe('The complete file contents. Not a diff, not a fragment.'),
@@ -99,15 +110,17 @@ export function buildTools(config: AgentConfig, preview: Preview) {
     backendTool(
       config,
       'edit_file',
-      'Replace an exact string in a file. old_string must match the file byte for byte, including '
-        + 'indentation, and must be unique — include a few surrounding lines to make it so. The call '
-        + 'fails rather than guessing if the text is missing or ambiguous. PHP files are syntax-checked '
-        + 'automatically after the edit.',
+      'Replace a code snippet in a file. Read the file first and copy old_string from its current '
+        + 'contents, including a few surrounding lines so the match is unique. The tool handles '
+        + 'LF/CRLF differences and harmless indentation-only differences, but refuses to guess when '
+        + 'the match is missing or ambiguous. Retrying an already-completed edit is safe. After the '
+        + 'edit is saved, supported PHP, HTML, CSS, and JavaScript files are syntax-checked automatically. '
+        + 'The result is informational only: syntax errors do not prevent the edit.',
       z.object({
         path: z.string().describe('File path relative to the plugin root.'),
-        old_string: z.string().describe('Exact text to find, copied verbatim from a read_file result (without the line-number prefixes).'),
+        old_string: z.string().describe('Text to replace, copied from the latest read_file result without line-number prefixes. Include surrounding context.'),
         new_string: z.string().describe('Text to put in its place. Use an empty string to delete the matched text.'),
-        replace_all: z.boolean().default(false).describe('Replace every occurrence instead of failing when old_string appears more than once.'),
+        replace_all: z.boolean().default(false).describe('Replace every matching occurrence instead of failing when the snippet is repeated. Use only when every occurrence should change.'),
       }),
     ),
 
