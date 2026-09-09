@@ -76,6 +76,7 @@ export function replayHistory(
   }
 
   // Replay appends without animation, so land the user at the newest turn.
+  transcript.settleOpenSteps();
   transcript.scrollToEnd();
 }
 

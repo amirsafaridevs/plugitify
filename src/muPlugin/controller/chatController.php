@@ -4,6 +4,7 @@ namespace Plugitify\muPlugin\Controller;
 use Plugitify\muPlugin\Core\HttpException;
 use Plugitify\muPlugin\Core\PluginWorkspace;
 use Plugitify\muPlugin\Core\View;
+use Plugitify\Services\Admin\SettingsService;
 
 class ChatController
 {
@@ -41,19 +42,16 @@ class ChatController
      */
     private function build_agent_config(string $slug, string $iframeUrl): array
     {
-        return [
-            'slug'       => $slug,
-            'apiBase'    => home_url('/plugitify/v1'),
-            'nonce'      => wp_create_nonce(AgentController::NONCE_ACTION),
-            'provider'   => defined('PLUGITIFY_AI_PROVIDER') ? (string) PLUGITIFY_AI_PROVIDER : 'openai',
-            'model'      => defined('PLUGITIFY_AI_MODEL') ? (string) PLUGITIFY_AI_MODEL : '',
-            'endpoint'   => defined('PLUGITIFY_AI_ENDPOINT') ? (string) PLUGITIFY_AI_ENDPOINT : 'https://api.openai.com/v1',
-            'apiStyle'   => defined('PLUGITIFY_AI_API_STYLE') ? (string) PLUGITIFY_AI_API_STYLE : 'responses',
-            'reasoning'  => defined('PLUGITIFY_AI_REASONING_EFFORT') ? (string) PLUGITIFY_AI_REASONING_EFFORT : 'medium',
-            'apiKey'     => defined('PLUGITIFY_AI_API_KEY') ? (string) PLUGITIFY_AI_API_KEY : '',
-            'locale'     => get_locale(),
-            'previewUrl' => $iframeUrl,
-        ];
+        return array_merge(
+            SettingsService::agentConfig(),
+            [
+                'slug'       => $slug,
+                'apiBase'    => home_url('/plugitify/v1'),
+                'nonce'      => wp_create_nonce(AgentController::NONCE_ACTION),
+                'locale'     => get_locale(),
+                'previewUrl' => $iframeUrl,
+            ]
+        );
     }
 
     private function resolve_iframe_url(string $slug): string

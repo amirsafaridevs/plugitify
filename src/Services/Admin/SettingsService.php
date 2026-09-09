@@ -2,12 +2,26 @@
 
 namespace Plugitify\Services\Admin;
 
+/**
+ * Single source of truth for Plugitify settings stored in the database.
+ *
+ * Read with SettingsService::get( 'model' ) or SettingsService::all().
+ * The admin UI writes via handleSave(); nowhere else should call update_option
+ * for these keys.
+ */
 class SettingsService
 {
 	public const OPTION_KEY = 'plugitify_ai_settings';
 
 	/**
-	 * @return array<string, array{label: string, group: string, models: array<string, string>}>
+	 * @return array<string, array{
+	 *     label: string,
+	 *     group: string,
+	 *     endpoint: string,
+	 *     api_style: string,
+	 *     reasoning: string,
+	 *     models: array<string, string>
+	 * }>
 	 */
 	public static function providers(): array
 	{
@@ -73,52 +87,85 @@ class SettingsService
 
 		return [
 			'openai' => [
-				'label'  => 'OpenAI',
-				'group'  => 'global',
-				'models' => $openaiModels,
+				'label'     => 'OpenAI',
+				'group'     => 'global',
+				'endpoint'  => 'https://api.openai.com/v1',
+				'api_style' => 'responses',
+				'reasoning' => 'medium',
+				'models'    => $openaiModels,
 			],
 			'claude' => [
-				'label'  => 'Claude (Anthropic)',
-				'group'  => 'global',
-				'models' => $claudeModels,
+				'label'     => 'Claude (Anthropic)',
+				'group'     => 'global',
+				'endpoint'  => 'https://api.anthropic.com/v1',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $claudeModels,
 			],
 			'gemini' => [
-				'label'  => 'Gemini (Google)',
-				'group'  => 'global',
-				'models' => $geminiModels,
+				'label'     => 'Gemini (Google)',
+				'group'     => 'global',
+				'endpoint'  => 'https://generativelanguage.googleapis.com/v1beta/openai',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $geminiModels,
 			],
 			'deepseek' => [
-				'label'  => 'DeepSeek',
-				'group'  => 'global',
-				'models' => $deepseekModels,
+				'label'     => 'DeepSeek',
+				'group'     => 'global',
+				'endpoint'  => 'https://api.deepseek.com',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $deepseekModels,
 			],
 			'qwen' => [
-				'label'  => 'Qwen (Alibaba)',
-				'group'  => 'global',
-				'models' => $qwenModels,
+				'label'     => 'Qwen (Alibaba)',
+				'group'     => 'global',
+				'endpoint'  => 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $qwenModels,
 			],
 			'zai' => [
-				'label'  => 'Z.ai (GLM)',
-				'group'  => 'global',
-				'models' => $zaiModels,
+				'label'     => 'Z.ai (GLM)',
+				'group'     => 'global',
+				'endpoint'  => 'https://api.z.ai/api/paas/v4',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $zaiModels,
 			],
 			'gapgpt' => [
-				'label'  => 'GapGPT',
-				'group'  => 'iran',
-				'models' => $aggregatorModels,
+				'label'     => 'GapGPT',
+				'group'     => 'iran',
+				'endpoint'  => 'https://api.gapgpt.app/v1',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $aggregatorModels,
 			],
 			'avalai' => [
-				'label'  => 'AvalAI',
-				'group'  => 'iran',
-				'models' => $aggregatorModels,
+				'label'     => 'AvalAI',
+				'group'     => 'iran',
+				'endpoint'  => 'https://api.avalai.ir/v1',
+				'api_style' => 'responses',
+				'reasoning' => 'medium',
+				'models'    => $aggregatorModels,
 			],
 		];
 	}
 
 	/**
-	 * @return array{provider: string, model: string, api_key: string}
+	 * Resolved settings: DB values plus endpoint / api_style / reasoning from the provider catalog.
+	 *
+	 * @return array{
+	 *     provider: string,
+	 *     model: string,
+	 *     api_key: string,
+	 *     endpoint: string,
+	 *     api_style: string,
+	 *     reasoning: string
+	 * }
 	 */
-	public static function getSettings(): array
+	public static function all(): array
 	{
 		$stored = get_option( self::OPTION_KEY, [] );
 
@@ -133,17 +180,63 @@ class SettingsService
 			$provider = 'openai';
 		}
 
-		$modelKeys = array_keys( $providers[ $provider ]['models'] );
+		$meta      = $providers[ $provider ];
+		$modelKeys = array_keys( $meta['models'] );
 		$model     = isset( $stored['model'] ) ? (string) $stored['model'] : (string) ( $modelKeys[0] ?? '' );
 
-		if ( ! isset( $providers[ $provider ]['models'][ $model ] ) ) {
+		if ( ! isset( $meta['models'][ $model ] ) ) {
 			$model = (string) ( $modelKeys[0] ?? '' );
 		}
 
 		return [
-			'provider' => $provider,
-			'model'    => $model,
-			'api_key'  => isset( $stored['api_key'] ) ? (string) $stored['api_key'] : '',
+			'provider'  => $provider,
+			'model'     => $model,
+			'api_key'   => isset( $stored['api_key'] ) ? (string) $stored['api_key'] : '',
+			'endpoint'  => (string) $meta['endpoint'],
+			'api_style' => (string) $meta['api_style'],
+			'reasoning' => (string) $meta['reasoning'],
+		];
+	}
+
+	/**
+	 * @deprecated Use all() — kept so existing callers keep working.
+	 *
+	 * @return array{provider: string, model: string, api_key: string, endpoint: string, api_style: string, reasoning: string}
+	 */
+	public static function getSettings(): array
+	{
+		return self::all();
+	}
+
+	/**
+	 * Read one setting key (provider, model, api_key, endpoint, api_style, reasoning).
+	 *
+	 * @param mixed $default
+	 * @return mixed
+	 */
+	public static function get( string $key, $default = null )
+	{
+		$settings = self::all();
+
+		return array_key_exists( $key, $settings ) ? $settings[ $key ] : $default;
+	}
+
+	/**
+	 * Shape handed to the browser agent (camelCase keys).
+	 *
+	 * @return array{provider: string, model: string, endpoint: string, apiStyle: string, reasoning: string, apiKey: string}
+	 */
+	public static function agentConfig(): array
+	{
+		$s = self::all();
+
+		return [
+			'provider'  => $s['provider'],
+			'model'     => $s['model'],
+			'endpoint'  => $s['endpoint'],
+			'apiStyle'  => $s['api_style'],
+			'reasoning' => $s['reasoning'],
+			'apiKey'    => $s['api_key'],
 		];
 	}
 
@@ -202,7 +295,7 @@ class SettingsService
 
 	public function render(): void
 	{
-		$settings  = self::getSettings();
+		$settings  = self::all();
 		$providers = self::providers();
 		$saved     = isset( $_GET['updated'] ) || get_transient( 'plugitify_settings_saved' );
 

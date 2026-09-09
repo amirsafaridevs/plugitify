@@ -45,6 +45,7 @@ export class Transcript {
   }
 
   addUserMessage(text: string): void {
+    this.settleOpenSteps();
     const el = document.createElement('div');
     el.className = 'pi-msg pi-msg--user';
     el.textContent = text;
@@ -72,6 +73,7 @@ export class Transcript {
    */
   finalizeAssistantMessage(finalText?: string): void {
     const text = finalText ?? this.streamingText;
+    this.settleOpenSteps();
 
     if (!this.streamingBubble) {
       if (text.trim()) {
@@ -100,31 +102,36 @@ export class Transcript {
     }
 
     this.closeStream();
+    this.settleOpenSteps();
 
     const el = document.createElement('details');
-    el.className = 'pi-think';
+    el.className = 'pi-think pi-think--running';
     el.innerHTML =
-      '<summary><span class="pi-think-icon">✳</span> در حال فکر کردن</summary>'
+      '<summary>'
+      + '<span class="pi-tl-dot" aria-hidden="true"></span>'
+      + '<span class="pi-think-label">در حال فکر کردن</span>'
+      + '</summary>'
       + `<div class="pi-think-body">${renderMarkdown(text)}</div>`;
-    this.append(el);
+    this.appendStep(el);
   }
 
   /** Draws a pending card the moment a tool starts, so latency is visible. */
   startTool(event: ToolStartEvent): void {
     this.closeStream();
+    this.settleOpenSteps();
 
     const card = document.createElement('details');
     card.className = 'pi-tool pi-tool--running';
     card.innerHTML =
       '<summary>'
-      + '<span class="pi-tool-spinner"></span>'
+      + '<span class="pi-tl-dot" aria-hidden="true"></span>'
       + `<span class="pi-tool-name">${escapeHtml(event.tool)}</span>`
       + `<span class="pi-tool-summary">${escapeHtml(summarizeArgs(event.tool, event.args))}</span>`
       + '</summary>'
       + `<div class="pi-tool-body"><pre class="pi-code"><code>${escapeHtml(formatArgs(event.args))}</code></pre></div>`;
 
     this.toolCards.set(event.id, card);
-    this.append(card);
+    this.appendStep(card);
   }
 
   endTool(event: ToolEndEvent): void {
@@ -136,11 +143,6 @@ export class Transcript {
     this.toolCards.delete(event.id);
     card.classList.remove('pi-tool--running');
     card.classList.add(event.result.ok ? 'pi-tool--ok' : 'pi-tool--error');
-
-    const spinner = card.querySelector('.pi-tool-spinner');
-    if (spinner) {
-      spinner.outerHTML = `<span class="pi-tool-status">${event.result.ok ? '✓' : '✕'}</span>`;
-    }
 
     const summary = card.querySelector('.pi-tool-summary');
     if (summary) {
@@ -208,16 +210,25 @@ export class Transcript {
     for (const card of this.toolCards.values()) {
       card.classList.remove('pi-tool--running');
       card.classList.add('pi-tool--error');
-      const spinner = card.querySelector('.pi-tool-spinner');
-      if (spinner) {
-        spinner.outerHTML = '<span class="pi-tool-status">✕</span>';
-      }
       const summary = card.querySelector('.pi-tool-summary');
       if (summary && !summary.textContent) {
         summary.textContent = 'متوقف شد';
       }
     }
     this.toolCards.clear();
+    this.settleOpenSteps();
+  }
+
+  /** Marks open timeline steps done — call after a run or history replay ends. */
+  settleOpenSteps(): void {
+    for (const el of Array.from(this.root.querySelectorAll('.pi-think--running'))) {
+      el.classList.remove('pi-think--running');
+      el.classList.add('pi-think--done');
+      const label = el.querySelector('.pi-think-label');
+      if (label) {
+        label.textContent = 'فکر کرد';
+      }
+    }
   }
 
   scrollToEnd(): void {
@@ -228,6 +239,25 @@ export class Transcript {
     if (this.streamingBubble) {
       this.finalizeAssistantMessage();
     }
+  }
+
+  /** Appends a think/tool step into the current timeline group. */
+  private appendStep(el: HTMLElement): void {
+    const timeline = this.ensureTimeline();
+    timeline.appendChild(el);
+    this.scroll();
+  }
+
+  private ensureTimeline(): HTMLElement {
+    const last = this.root.lastElementChild;
+    if (last?.classList.contains('pi-timeline')) {
+      return last as HTMLElement;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'pi-timeline';
+    this.root.appendChild(wrap);
+    return wrap;
   }
 
   private append(el: HTMLElement): void {

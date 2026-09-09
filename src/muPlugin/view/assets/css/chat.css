@@ -480,16 +480,87 @@ html, body {
     font-size: inherit;
 }
 
+/* ── Agent step timeline (think + tools) ──────────────────────── */
+
+.pi-timeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
+}
+
+/* One continuous rail behind all step dots */
+.pi-timeline::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 5px;
+    top: 11px;
+    bottom: 11px;
+    width: 1px;
+    background: #2e2e2e;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.pi-timeline > .pi-think,
+.pi-timeline > .pi-tool {
+    position: relative;
+    padding-inline-start: 18px;
+    margin: 0;
+}
+
+.pi-tl-dot {
+    position: absolute;
+    inset-inline-start: 2px;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6a6a6a;
+    box-shadow: 0 0 0 3px #0a0a0a;
+    flex: 0 0 auto;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.pi-think--done .pi-tl-dot,
+.pi-tool--ok .pi-tl-dot {
+    background: #3ecf8e;
+}
+
+.pi-think--running .pi-tl-dot,
+.pi-tool--running .pi-tl-dot {
+    background: #6a6a6a;
+    animation: pi-tl-pulse 1.2s ease-in-out infinite;
+}
+
+.pi-tool--error .pi-tl-dot {
+    background: #c46a6a;
+}
+
+@keyframes pi-tl-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
 /* ── Reasoning ────────────────────────────────────────────────── */
 
 .pi-think {
-    border-inline-start: 1px solid #2a2a2a;
-    padding-inline-start: 10px;
+    border-inline-start: 0;
+    padding-inline-start: 0;
     color: var(--pi-text-muted);
     font-size: 12.5px;
 }
 
 .pi-think > summary {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-height: 22px;
+    padding: 2px 0;
     cursor: pointer;
     list-style: none;
     -webkit-user-select: none;
@@ -500,12 +571,16 @@ html, body {
     display: none;
 }
 
-.pi-think-icon {
-    color: #666;
+.pi-think-label {
+    color: #888;
+}
+
+.pi-think--done .pi-think-label {
+    color: #6a6a6a;
 }
 
 .pi-think-body {
-    margin-top: 6px;
+    margin-top: 4px;
     line-height: 1.7;
 }
 
@@ -521,6 +596,7 @@ html, body {
 }
 
 .pi-tool > summary {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 7px;
@@ -569,39 +645,24 @@ html, body {
     display: none !important;
 }
 
-.pi-tool-status {
-    flex: 0 0 auto;
-    width: 12px;
-    text-align: center;
-    font-size: 11px;
-    opacity: 0.7;
+/* Legacy status/spinner nodes from older renders */
+.pi-tool-status,
+.pi-tool-spinner,
+.pi-think-icon {
+    display: none !important;
 }
 
-.pi-tool--ok .pi-tool-status { color: #5a5a5a; }
-.pi-tool--error .pi-tool-status { color: #c46a6a; opacity: 1; }
-.pi-tool--error { background: transparent; }
+.pi-tool--error {
+    background: transparent;
+}
 
 .pi-tool--error .pi-tool-name {
     color: #c46a6a;
 }
 
-.pi-tool-spinner {
-    flex: 0 0 auto;
-    width: 10px;
-    height: 10px;
-    border: 1px solid #333;
-    border-top-color: #888;
-    border-radius: 50%;
-    animation: pi-spin 0.7s linear infinite;
-}
-
-@keyframes pi-spin {
-    to { transform: rotate(360deg); }
-}
-
 .pi-tool-body {
     margin-top: 4px;
-    margin-inline-start: 19px;
+    margin-inline-start: 0;
     padding: 0;
     border-top: 0;
     min-width: 0;

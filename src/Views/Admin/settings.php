@@ -21,6 +21,9 @@ $currentModels = $providers[ $settings['provider'] ]['models'] ?? [];
 					<?php esc_html_e( 'سرویس‌دهنده هوش مصنوعی، مدل و کلید API را تنظیم کنید تا استودیو بتواند درخواست‌ها را ارسال کند.', 'plugitify' ); ?>
 				</p>
 			</div>
+			<button type="submit" class="pty-btn pty-btn--primary" form="plugitify-settings-form">
+				<?php esc_html_e( 'ذخیره تنظیمات', 'plugitify' ); ?>
+			</button>
 		</header>
 
 		<?php if ( ! empty( $saved ) ) : ?>
@@ -38,12 +41,6 @@ $currentModels = $providers[ $settings['provider'] ]['models'] ?? [];
 			>
 				<input type="hidden" name="action" value="plugitify_save_settings">
 				<?php wp_nonce_field( 'plugitify_save_settings', 'plugitify_settings_nonce' ); ?>
-
-				<div class="pty-settings-toolbar">
-					<button type="submit" class="pty-btn pty-btn--primary">
-						<?php esc_html_e( 'ذخیره تنظیمات', 'plugitify' ); ?>
-					</button>
-				</div>
 
 				<div class="pty-settings-card">
 					<aside class="pty-settings-card__rail" aria-hidden="true">

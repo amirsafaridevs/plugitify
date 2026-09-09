@@ -11,13 +11,13 @@ const REQUEST_TIMEOUT_MS = 120000;
 /**
  * Point the SDK at whichever provider the site is configured for.
  *
- * The constants in plugitify.php decide this, so swapping OpenAI for any
- * OpenAI-compatible endpoint (Azure, OpenRouter, Together, a local llama.cpp
- * server) is a config change, not a code change.
+ * Values come from Plugitify → Settings (DB), injected into the page as
+ * #pi-agent-config — swapping provider/model/key is a settings change, not a
+ * code change.
  */
 export function configureProvider(config: AgentConfig): void {
   if (!config.apiKey) {
-    throw new Error('No API key configured. Set PLUGITIFY_AI_API_KEY in wp-config.php.');
+    throw new Error('کلید API تنظیم نشده. از پلاگیتی → تنظیمات یک کلید وارد کنید.');
   }
 
   const client = new OpenAI({

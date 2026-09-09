@@ -50,7 +50,7 @@ export function describeError(error: unknown, maxTurns: number): DescribedError 
   }
 
   if (/\b401\b|invalid[_ ]api[_ ]key|unauthorized|authentication/i.test(detail)) {
-    return as('کلید API پذیرفته نشد. مقدار PLUGITIFY_AI_API_KEY را بررسی کنید.');
+    return as('کلید API پذیرفته نشد. کلید را در پلاگیتی → تنظیمات بررسی کنید.');
   }
 
   if (/\b403\b|permission|access denied/i.test(detail)) {
@@ -60,12 +60,12 @@ export function describeError(error: unknown, maxTurns: number): DescribedError 
   if (/reasoning_effort|Function tools with reasoning/i.test(detail)) {
     return as(
       'این مدل روی /v1/chat/completions همراه با function tools کار نمی‌کند. '
-      + 'PLUGITIFY_AI_API_STYLE را روی «responses» بگذارید، یا PLUGITIFY_AI_REASONING_EFFORT را «none» کنید.',
+      + 'سرویس‌دهنده‌ای را انتخاب کنید که Responses API را پشتیبانی کند (مثل AvalAI)، یا مدل دیگری بزنید.',
     );
   }
 
   if (/\b404\b|model.*not.*found|does not exist|unknown model/i.test(detail)) {
-    return as('مدل روی این اندپوینت پیدا نشد. PLUGITIFY_AI_MODEL و PLUGITIFY_AI_ENDPOINT را بررسی کنید.');
+    return as('مدل روی این اندپوینت پیدا نشد. مدل و سرویس‌دهنده را در پلاگیتی → تنظیمات بررسی کنید.');
   }
 
   if (/context.?length|maximum context|too many tokens|context_length_exceeded/i.test(detail)) {

@@ -1,8 +1,8 @@
 /**
  * Runtime configuration, injected by chat.php as a JSON <script> tag.
  *
- * The API key lands in the browser because the agent talks to the model
- * directly from here — see the security note in README.md.
+ * Values come from SettingsService (DB). The API key lands in the browser
+ * because the agent talks to the model directly from here.
  */
 export interface AgentConfig {
   /** Plugin slug being worked on. The agent's entire writable world. */

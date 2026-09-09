@@ -61,8 +61,8 @@ $pi_config    = is_array($agentConfig ?? null) ? $agentConfig : [];
                                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                             </svg>
                         </div>
-                        <p class="pi-chat-empty__text"><?php esc_html_e( 'هنوز پیامی نیست', 'plugitify' ); ?></p>
-                        <p class="pi-chat-empty__hint"><?php esc_html_e( 'پیام خود را بنویسید تا گفتگو شروع شود', 'plugitify' ); ?></p>
+                        <p class="pi-chat-empty__text"><?php esc_html_e( 'از کجا شروع کنیم؟', 'plugitify' ); ?></p>
+                        <p class="pi-chat-empty__hint"><?php esc_html_e( 'ایده‌ات را بنویس؛ با هم می‌سازیمش', 'plugitify' ); ?></p>
                     </div>
                 </div>
 
