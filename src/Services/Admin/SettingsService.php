@@ -42,6 +42,8 @@ class SettingsService
 			'claude-fable-5'   => 'Claude Fable 5',
 			'claude-opus-5'    => 'Claude Opus 5',
 			'claude-sonnet-5'  => 'Claude Sonnet 5',
+			'claude-opus-4-8'  => 'Claude Opus 4.8',
+			'claude-sonnet-4-6' => 'Claude Sonnet 4.6',
 			'claude-haiku-4-5' => 'Claude Haiku 4.5',
 		];
 
@@ -52,28 +54,40 @@ class SettingsService
 			'gemini-3.5-flash'       => 'Gemini 3.5 Flash',
 			'gemini-3.5-flash-lite'  => 'Gemini 3.5 Flash-Lite',
 			'gemini-3.1-pro-preview' => 'Gemini 3.1 Pro',
+			'gemini-2.5-pro'         => 'Gemini 2.5 Pro',
+			'gemini-2.5-flash'       => 'Gemini 2.5 Flash',
 		];
 
 		$deepseekModels = [
 			'deepseek-v4-pro'   => 'DeepSeek V4 Pro',
 			'deepseek-v4-flash' => 'DeepSeek V4 Flash',
-			'deepseek-v3.2'     => 'DeepSeek V3.2',
-			'deepseek-chat'     => 'DeepSeek Chat',
 		];
 
 		$qwenModels = [
 			'qwen3.8-max'   => 'Qwen3.8 Max',
 			'qwen3.8-flash' => 'Qwen3.8 Flash',
+			'qwen3.8-2.4t-a95b' => 'Qwen3.8 2.4T A95B',
 			'qwen3.7-max'   => 'Qwen3.7 Max',
 			'qwen3.7-plus'  => 'Qwen3.7 Plus',
 		];
 
 		$zaiModels = [
-			'glm-5.3'       => 'GLM-5.3',
-			'glm-5.3-flash' => 'GLM-5.3 Flash',
 			'glm-5.2'       => 'GLM-5.2',
-			'glm-5.1'       => 'GLM-5.1',
-			'glm-5'         => 'GLM-5',
+			'glm-5.3'       => 'GLM-5.3',
+		];
+
+		$xaiModels = [
+			'grok-4.6'        => 'Grok 4.6',
+			'grok-build-0.1'  => 'Grok Build 0.1 (Coding)',
+			'grok-4.5'        => 'Grok 4.5',
+			'grok-4.3'        => 'Grok 4.3',
+		];
+
+		$mistralModels = [
+			'devstral-2'       => 'Devstral 2 (Coding)',
+			'devstral-small-2' => 'Devstral Small 2 (Coding)',
+			'codestral-latest' => 'Codestral',
+			'mistral-medium-3.5' => 'Mistral Medium 3.5',
 		];
 
 		$aggregatorModels = array_merge(
@@ -82,8 +96,29 @@ class SettingsService
 			$geminiModels,
 			$deepseekModels,
 			$qwenModels,
-			$zaiModels
+			$zaiModels,
+			$xaiModels,
+			$mistralModels
 		);
+
+		$openRouterModels = [
+			'openai/gpt-6-astra'       => 'OpenAI: GPT-6 Astra',
+			'openai/gpt-5.6-sol'       => 'OpenAI: GPT-5.6 Sol',
+			'anthropic/claude-fable-5.1' => 'Anthropic: Claude Fable 5.1',
+			'anthropic/claude-opus-5'  => 'Anthropic: Claude Opus 5',
+			'anthropic/claude-sonnet-5' => 'Anthropic: Claude Sonnet 5',
+			'google/gemini-3.8-flash'  => 'Google: Gemini 3.8 Flash',
+			'google/gemini-3.7-flash'  => 'Google: Gemini 3.7 Flash',
+			'deepseek/deepseek-v4-pro' => 'DeepSeek: V4 Pro',
+			'deepseek/deepseek-v4-flash' => 'DeepSeek: V4 Flash',
+			'qwen/qwen3.8-max'         => 'Qwen: Qwen3.8 Max',
+			'qwen/qwen3.8-2.4t-a95b'   => 'Qwen: Qwen3.8 2.4T A95B',
+			'z-ai/glm-5.2'             => 'Z.ai: GLM-5.2',
+			'x-ai/grok-4.6'            => 'xAI: Grok 4.6',
+			'x-ai/grok-build-0.1'      => 'xAI: Grok Build 0.1',
+			'mistralai/devstral-2'     => 'Mistral: Devstral 2',
+			'mistralai/devstral-small-2' => 'Mistral: Devstral Small 2',
+		];
 
 		return [
 			'openai' => [
@@ -91,7 +126,7 @@ class SettingsService
 				'group'     => 'global',
 				'endpoint'  => 'https://api.openai.com/v1',
 				'api_style' => 'responses',
-				'reasoning' => 'medium',
+				'reasoning' => 'high',
 				'models'    => $openaiModels,
 			],
 			'claude' => [
@@ -134,6 +169,30 @@ class SettingsService
 				'reasoning' => 'none',
 				'models'    => $zaiModels,
 			],
+			'xai' => [
+				'label'     => 'xAI (Grok)',
+				'group'     => 'global',
+				'endpoint'  => 'https://api.x.ai/v1',
+				'api_style' => 'responses',
+				'reasoning' => 'high',
+				'models'    => $xaiModels,
+			],
+			'mistral' => [
+				'label'     => 'Mistral AI',
+				'group'     => 'global',
+				'endpoint'  => 'https://api.mistral.ai/v1',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $mistralModels,
+			],
+			'openrouter' => [
+				'label'     => 'OpenRouter',
+				'group'     => 'global',
+				'endpoint'  => 'https://openrouter.ai/api/v1',
+				'api_style' => 'chat_completions',
+				'reasoning' => 'none',
+				'models'    => $openRouterModels,
+			],
 			'gapgpt' => [
 				'label'     => 'GapGPT',
 				'group'     => 'iran',
@@ -147,7 +206,7 @@ class SettingsService
 				'group'     => 'iran',
 				'endpoint'  => 'https://api.avalai.ir/v1',
 				'api_style' => 'responses',
-				'reasoning' => 'medium',
+				'reasoning' => 'high',
 				'models'    => $aggregatorModels,
 			],
 		];

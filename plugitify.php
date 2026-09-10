@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       پلاگیتی فای | ساخت افزونه با هوش مصنوعی
  * Description:       ساخت و مدیریت افزونه‌های وردپرس با کمک هوش مصنوعی.
- * Version:           1.0.0
+ * Version:           1.0.7
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Amir Safari
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PLUGITIFY_VERSION', '1.0.4' );
+define( 'PLUGITIFY_VERSION', '1.0.7' );
 define( 'PLUGITIFY_FILE', __FILE__ );
 define( 'PLUGITIFY_PATH', plugin_dir_path( __FILE__ ) );
 define( 'PLUGITIFY_URL', plugin_dir_url( __FILE__ ) );

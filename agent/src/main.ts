@@ -148,6 +148,17 @@ function main(): void {
     }
   };
 
+  // Warn before closing the tab/window while a run is in flight. Browsers show
+  // their own generic dialog; the message string is ignored by modern ones.
+  window.addEventListener('beforeunload', (event) => {
+    if (!running) {
+      return;
+    }
+
+    event.preventDefault();
+    event.returnValue = 'کار اجنت هنوز تمام نشده. از بستن این صفحه مطمئن هستید؟';
+  });
+
   const send = async (text: string): Promise<void> => {
     transcript.addUserMessage(text);
     setRunning(true);

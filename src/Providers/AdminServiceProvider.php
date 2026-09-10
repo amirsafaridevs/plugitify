@@ -19,12 +19,23 @@ class AdminServiceProvider extends ServiceProvider
 	public function register(): void
 	{
 		add_action( 'admin_menu', [ $this, 'registerMenus' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueMenuIcon' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueAssets' ] );
 		add_action( 'admin_post_plugitify_save_settings', [ new SettingsService(), 'handleSave' ] );
 		add_action( 'wp_ajax_plugitify_create_plugin', [ new PluginCreationService(), 'handleAjaxCreate' ] );
 		add_action( 'wp_ajax_plugitify_delete_plugin', [ new PluginDeletionService(), 'handleAjaxDelete' ] );
 		add_action( 'wp_ajax_plugitify_toggle_plugin', [ new PluginActivationService(), 'handleAjaxToggle' ] );
 		add_action( 'wp_ajax_plugitify_bulk_action', [ new PluginBulkActionService(), 'handleAjaxBulk' ] );
+	}
+
+	public function enqueueMenuIcon(): void
+	{
+		wp_enqueue_style(
+			'plugitify-menu-icon',
+			PLUGITIFY_URL . 'assets/admin/plugitify-menu-icon.css',
+			[],
+			PLUGITIFY_VERSION
+		);
 	}
 
 	public function registerMenus(): void
@@ -37,7 +48,7 @@ class AdminServiceProvider extends ServiceProvider
 			$capability,
 			'plugitify',
 			[ new PluginsListService(), 'render' ],
-			'dashicons-admin-plugins',
+			PLUGITIFY_URL . 'assets/admin/favicon.svg?ver=' . PLUGITIFY_VERSION,
 			65
 		);
 
@@ -77,6 +88,7 @@ class AdminServiceProvider extends ServiceProvider
 
 		$localize = [
 			'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+			'chatUrl'     => trailingslashit( home_url( '/plugitify/v1/chat' ) ),
 			'nonce'       => wp_create_nonce( 'plugitify_create_plugin' ),
 			'deleteNonce' => wp_create_nonce( 'plugitify_delete_plugin' ),
 			'toggleNonce' => wp_create_nonce( 'plugitify_toggle_plugin' ),

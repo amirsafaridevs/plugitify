@@ -1,0 +1,31 @@
+/* Menu icon must load on every admin screen — SVG intrinsic size is 306px. */
+#adminmenu #toplevel_page_plugitify .wp-menu-image {
+	position: relative;
+	overflow: hidden;
+}
+
+#adminmenu #toplevel_page_plugitify .wp-menu-image::before {
+	content: none !important;
+	display: none !important;
+}
+
+#adminmenu #toplevel_page_plugitify .wp-menu-image img {
+	display: block !important;
+	width: 20px !important;
+	height: 20px !important;
+	max-width: 20px !important;
+	max-height: 20px !important;
+	padding: 7px 0 0 !important;
+	margin: 0 auto !important;
+	opacity: 0.7 !important;
+	object-fit: contain !important;
+	filter: none !important;
+	box-sizing: content-box !important;
+}
+
+#adminmenu #toplevel_page_plugitify:hover .wp-menu-image img,
+#adminmenu #toplevel_page_plugitify.wp-has-current-submenu .wp-menu-image img,
+#adminmenu #toplevel_page_plugitify.current .wp-menu-image img,
+#adminmenu #toplevel_page_plugitify.wp-menu-open .wp-menu-image img {
+	opacity: 1 !important;
+}

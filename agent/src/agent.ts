@@ -52,7 +52,9 @@ export function buildAgent(config: AgentConfig, preview: Preview): Agent {
   // a 400 unless reasoning is off. Tools are the entire point of this agent, so
   // when we're on that endpoint reasoning loses — better a working agent that
   // doesn't show its thinking than one that 400s on every message.
-  const effort = chatCompletions ? 'none' : config.reasoning;
+  // Effort is intentionally not a user setting. When the selected model and
+  // endpoint support reasoning, always use the strongest level.
+  const effort = chatCompletions ? 'none' : 'high';
 
   return new Agent({
     name: 'Plugitify',

@@ -32,6 +32,35 @@
 			return;
 		}
 
+		var apiKeyInput = root.querySelector( '#plugitify-ai-api-key' );
+		var passwordToggle = root.querySelector( '[data-pty-password-toggle]' );
+
+		if ( apiKeyInput && passwordToggle ) {
+			passwordToggle.addEventListener( 'click', function () {
+				var isVisible = apiKeyInput.type === 'text';
+				var showIcon = passwordToggle.querySelector( '.pty-password-toggle__show' );
+				var hideIcon = passwordToggle.querySelector( '.pty-password-toggle__hide' );
+
+				apiKeyInput.type = isVisible ? 'password' : 'text';
+				passwordToggle.setAttribute(
+					'aria-label',
+					isVisible ? 'نمایش کلید API' : 'مخفی کردن کلید API'
+				);
+				passwordToggle.setAttribute(
+					'title',
+					isVisible ? 'نمایش کلید API' : 'مخفی کردن کلید API'
+				);
+
+				if ( showIcon ) {
+					showIcon.hidden = ! isVisible;
+				}
+
+				if ( hideIcon ) {
+					hideIcon.hidden = isVisible;
+				}
+			} );
+		}
+
 		function fillModels( providerId, preferredModel ) {
 			var models = plugitifyAdmin.providers[ providerId ] || {};
 			var modelIds = Object.keys( models );
@@ -432,7 +461,10 @@
 				} )
 				.then( function ( response ) {
 					if ( response && response.success ) {
-						window.location.reload();
+						var slug = response.data && response.data.slug
+							? response.data.slug
+							: slugField.value.trim();
+						window.location.href = plugitifyAdmin.chatUrl + encodeURIComponent( slug );
 						return;
 					}
 

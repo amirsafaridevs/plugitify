@@ -49,7 +49,8 @@ export function loadConfig(): AgentConfig {
     model: parsed.model ?? '',
     endpoint: parsed.endpoint ?? 'https://api.openai.com/v1',
     apiStyle: parsed.apiStyle ?? 'responses',
-    reasoning: parsed.reasoning ?? 'medium',
+    // Reasoning effort is a product policy, not a user-facing setting.
+    reasoning: 'high',
     apiKey: parsed.apiKey ?? '',
     locale: parsed.locale ?? 'fa_IR',
     siteUrl: parsed.siteUrl ?? '',

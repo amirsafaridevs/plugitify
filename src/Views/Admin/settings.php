@@ -80,7 +80,7 @@ $currentModels = $providers[ $settings['provider'] ]['models'] ?? [];
 									</optgroup>
 								</select>
 								<span class="pty-field__hint">
-									<?php esc_html_e( 'GapGPT و AvalAI دسترسی تجمیعی به مدل‌های جهانی از داخل ایران می‌دهند.', 'plugitify' ); ?>
+									<?php esc_html_e( 'OpenRouter دسترسی یکپارچه به مدل‌های بین‌المللی متنوع می‌دهد؛ GapGPT و AvalAI نیز در صورت دسترسی از داخل ایران قابل استفاده‌اند.', 'plugitify' ); ?>
 								</span>
 							</label>
 
@@ -103,15 +103,35 @@ $currentModels = $providers[ $settings['provider'] ]['models'] ?? [];
 
 							<label class="pty-field pty-field--full">
 								<span class="pty-field__label"><?php esc_html_e( 'کلید API', 'plugitify' ); ?></span>
-								<input
-									type="password"
-									name="api_key"
-									id="plugitify-ai-api-key"
-									value="<?php echo esc_attr( $settings['api_key'] ); ?>"
-									autocomplete="off"
-									dir="ltr"
-									placeholder="sk-..."
-								>
+								<span class="pty-password-field">
+									<input
+										type="password"
+										name="api_key"
+										id="plugitify-ai-api-key"
+										value="<?php echo esc_attr( $settings['api_key'] ); ?>"
+										autocomplete="off"
+										dir="ltr"
+										placeholder="sk-..."
+									>
+									<button
+										type="button"
+										class="pty-password-toggle"
+										data-pty-password-toggle
+										aria-label="<?php esc_attr_e( 'نمایش کلید API', 'plugitify' ); ?>"
+										title="<?php esc_attr_e( 'نمایش کلید API', 'plugitify' ); ?>"
+									>
+										<svg class="pty-password-toggle__show" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+											<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+											<circle cx="12" cy="12" r="2.5"></circle>
+										</svg>
+										<svg class="pty-password-toggle__hide" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+											<path d="m3 3 18 18"></path>
+											<path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17.7 17.7 0 0 1-3.1 3.9"></path>
+											<path d="M6.7 6.7C4.1 8.2 2.5 12 2.5 12s3.5 7 9.5 7c1.3 0 2.5-.3 3.5-.8"></path>
+											<path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>
+										</svg>
+									</button>
+								</span>
 								<span class="pty-field__hint">
 									<?php esc_html_e( 'کلید فقط روی سرور شما در option وردپرس ذخیره می‌شود.', 'plugitify' ); ?>
 								</span>

@@ -560,6 +560,48 @@
 	font-family: inherit;
 }
 
+.pty-password-field {
+	position: relative;
+	display: block;
+}
+
+.pty-password-field input[type="password"],
+.pty-password-field input[type="text"] {
+	padding-inline-end: 42px;
+}
+
+.pty-password-toggle {
+	position: absolute;
+	top: 50%;
+	right: 10px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--pty-text-dim);
+	transform: translateY(-50%);
+	cursor: pointer;
+}
+
+.pty-password-toggle:hover,
+.pty-password-toggle:focus {
+	color: var(--pty-accent);
+}
+
+.pty-password-toggle:focus {
+	outline: 2px solid rgba(15, 118, 110, .18);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
+.pty-password-toggle svg[hidden] {
+	display: none !important;
+}
+
 .pty-field select {
 	appearance: none;
 	background-image:
@@ -791,3 +833,4 @@ body.pty-modal-open {
 		width: 100%;
 	}
 }
+
