@@ -12,17 +12,22 @@ require_once __DIR__ . '/httpException.php';
  *
  * Boot stages:
  *  - 'early' (default): dispatched immediately at muplugins_loaded — plugins
- *    and theme never load. Only $wpdb/options are available.
+ *    and theme never load. Survives fatals in active plugins/themes so agent
+ *    tools can still repair the site. $wpdb/options are available; for
+ *    'admin' auth the router also loads pluggable.php (normally loaded
+ *    after plugins_loaded) so cookie auth and nonces work without a full boot.
  *  - 'full': matched at muplugins_loaded but execution is deferred to
- *    `wp_loaded` so full WordPress (posts, meta, WP_Filesystem, current user)
- *    is available. The deferred handler terminates the request itself.
+ *    `wp_loaded` so full WordPress (posts, meta, theme, current user via the
+ *    normal boot path) is available. The deferred handler terminates the
+ *    request itself. Unusable when a plugin/theme fatals during load.
  *
  * Response kinds: 'json' (enveloped), 'html', 'redirect' (controller
  * returns the target URL, router sends a 302 Location), 'stream'
  * (controller owns the output and must exit itself).
  *
  * Auth kinds: 'key' (X-Plugitify-Key header, default), 'admin'
- * (current_user_can('manage_options') — only valid on 'full' routes).
+ * (current_user_can('manage_options') — works on 'early' after the router
+ * loads pluggable.php, and on 'full' via the normal boot path).
  * Browser-facing admin routes ('html' / 'redirect') send unauthenticated
  * visitors to wp-login.php with redirect_to back to the requested URL.
  * That return URL carries a short-lived HMAC (`pi_al` / `pi_als`) so
@@ -164,9 +169,45 @@ class RegisterRoute
             return false;
         }
 
+        // Cookie auth + nonces live in pluggable.php, which WordPress loads
+        // AFTER plugins_loaded. Agent tool routes need them at early boot so
+        // we can authenticate without loading (possibly broken) plugins.
+        self::ensure_pluggable_for_early_auth($route);
         self::execute($route);
 
         return true;
+    }
+
+    /**
+     * Bring cookie constants + pluggable.php online for early 'admin' routes.
+     *
+     * At muplugins_loaded, WordPress has not yet run wp_cookie_constants()
+     * (AUTH_COOKIE / LOGGED_IN_COOKIE / …) or loaded pluggable.php — those
+     * normally happen after active plugins. We replay just that slice so
+     * current_user_can() and wp_verify_nonce() work, then exit before
+     * plugins/theme load. Every step is idempotent (defined() /
+     * function_exists() guards), matching wp-settings.php.
+     *
+     * @param array{boot:string,auth:string} $route
+     */
+    private static function ensure_pluggable_for_early_auth(array $route): void
+    {
+        if ($route['auth'] !== 'admin') {
+            return;
+        }
+
+        // Order mirrors wp-settings.php immediately after muplugins_loaded.
+        if (is_multisite()) {
+            ms_cookie_constants();
+        }
+        wp_cookie_constants();
+        wp_ssl_constants();
+
+        if (function_exists('wp_get_current_user') && function_exists('wp_verify_nonce')) {
+            return;
+        }
+
+        require_once ABSPATH . WPINC . '/pluggable.php';
     }
 
     /**
@@ -313,8 +354,8 @@ class RegisterRoute
     }
 
     /**
-     * Cookie-based admin auth — only meaningful on 'full' routes where
-     * pluggable functions exist.
+     * Cookie-based admin auth. On 'early' routes, ensure_pluggable_for_early_auth()
+     * must have run first so wp_get_current_user / current_user_can exist.
      *
      * @return true|string
      */

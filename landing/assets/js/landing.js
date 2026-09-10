@@ -1,6 +1,8 @@
 (function () {
 	'use strict';
 
+	document.documentElement.classList.add('has-js');
+
 	function revealSections() {
 		var elements = document.querySelectorAll('.reveal');
 
@@ -21,8 +23,8 @@
 				currentObserver.unobserve(entry.target);
 			});
 		}, {
-			rootMargin: '0px 0px -8% 0px',
-			threshold: 0.1
+			rootMargin: '0px 0px -10% 0px',
+			threshold: 0.08
 		});
 
 		elements.forEach(function (element) {

@@ -13,10 +13,14 @@ use Plugitify\muPlugin\Core\PluginWorkspace;
  * Every tool call lands here as POST /plugitify/v1/agent/{slug}/tool/{tool}.
  *
  * Three gates stand in front of the tools:
- *  1. the route's 'admin' auth (manage_options),
+ *  1. the route's 'admin' auth (manage_options) — on early boot the router
+ *     loads pluggable.php so cookies work before plugins/theme load,
  *  2. a nonce, because this is a cookie-authenticated state-changing endpoint
  *     and capability alone would leave it open to CSRF,
  *  3. PluginWorkspace, which pins every path to the {slug} plugin directory.
+ *
+ * The tool route itself uses boot=early so a fatal in an active plugin or
+ * theme cannot take the agent offline mid-repair.
  */
 class AgentController
 {
