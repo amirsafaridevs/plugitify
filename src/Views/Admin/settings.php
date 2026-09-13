@@ -135,6 +135,17 @@ $currentModels = $providers[ $settings['provider'] ]['models'] ?? [];
 								<span class="pty-field__hint">
 									<?php esc_html_e( 'کلید فقط روی سرور شما در option وردپرس ذخیره می‌شود.', 'plugitify' ); ?>
 								</span>
+								<span class="pty-test-connection">
+									<span class="pty-test-connection__row">
+										<button type="button" class="pty-btn pty-btn--ghost pty-btn--sm" data-pty-test-connection>
+											<?php esc_html_e( 'تست اتصال', 'plugitify' ); ?>
+										</button>
+										<span class="pty-test-connection__result" data-pty-test-connection-result aria-live="polite"></span>
+									</span>
+									<span class="pty-field__hint">
+										<?php esc_html_e( 'درخواست‌ها به مدل هوش مصنوعی مستقیماً از مرورگر سیستم خودتان فرستاده می‌شود و اصلاً از هاست عبور نمی‌کند؛ یعنی برقراری ارتباط با مدل به اینترنت سیستم خودتان بستگی دارد، نه به اینترنت هاست.', 'plugitify' ); ?>
+									</span>
+								</span>
 							</label>
 						</div>
 					</div>

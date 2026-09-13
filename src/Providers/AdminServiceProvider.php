@@ -110,14 +110,38 @@ class AdminServiceProvider extends ServiceProvider
 
 		if ( $isSettingsPage ) {
 			$providerModels = [];
+			$providerMeta   = [];
 
 			foreach ( SettingsService::providers() as $providerId => $provider ) {
 				$providerModels[ $providerId ] = $provider['models'];
+				$providerMeta[ $providerId ]   = [
+					'endpoint' => $provider['endpoint'],
+					'apiStyle' => $provider['api_style'],
+				];
 			}
 
-			$localize['providers']     = $providerModels;
-			$localize['currentModel']  = SettingsService::getSettings()['model'];
-			$localize['settingsPage']  = true;
+			$localize['providers']    = $providerModels;
+			$localize['providerMeta'] = $providerMeta;
+			$localize['currentModel'] = SettingsService::getSettings()['model'];
+			$localize['settingsPage'] = true;
+			$localize['strings']      = array_merge(
+				$localize['strings'],
+				[
+					'testConnectionRunning' => __( 'در حال تست اتصال…', 'plugitify' ),
+					'testConnectionSuccess' => __( 'اتصال برقرار شد. پاسخ از مدل دریافت شد.', 'plugitify' ),
+					'testConnectionNoKey'   => __( 'ابتدا کلید API را وارد کنید.', 'plugitify' ),
+					'testConnectionNoModel' => __( 'ابتدا یک مدل انتخاب کنید.', 'plugitify' ),
+					'testConnectionNetwork' => __( 'ارتباط با اندپوینت مدل برقرار نشد. اگر تکرار شد، بررسی کنید که اندپوینت CORS مرورگر را اجازه می‌دهد.', 'plugitify' ),
+					'testConnectionTimeout' => __( 'مدل به‌موقع پاسخ نداد.', 'plugitify' ),
+					'testConnectionRate'    => __( 'به سقف نرخ درخواست رسیدیم.', 'plugitify' ),
+					'testConnectionServer'  => __( 'سرویس مدل موقتاً در دسترس نیست.', 'plugitify' ),
+					'testConnectionAuth'    => __( 'کلید API پذیرفته نشد.', 'plugitify' ),
+					'testConnectionForbidden' => __( 'این کلید اجازه‌ی دسترسی به این مدل را ندارد.', 'plugitify' ),
+					'testConnectionNotFound' => __( 'مدل روی این اندپوینت پیدا نشد.', 'plugitify' ),
+					'testConnectionBadRequest' => __( 'درخواست برای این مدل نامعتبر بود.', 'plugitify' ),
+					'testConnectionUnknown' => __( 'خطای پیش‌بینی‌نشده رخ داد.', 'plugitify' ),
+				]
+			);
 		}
 
 		wp_localize_script( 'plugitify-admin', 'plugitifyAdmin', $localize );

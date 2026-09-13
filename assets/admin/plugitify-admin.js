@@ -86,6 +86,143 @@
 		} );
 
 		fillModels( providerSelect.value, plugitifyAdmin.currentModel || '' );
+
+		var testButton = root.querySelector( '[data-pty-test-connection]' );
+		var testResult = root.querySelector( '[data-pty-test-connection-result]' );
+
+		if ( testButton && testResult && apiKeyInput ) {
+			testButton.addEventListener( 'click', function () {
+				runConnectionTest( {
+					provider: providerSelect.value,
+					model: modelSelect.value,
+					apiKey: apiKeyInput.value,
+					button: testButton,
+					result: testResult,
+				} );
+			} );
+		}
+	}
+
+	function setTestResult( result, message, state ) {
+		result.textContent = message;
+		result.classList.remove( 'is-success', 'is-error', 'is-pending' );
+		result.classList.add( state );
+	}
+
+	function runConnectionTest( options ) {
+		var provider = options.provider;
+		var model = options.model;
+		var apiKey = ( options.apiKey || '' ).trim();
+		var button = options.button;
+		var result = options.result;
+		var strings = plugitifyAdmin.strings;
+
+		if ( ! apiKey ) {
+			setTestResult( result, strings.testConnectionNoKey, 'is-error' );
+			return;
+		}
+
+		if ( ! model ) {
+			setTestResult( result, strings.testConnectionNoModel, 'is-error' );
+			return;
+		}
+
+		var meta = ( plugitifyAdmin.providerMeta || {} )[ provider ] || {};
+		var endpoint = meta.endpoint || '';
+		var apiStyle = meta.apiStyle || 'chat_completions';
+
+		var url;
+		var body;
+
+		if ( 'responses' === apiStyle ) {
+			url = endpoint.replace( /\/+$/, '' ) + '/responses';
+			body = {
+				model: model,
+				input: 'ping',
+				max_output_tokens: 16,
+			};
+		} else {
+			url = endpoint.replace( /\/+$/, '' ) + '/chat/completions';
+			body = {
+				model: model,
+				messages: [ { role: 'user', content: 'ping' } ],
+				max_tokens: 16,
+			};
+		}
+
+		button.disabled = true;
+		setTestResult( result, strings.testConnectionRunning, 'is-pending' );
+
+		var controller = ( 'undefined' !== typeof AbortController ) ? new AbortController() : null;
+		var timer = controller ? window.setTimeout( function () {
+			controller.abort();
+		}, 20000 ) : null;
+
+		fetch( url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': 'Bearer ' + apiKey,
+			},
+			body: JSON.stringify( body ),
+			signal: controller ? controller.signal : undefined,
+		} )
+			.then( function ( response ) {
+				if ( timer ) {
+					window.clearTimeout( timer );
+				}
+
+				if ( response.ok ) {
+					setTestResult( result, strings.testConnectionSuccess, 'is-success' );
+					button.disabled = false;
+					return;
+				}
+
+				var status = response.status;
+
+				return response.json().catch( function () {
+					return null;
+				} ).then( function ( payload ) {
+					var providerMessage = payload && payload.error && payload.error.message
+						? String( payload.error.message )
+						: '';
+
+					var message = strings.testConnectionUnknown;
+
+					if ( 401 === status ) {
+						message = strings.testConnectionAuth;
+					} else if ( 403 === status ) {
+						message = strings.testConnectionForbidden;
+					} else if ( 404 === status ) {
+						message = strings.testConnectionNotFound;
+					} else if ( 429 === status ) {
+						message = strings.testConnectionRate;
+					} else if ( status >= 500 ) {
+						message = strings.testConnectionServer;
+					} else if ( 400 === status ) {
+						message = strings.testConnectionBadRequest;
+					}
+
+					if ( providerMessage ) {
+						message += ' (' + providerMessage + ')';
+					}
+
+					setTestResult( result, message, 'is-error' );
+					button.disabled = false;
+				} );
+			} )
+			.catch( function ( error ) {
+				if ( timer ) {
+					window.clearTimeout( timer );
+				}
+
+				var message = ( error && 'AbortError' === error.name )
+					? strings.testConnectionTimeout
+					: strings.testConnectionNetwork;
+
+				setTestResult( result, message, 'is-error' );
+				button.disabled = false;
+			} );
 	}
 
 	document.addEventListener( 'DOMContentLoaded', function () {
