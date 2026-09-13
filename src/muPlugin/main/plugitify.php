@@ -4,8 +4,9 @@
  * Description: Must-use loader for Plugitify. Boots the MuPlugin runtime on muplugins_loaded.
  * Version: 1.0.0
  *
- * This file is auto-loaded as a must-use plugin. A copy of it lives in
- * wp-content/mu-plugins/plugitify.php.
+ * Canonical source: wp-content/plugins/plugitify/src/muPlugin/main/plugitify.php
+ * It is copied to wp-content/mu-plugins/plugitify.php on every admin request
+ * by Plugitify\Services\Admin\MuPluginInstallerService. Do not edit the copy.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

@@ -3,6 +3,7 @@
 namespace Plugitify\Providers;
 
 use Plugitify\Core\ServiceProvider;
+use Plugitify\Services\Admin\MuPluginInstallerService;
 use Plugitify\Services\Admin\PluginActivationService;
 use Plugitify\Services\Admin\PluginBulkActionService;
 use Plugitify\Services\Admin\PluginCreationService;
@@ -18,6 +19,10 @@ class AdminServiceProvider extends ServiceProvider
 
 	public function register(): void
 	{
+		$muPluginInstaller = new MuPluginInstallerService();
+
+		add_action( 'admin_init', [ $muPluginInstaller, 'ensureInstalled' ] );
+		add_action( 'admin_notices', [ $muPluginInstaller, 'renderNotice' ] );
 		add_action( 'admin_menu', [ $this, 'registerMenus' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueMenuIcon' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueAssets' ] );
