@@ -1,6 +1,7 @@
 <?php
 /**
  * @var array<string, array<string, string|bool>> $plugins
+ * @var array{ready: bool, state: string, source: string, sourceReadable: bool, targetDir: string, target: string, filename: string} $muPluginStatus
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,6 +19,13 @@ foreach ( $plugins as $pluginData ) {
 		$inactiveCount++;
 	}
 }
+
+// The studio is served by the mu-plugin loader, so creating is blocked until it exists.
+$creationBlocked = 'missing' === $muPluginStatus['state'] || 'undefined-dir' === $muPluginStatus['state'];
+$createDisabled  = $creationBlocked ? ' disabled aria-disabled="true"' : '';
+$createTitle     = $creationBlocked
+	? ' title="' . esc_attr__( 'تا زمانی که فایل mu-plugin کپی نشود، ساخت افزونه‌ی جدید ممکن نیست.', 'plugitify' ) . '"'
+	: '';
 ?>
 <div class="wrap">
 	<div class="pty" id="pty-dashboard" dir="rtl">
@@ -29,11 +37,13 @@ foreach ( $plugins as $pluginData ) {
 					<?php esc_html_e( 'افزونه‌های ساخته‌شده با پلاگیتی را از همین‌جا مدیریت کنید — ویرایش در استودیو یا حذف کامل.', 'plugitify' ); ?>
 				</p>
 			</div>
-			<button type="button" class="pty-btn pty-btn--primary" id="plugitify-open-create-modal" data-pty-create>
+			<button type="button" class="pty-btn pty-btn--primary" id="plugitify-open-create-modal" data-pty-create<?php echo $createDisabled . $createTitle; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built above with esc_attr__(). ?>>
 				<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
 				<?php esc_html_e( 'افزودن افزونه جدید', 'plugitify' ); ?>
 			</button>
 		</header>
+
+		<?php require PLUGITIFY_PATH . 'src/Views/Admin/partials/mu-plugin-notice.php'; ?>
 
 		<section class="pty-panel">
 			<div class="pty-toolbar">
@@ -76,7 +86,7 @@ foreach ( $plugins as $pluginData ) {
 						</div>
 						<h3><?php esc_html_e( 'هنوز افزونه‌ای نیست', 'plugitify' ); ?></h3>
 						<p><?php esc_html_e( 'اولین افزونه را بسازید تا از همین‌جا مدیریتش کنید.', 'plugitify' ); ?></p>
-						<button type="button" class="pty-btn pty-btn--primary" data-pty-create>
+						<button type="button" class="pty-btn pty-btn--primary" data-pty-create<?php echo $createDisabled . $createTitle; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built above with esc_attr__(). ?>>
 							<?php esc_html_e( 'افزودن افزونه جدید', 'plugitify' ); ?>
 						</button>
 					</div>

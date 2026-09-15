@@ -3,461 +3,499 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta name="theme-color" content="#f5fbfa">
-	<title>پلاگیتی — هر قابلیتی را برای وردپرس بساز</title>
-	<meta name="description" content="پلاگیتی، ایجنت هوش مصنوعی داخل وردپرس است که خواسته شما را به یک افزونه واقعی، تست‌شده و قابل ویرایش تبدیل می‌کند؛ بدون نیاز به دانش برنامه‌نویسی.">
+	<meta name="theme-color" content="#050A2A">
+	<title>پلاگیتی‌فای — افزونه وردپرسی‌ات را با یک گفت‌وگو بساز</title>
+	<meta name="description" content="پلاگیتی‌فای یک ایجنت هوش مصنوعی داخل پیشخوان وردپرس است. نیازت را به زبان خودت می‌گویی و افزونه واقعی ساخته، بررسی و تست می‌شود.">
 	<link rel="icon" href="../assets/admin/favicon.svg" type="image/svg+xml">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="assets/css/landing.css">
 </head>
 <body>
-	<svg class="icon-sprite" aria-hidden="true">
-		<symbol id="icon-spark" viewBox="0 0 24 24">
-			<path d="M12 2.8c.5 4.8 2.4 6.7 7.2 7.2-4.8.5-6.7 2.4-7.2 7.2-.5-4.8-2.4-6.7-7.2-7.2 4.8-.5 6.7-2.4 7.2-7.2Z"></path>
-			<path d="M19 16.2c.2 2 1 2.8 3 3-2 .2-2.8 1-3 3-.2-2-1-2.8-3-3 2-.2 2.8-1 3-3Z"></path>
+
+	<!-- ============================================================
+	     SOLAR ICONS — Outline. One family, stroke 1.5, 24×24.
+	     ============================================================ -->
+	<svg class="icon-sprite" aria-hidden="true" focusable="false">
+		<symbol id="i-chat" viewBox="0 0 24 24">
+			<path d="M8 13h.009M11.991 13H12m3.991 0H16"/>
+			<path d="M20 12c0 4.418-3.582 8-8 8a7.96 7.96 0 0 1-3.5-.8L4 21l1.8-4.5A7.96 7.96 0 0 1 4 12c0-4.418 3.582-8 8-8s8 3.582 8 8Z"/>
 		</symbol>
-		<symbol id="icon-check" viewBox="0 0 24 24">
-			<path d="m5 12.5 4.3 4.2L19 7"></path>
+		<symbol id="i-layers-add" viewBox="0 0 24 24">
+			<path d="M13 3.5 20 7l-7 3.5a2.2 2.2 0 0 1-2 0L4 7l7-3.5a2.2 2.2 0 0 1 2 0Z"/>
+			<path d="M20 12.5 13 16a2.2 2.2 0 0 1-2 0l-7-3.5"/>
+			<path d="M20 17 13 20.5a2.2 2.2 0 0 1-2 0L4 17"/>
 		</symbol>
-		<symbol id="icon-eye" viewBox="0 0 24 24">
-			<path d="M2.8 12s3.3-6 9.2-6 9.2 6 9.2 6-3.3 6-9.2 6-9.2-6-9.2-6Z"></path>
-			<circle cx="12" cy="12" r="2.6"></circle>
+		<symbol id="i-eye-scan" viewBox="0 0 24 24">
+			<path d="M3 8V6a3 3 0 0 1 3-3h2M21 8V6a3 3 0 0 0-3-3h-2M3 16v2a3 3 0 0 0 3 3h2M21 16v2a3 3 0 0 1-3 3h-2"/>
+			<path d="M6.5 12S8.6 8.6 12 8.6s5.5 3.4 5.5 3.4-2.1 3.4-5.5 3.4S6.5 12 6.5 12Z"/>
+			<circle cx="12" cy="12" r="1.5"/>
 		</symbol>
-		<symbol id="icon-shield" viewBox="0 0 24 24">
-			<path d="M12 3 20 6v5.4c0 4.6-3.2 8.1-8 9.6-4.8-1.5-8-5-8-9.6V6l8-3Z"></path>
-			<path d="m8.5 12 2.2 2.2 4.8-5"></path>
+		<symbol id="i-shield-check" viewBox="0 0 24 24">
+			<path d="M4 6.2 12 3l8 3.2v5.1c0 4.4-3.2 7.9-8 9.7-4.8-1.8-8-5.3-8-9.7V6.2Z"/>
+			<path d="m9 12 2.1 2.1L15.3 10"/>
 		</symbol>
-		<symbol id="icon-refresh" viewBox="0 0 24 24">
-			<path d="M20 7v5h-5"></path>
-			<path d="M18.6 16a8 8 0 1 1 .9-7.7L20 12"></path>
+		<symbol id="i-magnifer" viewBox="0 0 24 24">
+			<circle cx="11" cy="11" r="7"/>
+			<path d="m20 20-3.5-3.5"/>
 		</symbol>
-		<symbol id="icon-cart" viewBox="0 0 24 24">
-			<path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6"></path>
-			<circle cx="9.5" cy="19.5" r="1"></circle>
-			<circle cx="17.5" cy="19.5" r="1"></circle>
+		<symbol id="i-pen-square" viewBox="0 0 24 24">
+			<path d="M11 3H8C5 3 3 5 3 8v8c0 3 2 5 5 5h8c3 0 5-2 5-5v-3"/>
+			<path d="M16.6 3.7 19 2.9a1.6 1.6 0 0 1 2 2l-.8 2.4-6.5 6.5-3 .8.8-3 5.1-5.1Z"/>
 		</symbol>
-		<symbol id="icon-users" viewBox="0 0 24 24">
-			<circle cx="9" cy="8" r="3"></circle>
-			<path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19"></path>
-			<path d="M15 5.2a3 3 0 0 1 0 5.6M16.5 13.2a4.8 4.8 0 0 1 4 4.7V19"></path>
+		<symbol id="i-bug" viewBox="0 0 24 24">
+			<path d="M8 7.5a4 4 0 0 1 8 0v5a4 4 0 0 1-8 0v-5Z"/>
+			<path d="M8 10H4.5M19.5 10H16M8 14.5H5M19 14.5h-3M9 5 7.5 3.4M15 5l1.5-1.6M9.5 19.3 8 21M14.5 19.3 16 21"/>
 		</symbol>
-		<symbol id="icon-form" viewBox="0 0 24 24">
-			<rect x="4" y="3" width="16" height="18" rx="3"></rect>
-			<path d="M8 8h8M8 12h8M8 16h5"></path>
+		<symbol id="i-monitor" viewBox="0 0 24 24">
+			<rect x="3" y="4" width="18" height="12.5" rx="3"/>
+			<path d="M3 8.5h18M8.5 20.5h7M12 16.5v4"/>
+			<circle cx="6" cy="6.2" r=".7"/>
 		</symbol>
-		<symbol id="icon-flow" viewBox="0 0 24 24">
-			<rect x="3" y="3" width="6" height="6" rx="2"></rect>
-			<rect x="15" y="15" width="6" height="6" rx="2"></rect>
-			<path d="M9 6h3a4 4 0 0 1 4 4v5M13 12l3 3 3-3"></path>
+		<symbol id="i-lock" viewBox="0 0 24 24">
+			<rect x="4" y="10" width="16" height="11" rx="3.5"/>
+			<path d="M7.5 10V7.5a4.5 4.5 0 0 1 9 0V10"/>
+			<path d="M12 14.5v2.5"/>
+		</symbol>
+		<symbol id="i-verified" viewBox="0 0 24 24">
+			<path d="M12 2.8 14 5l3-.3.5 3 2.6 1.6-1.3 2.7 1.3 2.7L17.5 16l-.5 3-3-.3-2 2.2-2-2.2-3 .3-.5-3-2.6-1.6 1.3-2.7L2.4 9.3 5 7.7l.5-3 3 .3 2-2.2Z"/>
+			<path d="m9.4 12 1.9 1.9 3.5-3.8"/>
+		</symbol>
+		<symbol id="i-layers-lock" viewBox="0 0 24 24">
+			<rect x="3" y="3" width="8" height="8" rx="2.5"/>
+			<rect x="13" y="13" width="8" height="8" rx="2.5"/>
+			<path d="M13 7h2.5A2.5 2.5 0 0 1 18 9.5V11M11 17H8.5A2.5 2.5 0 0 1 6 14.5V13"/>
+		</symbol>
+		<symbol id="i-key" viewBox="0 0 24 24">
+			<circle cx="8" cy="8" r="4.5"/>
+			<path d="m11.2 11.2 8 8M17.5 17.5l-1.8 1.8M15 15l-1.8 1.8"/>
+		</symbol>
+		<symbol id="i-home" viewBox="0 0 24 24">
+			<path d="M4 10.4 12 4l8 6.4V18a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-7.6Z"/>
+			<path d="M9.5 21v-5.5h5V21"/>
+		</symbol>
+		<symbol id="i-cart" viewBox="0 0 24 24">
+			<path d="M3 3h1.6a1 1 0 0 1 1 .8L7.8 15a2 2 0 0 0 2 1.6h7.1a2 2 0 0 0 1.9-1.5L20.5 7H6"/>
+			<circle cx="10" cy="20" r="1.3"/>
+			<circle cx="17" cy="20" r="1.3"/>
+		</symbol>
+		<symbol id="i-palette" viewBox="0 0 24 24">
+			<path d="M12 3.5c-4.7 0-8.5 3.6-8.5 8s3.8 8 8.5 8c1.4 0 2.2-.9 2.2-2 0-.6-.2-1-.6-1.4-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h1.6c2.1 0 3.8-1.7 3.8-3.8 0-3-3.4-5.5-8.5-5.5Z"/>
+			<circle cx="8" cy="10" r="1"/>
+			<circle cx="12" cy="7.8" r="1"/>
+			<circle cx="16" cy="10" r="1"/>
+		</symbol>
+		<symbol id="i-code" viewBox="0 0 24 24">
+			<path d="m8.5 8-4 4 4 4M15.5 8l4 4-4 4M13.5 5l-3 14"/>
+		</symbol>
+		<symbol id="i-arrow" viewBox="0 0 24 24">
+			<path d="M20 12H4M9.5 6.5 4 12l5.5 5.5"/>
 		</symbol>
 	</svg>
 
+
 	<main class="page">
-		<section class="hero" aria-labelledby="hero-title">
-			<div class="hero__orb hero__orb--one" aria-hidden="true"></div>
-			<div class="hero__orb hero__orb--two" aria-hidden="true"></div>
-			<div class="hero__grid" aria-hidden="true"></div>
 
-			<div class="shell hero__inner">
-				<div class="brand-lockup" aria-label="افزونه پلاگیتی فای">
-					<span class="brand-name">افزونه پلاگیتی فای</span>
-					<span class="brand-version">نسخه ۱.۰.۷</span>
-				</div>
-
-				<p class="hero__eyebrow">
-					<svg><use href="#icon-spark"></use></svg>
-					ایجنت هوش مصنوعی برای ساخت افزونه در وردپرس
-				</p>
-				<h1 id="hero-title">
-					افزونه وردپرسی‌ات را با هوش مصنوعی بساز؛<br>
-					<span>بدون نیاز به دانش کدنویسی.</span>
-				</h1>
-				<p class="hero__lead">
-					لازم نیست برنامه‌نویس باشی. خواسته‌ات را با زبان ساده برای پلاگیتی بنویس؛
-					افزونه‌ات را می‌سازد، روی سایت بررسی می‌کند و هر زمان بخواهی تغییرش می‌دهد.
-				</p>
-
-				<ul class="hero__proof" aria-label="مزیت‌های اصلی">
-					<li><svg><use href="#icon-check"></use></svg>بدون نیاز به دانش کد نویسی</li>
-					<li><svg><use href="#icon-check"></use></svg>ساخت داخل وردپرس</li>
-					<li><svg><use href="#icon-check"></use></svg>قابل ویرایش در هر زمان</li>
-				</ul>
-
-				<figure class="product" aria-label="نمای استودیوی پلاگیتی؛ گفت‌وگو با هوش مصنوعی در کنار پیش‌نمایش زنده سایت">
-					<div class="product__topbar">
-						<div class="product__traffic" aria-hidden="true"><i></i><i></i><i></i></div>
-						<div class="product__identity">
-							<span class="product__mini-mark">P</span>
-							<span>استودیوی پلاگیتی</span>
-						</div>
-						<span class="product__online"><i></i>متصل به وردپرس</span>
-					</div>
-
-					<div class="product__workspace">
-						<div class="product__preview">
-							<div class="browserbar">
-								<span class="browserbar__status"><i></i>پیش‌نمایش زنده</span>
-								<span class="browserbar__url" dir="ltr">yoursite.ir / account</span>
-								<span class="browserbar__reload" aria-hidden="true">↻</span>
-							</div>
-							<div class="demo-site">
-								<div class="demo-site__nav">
-									<span class="demo-site__logo">فروشگاه من</span>
-									<span></span><span></span><span></span>
-								</div>
-								<div class="demo-site__content">
-									<div class="demo-site__welcome">
-										<div>
-											<small>باشگاه مشتریان</small>
-											<strong>سلام سارا، ۲۴۰ امتیاز داری!</strong>
-											<p>فقط ۶۰ امتیاز تا دریافت کد تخفیف بعدی</p>
-										</div>
-										<div class="score-ring"><b>۲۴۰</b><span>امتیاز</span></div>
-									</div>
-									<div class="demo-site__stats">
-										<div><b>۳</b><span>سفارش موفق</span></div>
-										<div><b>۲۵٪</b><span>تخفیف فعال</span></div>
-										<div><b>نقره‌ای</b><span>سطح عضویت</span></div>
-									</div>
-									<div class="demo-site__reward">
-										<span class="reward-icon">٪</span>
-										<div><strong>جایزه بعدی تو</strong><small>کد تخفیف ۱۵ درصدی</small></div>
-										<em>۶۰ امتیاز مانده</em>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<aside class="product__chat">
-							<div class="chat-head">
-								<div><span class="agent-avatar"><svg><use href="#icon-spark"></use></svg></span></div>
-								<div><strong>ایجنت پلاگیتی</strong><small><i></i>آماده ساختن</small></div>
-							</div>
-							<div class="chat-body">
-								<div class="bubble bubble--user">
-									<span>شما</span>
-									<p>برای فروشگاهم باشگاه مشتریان بساز که با هر خرید امتیاز بدهد و کد تخفیف بسازد.</p>
-								</div>
-								<div class="bubble bubble--agent">
-									<span>پلاگیتی</span>
-									<p>حتماً. افزونه را ساختم و الان نتیجه را روی سایتت بررسی می‌کنم.</p>
-									<ul class="build-list">
-										<li class="is-done"><i><svg><use href="#icon-check"></use></svg></i>ساخت سیستم امتیازدهی</li>
-										<li class="is-done"><i><svg><use href="#icon-check"></use></svg></i>اتصال به سفارش‌های فروشگاه</li>
-										<li class="is-live"><i></i>بررسی نمایش در موبایل</li>
-									</ul>
-								</div>
-							</div>
-							<div class="chat-input">
-								<span>تغییر بعدی را بنویسید…</span>
-								<i>↑</i>
-							</div>
-						</aside>
-					</div>
-				</figure>
-
-				<div class="hero__footnote">
-					<span class="pulse-dot"></span>
-					این فقط یک تصویر نمایشی نیست؛ پلاگیتی واقعاً فایل‌های افزونه را می‌سازد و نتیجه را در سایت بررسی می‌کند.
-				</div>
+		<!-- ============================================================
+		     01 — HERO
+		     ============================================================ -->
+		<section class="hero">
+			<div class="hero__field" aria-hidden="true">
+				<span class="orb orb--pink"></span>
+				<span class="orb orb--violet"></span>
+				<span class="hero__mesh"></span>
 			</div>
-		</section>
 
-		<section class="section section--examples reveal" aria-labelledby="examples-title">
 			<div class="shell">
-				<div class="section-heading">
-					<p class="kicker">به‌اندازه نیازهای سایتت منعطف</p>
-					<h2 id="examples-title">ایده‌ات را بگو؛ <span>پلاگیتی برات ظرف چند ثانیه با هوش مصنوعی می سازه و تست می کنه و بهت تحویل می ده</span></h2>
-					<p>
-						از یک تغییر کوچک تا یک سیستم اختصاصی، محدود به افزونه‌های آماده بازار نیستی.
-						چیزی ساخته می‌شود که دقیقاً با کار تو هماهنگ است.
+				<div class="hero__head">
+					<p class="brand reveal">
+						پلاگیتی‌فای
+						<span class="brand__tag">نسخه 1.0.7</span>
 					</p>
+
+					<p class="eyebrow reveal" data-delay="1">ایجنت هوش مصنوعی ساخت افزونه، داخل وردپرس</p>
+
+					<h1 class="hero__title reveal" data-delay="2">
+						افزونه وردپرسی‌ات را
+						<span class="glow-line">با یک گفت‌وگو بساز</span>
+					</h1>
+
+					<p class="hero__lead reveal" data-delay="3">
+						نیازت را به زبان خودت بگو؛ پلاگیتی‌فای آن را به یک افزونه واقعی وردپرس تبدیل می‌کند.
+					</p>
+
+					<p class="hero__note reveal" data-delay="4">
+						بدون کدنویسی، بدون انتظار، بدون وابستگی به افزونه‌های آماده.
+					</p>
+
+					<div class="cta-row reveal" data-delay="5">
+						<span class="cta cta--solid">شروع کنید</span>
+						<span class="cta cta--ghost">
+							بیشتر بدانید
+							<svg class="cta__icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+						</span>
+					</div>
 				</div>
 
-				<div class="example-grid">
-					<article class="example-card example-card--wide">
-						<span class="example-card__icon"><svg><use href="#icon-cart"></use></svg></span>
-						<div>
-							<p class="example-card__type">برای فروشگاه</p>
-							<h3>قیمت‌گذاری، موجودی و تخفیف را مطابق مدل کسب‌وکارت بساز</h3>
-							<p>مثلاً قیمت همکار، هشدار موجودی، هدیه خودکار یا قوانین ارسال اختصاصی.</p>
-						</div>
-						<div class="mini-order" aria-hidden="true">
-							<div><span>سفارش جدید</span><b>۱,۸۴۰,۰۰۰ تومان</b></div>
-							<div class="mini-order__rule"><i>✓</i><span>تخفیف مشتری وفادار اعمال شد</span></div>
-						</div>
-					</article>
-
-					<article class="example-card">
-						<span class="example-card__icon example-card__icon--blue"><svg><use href="#icon-users"></use></svg></span>
-						<p class="example-card__type">برای اعضا</p>
-						<h3>عضویت و دسترسی اختصاصی</h3>
-						<p>پنل کاربری، سطح‌بندی اعضا، محتوای ویژه یا اشتراک دوره‌ای.</p>
-						<div class="member-stack" aria-hidden="true"><i>م</i><i>س</i><i>ع</i><span>+ ۱۲۴ عضو</span></div>
-					</article>
-
-					<article class="example-card">
-						<span class="example-card__icon example-card__icon--amber"><svg><use href="#icon-form"></use></svg></span>
-						<p class="example-card__type">برای ارتباط با مشتری</p>
-						<h3>فرم‌هایی که دقیقاً نیاز داری</h3>
-						<p>فرم سفارش، رزرو، استعلام قیمت و پیگیری با پیامک یا ایمیل.</p>
-						<div class="form-lines" aria-hidden="true"><i></i><i></i><i></i><b>ثبت شد</b></div>
-					</article>
-
-					<article class="example-card example-card--wide example-card--automation">
-						<span class="example-card__icon example-card__icon--violet"><svg><use href="#icon-flow"></use></svg></span>
-						<div>
-							<p class="example-card__type">برای کارهای تکراری</p>
-							<h3>کارها را به‌جای خودت به وردپرس بسپار</h3>
-							<p>اطلاعات را جابه‌جا کن، گزارش بساز و بعد از هر رویداد، کار بعدی را خودکار انجام بده.</p>
-						</div>
-						<div class="flow-demo" aria-hidden="true">
-							<span>ثبت سفارش</span><i>←</i><span>صدور فاکتور</span><i>←</i><span>ارسال پیامک</span>
-						</div>
-					</article>
-				</div>
-
-				<p class="examples-note">این‌ها فقط چند نمونه‌اند؛ افزونه بر اساس توضیح و نیاز خودت ساخته می‌شود.</p>
+				<figure class="shot shot--hero reveal" data-delay="6">
+					<div class="shot__frame"><span class="shot__label">PRODUCT_IMAGE_01</span></div>
+				</figure>
 			</div>
 		</section>
 
-		<section class="section section--steps reveal" aria-labelledby="steps-title">
-			<div class="shell">
-				<div class="section-heading section-heading--center">
-					<p class="kicker">ساده‌تر از چیزی که فکر می‌کنی</p>
-					<h2 id="steps-title">از خواسته تا افزونه، فقط با یک گفت‌وگو</h2>
-					<p>تو درباره کسب‌وکارت حرف می‌زنی؛ پلاگیتی کار فنی را انجام می‌دهد.</p>
-				</div>
 
-				<ol class="journey">
-					<li>
-						<span class="journey__number">۱</span>
-						<div class="journey__visual journey__visual--message" aria-hidden="true">
-							<p>می‌خواهم مشتری بعد از خرید، پیامک پیگیری دریافت کند.</p>
-						</div>
-						<h3>به زبان خودت توضیح بده</h3>
-						<p>نیازی به اصطلاحات فنی نیست؛ همان‌طور که برای یک همکار توضیح می‌دهی بنویس.</p>
+		<!-- ============================================================
+		     02 — PROBLEM
+		     ============================================================ -->
+		<section class="band band--problem">
+			<div class="shell">
+				<div class="split">
+					<div class="split__lead">
+						<h2 class="h2 reveal">همیشه یک افزونه آماده برای نیاز شما وجود ندارد.</h2>
+					</div>
+					<div class="split__body">
+						<p class="paragraph reveal" data-delay="1">
+							خیلی وقت‌ها یک افزونه آماده بخش زیادی از کاری را که می‌خواهید انجام می‌دهد،
+							اما دقیقاً همان بخش مهمی که برای کسب‌وکار شما تفاوت ایجاد می‌کند، در آن وجود ندارد.
+						</p>
+
+						<ul class="notes">
+							<li class="reveal" data-delay="2">برای یک تغییر کوچک، باید دنبال برنامه‌نویس بگردید.</li>
+							<li class="reveal" data-delay="3">برای هر تغییر، دوباره زمان و هزینه صرف می‌کنید.</li>
+							<li class="reveal" data-delay="4">افزونه‌های بیشتر یعنی وابستگی بیشتر.</li>
+							<li class="reveal" data-delay="5">ابزارهای معمولی هوش مصنوعی بیشتر کد پیشنهاد می‌دهند؛ اجرای واقعی کار همچنان با شماست.</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</section>
+
+
+		<!-- ============================================================
+		     03 — THE IDEA
+		     ============================================================ -->
+		<section class="band band--idea">
+			<span class="idea__halo" aria-hidden="true"></span>
+
+			<div class="shell">
+				<p class="turn reveal">اینجاست که پلاگیتی‌فای وارد می‌شود.</p>
+
+				<div class="idea">
+					<div class="idea__text">
+						<h2 class="h2 reveal" data-delay="1">به‌جای پیدا کردن افزونه، چیزی که می‌خواهی را بساز.</h2>
+						<p class="paragraph reveal" data-delay="2">
+							نیازت را توضیح بده. پلاگیتی‌فای داخل وردپرس روی ساخت افزونه کار می‌کند،
+							آن را بررسی می‌کند و نتیجه را تست می‌کند.
+						</p>
+					</div>
+
+					<figure class="shot shot--tall reveal" data-delay="3">
+						<div class="shot__frame"><span class="shot__label">PRODUCT_IMAGE_02</span></div>
+					</figure>
+				</div>
+			</div>
+		</section>
+
+
+		<!-- ============================================================
+		     04 — HOW IT WORKS
+		     ============================================================ -->
+		<section class="band band--flow">
+			<div class="shell">
+				<h2 class="h2 h2--center reveal">از توضیح ساده تا افزونه واقعی</h2>
+
+				<ol class="flow">
+					<li class="flow__step reveal">
+						<span class="flow__node"><svg aria-hidden="true"><use href="#i-chat"></use></svg></span>
+						<span class="flow__num">01</span>
+						<h3 class="flow__title">بگو چه می‌خواهی</h3>
+						<p class="flow__text">با زبان ساده، مثل توضیح دادن به یک همکار.</p>
 					</li>
-					<li>
-						<span class="journey__number">۲</span>
-						<div class="journey__visual journey__visual--build" aria-hidden="true">
-							<span><i class="is-complete"></i>ساخت افزونه</span>
-							<span><i class="is-complete"></i>بررسی خطا</span>
-							<span><i class="is-working"></i>آماده‌سازی نمایش</span>
-						</div>
-						<h3>ساختن را به ایجنت بسپار</h3>
-						<p>پلاگیتی بخش‌های لازم را می‌سازد، به وردپرس متصل می‌کند و خطاها را بررسی می‌کند.</p>
+					<li class="flow__step reveal" data-delay="1">
+						<span class="flow__node"><svg aria-hidden="true"><use href="#i-layers-add"></use></svg></span>
+						<span class="flow__num">02</span>
+						<h3 class="flow__title">می‌سازد</h3>
+						<p class="flow__text">فایل‌های واقعی افزونه در سایتت ساخته می‌شوند.</p>
 					</li>
-					<li>
-						<span class="journey__number">۳</span>
-						<div class="journey__visual journey__visual--result" aria-hidden="true">
-							<svg><use href="#icon-check"></use></svg>
-							<div><b>آماده استفاده</b><span>بررسی با موفقیت انجام شد</span></div>
-						</div>
-						<h3>نتیجه را ببین و بهترش کن</h3>
-						<p>همان لحظه نتیجه را روی سایت می‌بینی و هر تغییری بخواهی با یک پیام انجام می‌شود.</p>
+					<li class="flow__step reveal" data-delay="2">
+						<span class="flow__node"><svg aria-hidden="true"><use href="#i-eye-scan"></use></svg></span>
+						<span class="flow__num">03</span>
+						<h3 class="flow__title">می‌بیند و تست می‌کند</h3>
+						<p class="flow__text">صفحه سایت را باز می‌کند و نتیجه را بررسی می‌کند.</p>
+					</li>
+					<li class="flow__step reveal" data-delay="3">
+						<span class="flow__node"><svg aria-hidden="true"><use href="#i-shield-check"></use></svg></span>
+						<span class="flow__num">04</span>
+						<h3 class="flow__title">تحویل می‌دهد</h3>
+						<p class="flow__text">افزونه سالم و آماده استفاده است؛ هر وقت خواستی می‌توانی تغییرش بدهی.</p>
 					</li>
 				</ol>
+
+				<p class="flow__path reveal" data-delay="4">
+					<span>گفت‌وگو</span><i aria-hidden="true"></i><span>ساخت</span><i aria-hidden="true"></i><span>بررسی</span><i aria-hidden="true"></i><span>نتیجه</span>
+				</p>
 			</div>
 		</section>
 
-		<section class="section section--confidence reveal" aria-labelledby="confidence-title">
-			<div class="shell confidence">
-				<div class="confidence__intro">
-					<p class="kicker">هوشمند در ساخت، دقیق در تحویل</p>
-					<h2 id="confidence-title">فقط نمی‌سازد؛<br><span>مطمئن می‌شود درست کار می‌کند.</span></h2>
-					<p>
-						پلاگیتی یک چت‌بات پاسخ‌گو نیست. یک ایجنت اجرایی است که می‌تواند نتیجه کار خودش را
-						ببیند، بررسی کند و برای رفع خطا دوباره دست‌به‌کار شود.
-					</p>
-					<div class="plain-tech">
-						<span>به زبان ساده:</span>
-						<strong>کمتر حدس می‌زند، بیشتر بررسی می‌کند.</strong>
-					</div>
-				</div>
 
-				<div class="confidence__features">
-					<article>
-						<span class="feature-icon"><svg><use href="#icon-eye"></use></svg></span>
-						<div>
-							<h3>نتیجه را زنده می‌بیند</h3>
-							<p>صفحه سایت را باز می‌کند و چیزی را که ساخته، همان‌جا بررسی می‌کند.</p>
-						</div>
-						<em>پیش‌نمایش زنده</em>
-					</article>
-					<article>
-						<span class="feature-icon"><svg><use href="#icon-refresh"></use></svg></span>
-						<div>
-							<h3>خطا را پیدا و اصلاح می‌کند</h3>
-							<p>کد و گزارش خطا را بررسی می‌کند تا مشکل قبل از تحویل برطرف شود.</p>
-						</div>
-						<em>بررسی چندمرحله‌ای</em>
-					</article>
-					<article>
-						<span class="feature-icon"><svg><use href="#icon-shield"></use></svg></span>
-						<div>
-							<h3>در فضای خودش کار می‌کند</h3>
-							<p>دسترسی ساخت‌وساز به پوشه همان افزونه محدود است؛ نه هسته و نه قالب سایت.</p>
-						</div>
-						<em>فضای کاری محدود</em>
-					</article>
-				</div>
-			</div>
-		</section>
-
-		<section class="section section--workspace reveal" aria-labelledby="workspace-title">
+		<!-- ============================================================
+		     05 — BIG DIFFERENCE
+		     ============================================================ -->
+		<section class="band band--diff">
 			<div class="shell">
-				<div class="section-heading section-heading--center">
-					<p class="kicker">یک خانه برای همه افزونه‌های اختصاصی تو</p>
-					<h2 id="workspace-title">امروز بساز؛ ماه بعد دوباره تغییرش بده</h2>
-					<p>هر افزونه جدا نگهداری می‌شود و گفت‌وگو برای ادامه کار همیشه در دسترس است.</p>
+				<h2 class="h2 h2--center reveal">پلاگیتی‌فای فقط کد پیشنهاد نمی‌دهد.</h2>
+				<p class="sub sub--center reveal" data-delay="1">تفاوتش اینجاست:</p>
+
+				<div class="versus">
+					<div class="versus__head reveal" data-delay="2">
+						<span class="versus__cap versus__cap--dim">ابزار معمولی هوش مصنوعی</span>
+						<span class="versus__cap versus__cap--brand">پلاگیتی‌فای</span>
+					</div>
+
+					<div class="versus__row reveal" data-delay="2">
+						<p class="versus__old">متن کد می‌دهد</p>
+						<p class="versus__new">فایل واقعی افزونه می‌سازد</p>
+					</div>
+					<div class="versus__row reveal" data-delay="3">
+						<p class="versus__old">بیرون از سایت توست</p>
+						<p class="versus__new">داخل پیشخوان وردپرس توست</p>
+					</div>
+					<div class="versus__row reveal" data-delay="4">
+						<p class="versus__old">نتیجه را نمی‌بیند</p>
+						<p class="versus__new">صفحه سایت را باز و بررسی می‌کند</p>
+					</div>
+					<div class="versus__row reveal" data-delay="5">
+						<p class="versus__old">تست با خودت است</p>
+						<p class="versus__new">خودش تست و خطایابی می‌کند</p>
+					</div>
+					<div class="versus__row reveal" data-delay="6">
+						<p class="versus__old">احتمالاً کار می‌کند</p>
+						<p class="versus__new">قبل از فعال‌سازی، صحت کد بررسی می‌شود</p>
+					</div>
 				</div>
 
-				<div class="library">
-					<div class="library__top">
-						<div>
-							<span class="library__mark">P</span>
-							<div><strong>افزونه‌های من</strong><small>۴ افزونه اختصاصی</small></div>
-						</div>
-						<span class="library__new"><i>＋</i>افزونه جدید</span>
-					</div>
-					<div class="library__filters">
-						<span class="is-active">همه <b>۴</b></span>
-						<span>فعال <b>۳</b></span>
-						<span>غیرفعال <b>۱</b></span>
-						<em>جست‌وجوی افزونه…</em>
-					</div>
-					<div class="library__items">
-						<article>
-							<span class="plugin-icon plugin-icon--green"><svg><use href="#icon-users"></use></svg></span>
-							<div><h3>باشگاه مشتریان</h3><p>امتیاز خرید و کد تخفیف خودکار</p></div>
-							<span class="plugin-status"><i></i>فعال</span>
-							<time>آخرین تغییر: امروز</time>
-						</article>
-						<article>
-							<span class="plugin-icon plugin-icon--blue"><svg><use href="#icon-form"></use></svg></span>
-							<div><h3>فرم استعلام هوشمند</h3><p>محاسبه قیمت و ارسال پیش‌فاکتور</p></div>
-							<span class="plugin-status"><i></i>فعال</span>
-							<time>آخرین تغییر: ۳ روز پیش</time>
-						</article>
-						<article>
-							<span class="plugin-icon plugin-icon--amber"><svg><use href="#icon-cart"></use></svg></span>
-							<div><h3>هشدار موجودی انبار</h3><p>گزارش روزانه محصولات رو به اتمام</p></div>
-							<span class="plugin-status"><i></i>فعال</span>
-							<time>آخرین تغییر: ۱ هفته پیش</time>
-						</article>
-						<article>
-							<span class="plugin-icon plugin-icon--violet"><svg><use href="#icon-flow"></use></svg></span>
-							<div><h3>گزارش فروش ماهانه</h3><p>خروجی خودکار برای حسابداری</p></div>
-							<span class="plugin-status plugin-status--off"><i></i>غیرفعال</span>
-							<time>آخرین تغییر: ۲ هفته پیش</time>
-						</article>
-					</div>
-					<p class="library__caption"><svg><use href="#icon-refresh"></use></svg>برای ادامه یا تغییر هر افزونه، کافی است دوباره گفت‌وگوی همان پروژه را باز کنی.</p>
-				</div>
+				<p class="statement reveal" data-delay="7">کمتر حدس می‌زند،<br><span>بیشتر بررسی می‌کند.</span></p>
 			</div>
 		</section>
 
-		<section class="section section--choice reveal" aria-labelledby="choice-title">
-			<div class="shell choice">
-				<div class="choice__copy">
-					<p class="kicker">آزادی در انتخاب هوش مصنوعی</p>
-					<h2 id="choice-title">مدل مناسب را خودت انتخاب می‌کنی</h2>
-					<p>
-						پلاگیتی تو را به یک سرویس محدود نمی‌کند. می‌توانی کلید API سرویس دلخواهت را وارد کنی؛
-						از مدل‌های مطرح جهانی تا سرویس‌دهنده‌های در دسترس داخل ایران.
-					</p>
-					<p class="choice__note"><svg><use href="#icon-shield"></use></svg>کلید API روی سرور وردپرس خودت ذخیره می‌شود.</p>
-				</div>
-				<div class="provider-cloud" aria-label="سرویس‌دهندگان قابل انتخاب">
-					<span class="provider provider--openai">OpenAI</span>
-					<span class="provider provider--claude">Claude</span>
-					<span class="provider provider--gemini">Gemini</span>
-					<span class="provider provider--deepseek">DeepSeek</span>
-					<span class="provider provider--qwen">Qwen</span>
-					<span class="provider provider--grok">xAI</span>
-					<span class="provider provider--mistral">Mistral</span>
-					<span class="provider provider--router">OpenRouter</span>
-					<span class="provider provider--iran">GapGPT</span>
-					<span class="provider provider--iran">AvalAI</span>
-				</div>
-			</div>
-		</section>
 
-		<section class="section section--audience reveal" aria-labelledby="audience-title">
+		<!-- ============================================================
+		     06 — NUMBERS
+		     ============================================================ -->
+		<section class="band band--stats">
 			<div class="shell">
-				<div class="audience-heading">
-					<p class="kicker">ساخته‌شده برای آدم‌هایی که سایت واقعی دارند</p>
-					<h2 id="audience-title">برنامه‌نویس نیستی؟ مشکلی نیست.<br><span>هستی؟ سریع‌تر می‌سازی.</span></h2>
+				<div class="stats">
+					<div class="stat reveal">
+						<span class="stat__num">23</span>
+						<span class="stat__cap">ابزار اجرایی</span>
+					</div>
+					<div class="stat reveal" data-delay="1">
+						<span class="stat__num">11</span>
+						<span class="stat__cap">سرویس هوش مصنوعی</span>
+					</div>
+					<div class="stat reveal" data-delay="2">
+						<span class="stat__num">40+</span>
+						<span class="stat__cap">مدل قابل انتخاب</span>
+					</div>
+					<div class="stat reveal" data-delay="3">
+						<span class="stat__num">0</span>
+						<span class="stat__cap">خط کدی که باید بنویسی</span>
+					</div>
 				</div>
-				<div class="audience-grid">
-					<article>
-						<span class="audience-grid__number">۰۱</span>
-						<p class="audience-grid__label">صاحب سایت و کسب‌وکار</p>
-						<h3>نیازت را مستقیم به نتیجه تبدیل کن</h3>
-						<p>برای هر تغییر منتظر نمان. افزونه مورد نیازت را بساز و وقتی کسب‌وکارت تغییر کرد، همان را به‌روز کن.</p>
-						<ul>
-							<li><svg><use href="#icon-check"></use></svg>گفت‌وگو به زبان ساده</li>
-							<li><svg><use href="#icon-check"></use></svg>دیدن نتیجه روی سایت خودت</li>
-						</ul>
+			</div>
+		</section>
+
+
+		<!-- ============================================================
+		     07 — WHAT IT CAN DO
+		     ============================================================ -->
+		<section class="band band--does">
+			<div class="shell">
+				<h2 class="h2 reveal">فقط نمی‌سازد؛ بررسی هم می‌کند.</h2>
+
+				<div class="abilities">
+					<article class="ability reveal" data-delay="1">
+						<svg class="ability__icon" aria-hidden="true"><use href="#i-magnifer"></use></svg>
+						<h3 class="ability__title">شناخت و جست‌وجو</h3>
+						<p class="ability__text">وضعیت افزونه، خواندن فایل‌ها و جست‌وجوی دقیق در کد</p>
 					</article>
-					<article>
-						<span class="audience-grid__number">۰۲</span>
-						<p class="audience-grid__label">طراح سایت و توسعه‌دهنده</p>
-						<h3>زمانت را برای کارهای مهم‌تر نگه دار</h3>
-						<p>ساخت اولیه، اصلاحات تکراری و بررسی نتیجه را سریع‌تر پیش ببر و پروژه‌های بیشتری تحویل بده.</p>
-						<ul>
-							<li><svg><use href="#icon-check"></use></svg>فایل‌های واقعی و قابل توسعه</li>
-							<li><svg><use href="#icon-check"></use></svg>تست و بررسی داخل همان محیط</li>
-						</ul>
+					<article class="ability reveal" data-delay="2">
+						<svg class="ability__icon" aria-hidden="true"><use href="#i-pen-square"></use></svg>
+						<h3 class="ability__title">ساخت و ویرایش</h3>
+						<p class="ability__text">نوشتن، ویرایش نقطه‌ای، جابه‌جایی و مدیریت فایل‌ها</p>
+					</article>
+					<article class="ability reveal" data-delay="3">
+						<svg class="ability__icon" aria-hidden="true"><use href="#i-bug"></use></svg>
+						<h3 class="ability__title">بررسی و خطایابی</h3>
+						<p class="ability__text">کنترل صحت PHP، JS، CSS و HTML و خواندن لاگ خطای وردپرس</p>
+					</article>
+					<article class="ability reveal" data-delay="4">
+						<svg class="ability__icon" aria-hidden="true"><use href="#i-monitor"></use></svg>
+						<h3 class="ability__title">مرورگر زنده</h3>
+						<p class="ability__text">باز کردن صفحه، خواندن خروجی، کلیک، پر کردن فرم و خواندن کنسول</p>
 					</article>
 				</div>
 			</div>
 		</section>
 
-		<section class="section section--faq reveal" aria-labelledby="faq-title">
-			<div class="shell faq">
-				<div class="faq__heading">
-					<p class="kicker">شفاف و بی‌ابهام</p>
-					<h2 id="faq-title">قبل از اینکه بپرسی…</h2>
-					<p>چند پاسخ کوتاه درباره چیزی که پلاگیتی هست و روشی که کار می‌کند.</p>
+
+		<!-- ============================================================
+		     08 — SECURITY
+		     ============================================================ -->
+		<section class="band band--safe">
+			<span class="safe__halo" aria-hidden="true"></span>
+			<div class="shell">
+				<h2 class="h2 h2--center reveal">ساخته شده تا خیالت راحت باشد</h2>
+
+				<div class="safe">
+					<div class="safe__item reveal" data-delay="1">
+						<svg class="safe__icon" aria-hidden="true"><use href="#i-lock"></use></svg>
+						<div>
+							<h3 class="safe__title">فضای کاری قفل‌شده</h3>
+							<p class="safe__text">فقط داخل پوشه افزونه خودت می‌نویسد؛ هسته، قالب و بقیه افزونه‌ها دست‌نخورده می‌مانند.</p>
+						</div>
+					</div>
+					<div class="safe__item reveal" data-delay="2">
+						<svg class="safe__icon" aria-hidden="true"><use href="#i-shield-check"></use></svg>
+						<div>
+							<h3 class="safe__title">فعال‌سازی امن</h3>
+							<p class="safe__text">افزونه‌ای که خطای نحوی داشته باشد، هرگز فعال نمی‌شود.</p>
+						</div>
+					</div>
+					<div class="safe__item reveal" data-delay="3">
+						<svg class="safe__icon" aria-hidden="true"><use href="#i-verified"></use></svg>
+						<div>
+							<h3 class="safe__title">استاندارد امنیتی وردپرس</h3>
+							<p class="safe__text">پاک‌سازی ورودی، امن‌سازی خروجی، nonce و بررسی سطح دسترسی</p>
+						</div>
+					</div>
+					<div class="safe__item reveal" data-delay="4">
+						<svg class="safe__icon" aria-hidden="true"><use href="#i-layers-lock"></use></svg>
+						<div>
+							<h3 class="safe__title">بدون تداخل</h3>
+							<p class="safe__text">همه نام‌ها پیشوند اختصاصی می‌گیرند تا با افزونه دیگری تداخل نکنند.</p>
+						</div>
+					</div>
+					<div class="safe__item reveal" data-delay="5">
+						<svg class="safe__icon" aria-hidden="true"><use href="#i-key"></use></svg>
+						<div>
+							<h3 class="safe__title">کلید API روی سرور خودت</h3>
+							<p class="safe__text">هیچ واسطه اجباری بین تو و سرویس هوش مصنوعی نیست.</p>
+						</div>
+					</div>
 				</div>
-				<div class="faq__list">
-					<article>
-						<h3><span>۱</span>واقعاً لازم نیست کدنویسی بلد باشم؟</h3>
-						<p>نه. تو نتیجه‌ای را که می‌خواهی توضیح می‌دهی. پلاگیتی جزئیات فنی ساخت افزونه را انجام می‌دهد.</p>
+			</div>
+		</section>
+
+
+		<!-- ============================================================
+		     09 — AI PROVIDERS
+		     ============================================================ -->
+		<section class="band band--models">
+			<div class="shell">
+				<h2 class="h2 h2--center reveal">به یک شرکت قفل نمی‌شوی</h2>
+				<p class="sub sub--center reveal" data-delay="1">11 سرویس و بیش از 40 مدل — انتخاب با توست.</p>
+
+				<div class="cloud">
+					<span class="cloud__core" aria-hidden="true"></span>
+					<ul class="cloud__list">
+						<li class="reveal" data-delay="1"><span>OpenAI</span></li>
+						<li class="reveal" data-delay="2"><span>Claude</span></li>
+						<li class="reveal" data-delay="3"><span>Gemini</span></li>
+						<li class="reveal" data-delay="4"><span>DeepSeek</span></li>
+						<li class="reveal" data-delay="5"><span>Qwen</span></li>
+						<li class="reveal" data-delay="6"><span>GLM</span></li>
+						<li class="reveal" data-delay="7"><span>Grok</span></li>
+						<li class="reveal" data-delay="8"><span>Mistral</span></li>
+						<li class="reveal" data-delay="9"><span>OpenRouter</span></li>
+						<li class="is-local reveal" data-delay="10"><span>GapGPT</span><em>در دسترس در ایران</em></li>
+						<li class="is-local reveal" data-delay="11"><span>AvalAI</span><em>در دسترس در ایران</em></li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+
+		<!-- ============================================================
+		     10 — PRODUCT VISUAL
+		     ============================================================ -->
+		<section class="band band--canvas">
+			<div class="shell">
+				<div class="canvas__head">
+					<h2 class="h2 reveal">وقتی محصول آماده است، کار هنوز تمام نشده.</h2>
+					<p class="paragraph reveal" data-delay="1">
+						هر زمان بخواهی می‌توانی همان افزونه را دوباره تغییر بدهی و ادامه کار را از همان‌جا پیش ببری.
+					</p>
+				</div>
+
+				<figure class="shot shot--wide reveal" data-delay="2">
+					<div class="shot__frame"><span class="shot__label">PRODUCT_IMAGE_03</span></div>
+				</figure>
+			</div>
+		</section>
+
+
+		<!-- ============================================================
+		     11 — WHO IS IT FOR
+		     ============================================================ -->
+		<section class="band band--who">
+			<div class="shell">
+				<h2 class="h2 reveal">برای هر کسی که از افزونه‌های آماده عبور کرده</h2>
+
+				<div class="who">
+					<article class="who__item reveal" data-delay="1">
+						<svg class="who__icon" aria-hidden="true"><use href="#i-home"></use></svg>
+						<h3 class="who__title">صاحب سایت</h3>
+						<p class="who__text">نیاز سایتت را مستقیم به یک افزونه اختصاصی تبدیل کن.</p>
 					</article>
-					<article>
-						<h3><span>۲</span>خروجی فقط یک پیشنهاد یا متن کد است؟</h3>
-						<p>خیر. فایل‌ها و پوشهٔ افزونه در بخش مربوط به افزونه‌های وردپرس ایجاد می‌شود، در لیست افزونه‌ها قرار می‌گیرد و مثل هر افزونهٔ دیگری می‌توانی ببینی‌اش و فعال یا غیرفعالش کنی.</p>
+					<article class="who__item reveal" data-delay="2">
+						<svg class="who__icon" aria-hidden="true"><use href="#i-cart"></use></svg>
+						<h3 class="who__title">فروشگاه‌دار</h3>
+						<p class="who__text">قابلیت‌هایی بساز که دقیقاً با مدل کسب‌وکارت هماهنگ باشند.</p>
 					</article>
-					<article>
-						<h3><span>۳</span>اگر بعداً تغییر دیگری بخواهم چه؟</h3>
-						<p>پروژه را دوباره باز می‌کنی و تغییرت را می‌گویی؛ ایجنت همان افزونه را ویرایش و دوباره بررسی می‌کند.</p>
+					<article class="who__item reveal" data-delay="3">
+						<svg class="who__icon" aria-hidden="true"><use href="#i-palette"></use></svg>
+						<h3 class="who__title">طراح سایت و فریلنسر</h3>
+						<p class="who__text">ساخت اولیه و اصلاحات تکراری را سریع‌تر پیش ببر.</p>
 					</article>
-					<article>
-						<h3><span>۴</span>برای هوش مصنوعی به چه چیزی نیاز دارم؟</h3>
-						<p>به کلید API یکی از سرویس‌های پشتیبانی‌شده نیاز داری. سرویس و مدل را از تنظیمات پلاگیتی انتخاب می‌کنی.</p>
+					<article class="who__item reveal" data-delay="4">
+						<svg class="who__icon" aria-hidden="true"><use href="#i-code"></use></svg>
+						<h3 class="who__title">توسعه‌دهنده</h3>
+						<p class="who__text">اسکلت اولیه را سریع‌تر بساز و ادامه توسعه را خودت در دست بگیر.</p>
 					</article>
 				</div>
 			</div>
 		</section>
 
-		<section class="closing reveal" aria-labelledby="closing-title">
-			<div class="closing__pattern" aria-hidden="true"></div>
-			<div class="closing__spark closing__spark--one" aria-hidden="true">✦</div>
-			<div class="closing__spark closing__spark--two" aria-hidden="true">✦</div>
-			<div class="shell closing__inner">
-				<div class="closing__mark">P</div>
-				<p class="closing__brand">پلاگیتی</p>
-				<h2 id="closing-title">سایتت نباید به امکانات آماده محدود بماند.</h2>
-				<p>هر چیزی که لازم داری را توضیح بده؛ حالا وردپرس می‌تواند آن را برایت بسازد.</p>
-				<div class="closing__line"><i></i><span>ایده</span><b>←</b><span>ساخت</span><b>←</b><span>بررسی</span><b>←</b><strong>افزونه واقعی</strong><i></i></div>
-				<small>Plugitify · AI WordPress Plugin Builder · v1.0.7</small>
+
+		<!-- ============================================================
+		     12 — FINAL CTA
+		     ============================================================ -->
+		<section class="band band--final">
+			<div class="final__field" aria-hidden="true">
+				<span class="orb orb--violet"></span>
+				<span class="orb orb--pink"></span>
+			</div>
+
+			<div class="shell">
+				<h2 class="final__title reveal">سایتت نباید به افزونه‌های آماده محدود بماند.</h2>
+				<p class="final__text reveal" data-delay="1">
+					نیازت را توضیح بده و بگذار پلاگیتی‌فای آن را به یک افزونه واقعی تبدیل کند.
+				</p>
+
+				<div class="cta-row cta-row--center reveal" data-delay="2">
+					<span class="cta cta--solid cta--lg">پلاگیتی‌فای را امتحان کنید</span>
+				</div>
+
+				<p class="final__sign reveal" data-delay="3">پلاگیتی‌فای — نسخه 1.0.7</p>
+
+				<ul class="specs reveal" data-delay="4">
+					<li>وردپرس 5.8 به بالا</li>
+					<li>PHP 7.4 به بالا</li>
+					<li>کاملاً فارسی و راست‌به‌چپ</li>
+					<li>خروجی: افزونه استاندارد وردپرس</li>
+				</ul>
 			</div>
 		</section>
+
 	</main>
 
 	<script src="assets/js/landing.js"></script>

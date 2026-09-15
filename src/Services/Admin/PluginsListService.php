@@ -8,7 +8,8 @@ class PluginsListService
 
 	public function render(): void
 	{
-		$plugins = $this->getPlugitifyPlugins();
+		$plugins        = $this->getPlugitifyPlugins();
+		$muPluginStatus = ( new MuPluginInstallerService() )->getStatus();
 
 		include PLUGITIFY_PATH . 'src/Views/Admin/plugins-list.php';
 	}

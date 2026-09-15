@@ -73,6 +73,11 @@ class MuPluginInstallerService
 
 	public function renderNotice(): void
 	{
+		// Plugitify screens render a richer, self-contained banner instead.
+		if ( $this->isPlugitifyScreen() ) {
+			return;
+		}
+
 		$message = get_transient( self::NOTICE_TRANSIENT );
 
 		if ( ! is_string( $message ) || '' === $message ) {
@@ -83,6 +88,72 @@ class MuPluginInstallerService
 			'<div class="notice notice-error"><p>%s</p></div>',
 			esc_html( $message )
 		);
+	}
+
+	/**
+	 * Describes the current state of wp-content/mu-plugins/plugitify.php so the
+	 * admin views can warn about it and show manual copy instructions.
+	 *
+	 * @return array{
+	 *     ready: bool,
+	 *     state: string,
+	 *     source: string,
+	 *     sourceReadable: bool,
+	 *     targetDir: string,
+	 *     target: string,
+	 *     filename: string
+	 * }
+	 */
+	public function getStatus(): array
+	{
+		$source    = PLUGITIFY_PATH . self::SOURCE_RELATIVE;
+		$targetDir = defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : '';
+
+		$status = [
+			'ready'          => false,
+			'state'          => 'missing',
+			'source'         => wp_normalize_path( $source ),
+			'sourceReadable' => is_readable( $source ),
+			'targetDir'      => '' !== $targetDir ? wp_normalize_path( $targetDir ) : '',
+			'target'         => '' !== $targetDir ? wp_normalize_path( $targetDir . '/' . self::TARGET_FILENAME ) : '',
+			'filename'       => self::TARGET_FILENAME,
+		];
+
+		if ( '' === $targetDir ) {
+			$status['state'] = 'undefined-dir';
+
+			return $status;
+		}
+
+		if ( ! is_file( $targetDir . '/' . self::TARGET_FILENAME ) ) {
+			return $status;
+		}
+
+		if ( ! $status['sourceReadable'] || ! $this->isUpToDate( $source, $targetDir . '/' . self::TARGET_FILENAME ) ) {
+			$status['state'] = 'outdated';
+
+			return $status;
+		}
+
+		$status['ready'] = true;
+		$status['state'] = 'ready';
+
+		return $status;
+	}
+
+	private function isPlugitifyScreen(): bool
+	{
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+
+		$screen = get_current_screen();
+
+		if ( ! $screen instanceof \WP_Screen ) {
+			return false;
+		}
+
+		return false !== strpos( $screen->id, 'plugitify' );
 	}
 
 	private function isUpToDate( string $source, string $target ): bool

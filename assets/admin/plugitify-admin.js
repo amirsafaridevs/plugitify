@@ -225,8 +225,67 @@
 			} );
 	}
 
+	function copyText( value ) {
+		if ( navigator.clipboard && window.isSecureContext ) {
+			return navigator.clipboard.writeText( value );
+		}
+
+		// http:// admin panels have no async clipboard; fall back to a hidden textarea.
+		return new Promise( function ( resolve, reject ) {
+			var helper = document.createElement( 'textarea' );
+
+			helper.value = value;
+			helper.setAttribute( 'readonly', '' );
+			helper.style.position = 'fixed';
+			helper.style.top = '-1000px';
+			document.body.appendChild( helper );
+			helper.select();
+
+			var copied = false;
+
+			try {
+				copied = document.execCommand( 'copy' );
+			} catch ( error ) {
+				copied = false;
+			}
+
+			document.body.removeChild( helper );
+
+			copied ? resolve() : reject();
+		} );
+	}
+
+	function initPathCopy() {
+		var buttons = document.querySelectorAll( '[data-pty-copy]' );
+
+		Array.prototype.forEach.call( buttons, function ( button ) {
+			var originalLabel = button.textContent;
+
+			button.addEventListener( 'click', function () {
+				copyText( button.getAttribute( 'data-pty-copy' ) )
+					.then( function () {
+						button.textContent = 'کپی شد';
+						button.classList.add( 'is-copied' );
+
+						window.setTimeout( function () {
+							button.textContent = originalLabel;
+							button.classList.remove( 'is-copied' );
+						}, 2000 );
+					} )
+					.catch( function () {
+						button.textContent = 'کپی نشد، دستی انتخاب کنید';
+
+						window.setTimeout( function () {
+							button.textContent = originalLabel;
+						}, 2600 );
+					} );
+			} );
+		} );
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		initSettingsPage();
+		initPathCopy();
 
 		var root = document.getElementById( 'pty-dashboard' );
 
@@ -530,6 +589,11 @@
 		}
 
 		Array.prototype.forEach.call( createTriggers, function ( trigger ) {
+			// Disabled while the mu-plugin loader is missing.
+			if ( trigger.disabled || 'true' === trigger.getAttribute( 'aria-disabled' ) ) {
+				return;
+			}
+
 			trigger.addEventListener( 'click', openModal );
 		} );
 

@@ -354,9 +354,10 @@ class SettingsService
 
 	public function render(): void
 	{
-		$settings  = self::all();
-		$providers = self::providers();
-		$saved     = isset( $_GET['updated'] ) || get_transient( 'plugitify_settings_saved' );
+		$settings       = self::all();
+		$providers      = self::providers();
+		$muPluginStatus = ( new MuPluginInstallerService() )->getStatus();
+		$saved          = isset( $_GET['updated'] ) || get_transient( 'plugitify_settings_saved' );
 
 		if ( get_transient( 'plugitify_settings_saved' ) ) {
 			delete_transient( 'plugitify_settings_saved' );

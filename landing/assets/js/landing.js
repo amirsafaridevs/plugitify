@@ -1,40 +1,40 @@
+/**
+ * پلاگیتی‌فای — Landing Page
+ * Single job: reveal elements once, as they enter the viewport.
+ */
 (function () {
 	'use strict';
 
-	document.documentElement.classList.add('has-js');
+	var items = document.querySelectorAll('.reveal');
 
-	function revealSections() {
-		var elements = document.querySelectorAll('.reveal');
-
-		if (!('IntersectionObserver' in window)) {
-			elements.forEach(function (element) {
-				element.classList.add('is-visible');
-			});
-			return;
-		}
-
-		var observer = new IntersectionObserver(function (entries, currentObserver) {
-			entries.forEach(function (entry) {
-				if (!entry.isIntersecting) {
-					return;
-				}
-
-				entry.target.classList.add('is-visible');
-				currentObserver.unobserve(entry.target);
-			});
-		}, {
-			rootMargin: '0px 0px -10% 0px',
-			threshold: 0.08
-		});
-
-		elements.forEach(function (element) {
-			observer.observe(element);
-		});
+	if (!items.length) {
+		return;
 	}
 
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', revealSections);
-	} else {
-		revealSections();
+	var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	// No IntersectionObserver, or the visitor asked for less motion: show everything.
+	if (reduced || !('IntersectionObserver' in window)) {
+		Array.prototype.forEach.call(items, function (el) {
+			el.classList.add('is-in');
+		});
+		return;
 	}
-}());
+
+	var observer = new IntersectionObserver(function (entries) {
+		entries.forEach(function (entry) {
+			if (!entry.isIntersecting) {
+				return;
+			}
+			entry.target.classList.add('is-in');
+			observer.unobserve(entry.target);
+		});
+	}, {
+		rootMargin: '0px 0px -12% 0px',
+		threshold: 0.12
+	});
+
+	Array.prototype.forEach.call(items, function (el) {
+		observer.observe(el);
+	});
+})();

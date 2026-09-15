@@ -3,6 +3,7 @@
  * @var array{provider: string, model: string, api_key: string} $settings
  * @var array<string, array{label: string, group: string, models: array<string, string>}> $providers
  * @var bool $saved
+ * @var array{ready: bool, state: string, source: string, sourceReadable: bool, targetDir: string, target: string, filename: string} $muPluginStatus
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -25,6 +26,8 @@ $currentModels = $providers[ $settings['provider'] ]['models'] ?? [];
 				<?php esc_html_e( 'ذخیره تنظیمات', 'plugitify' ); ?>
 			</button>
 		</header>
+
+		<?php require PLUGITIFY_PATH . 'src/Views/Admin/partials/mu-plugin-notice.php'; ?>
 
 		<?php if ( ! empty( $saved ) ) : ?>
 			<div class="pty-notice pty-notice--success" role="status">

@@ -17,6 +17,17 @@ class PluginCreationService
 			);
 		}
 
+		$muPluginStatus = ( new MuPluginInstallerService() )->getStatus();
+
+		if ( 'missing' === $muPluginStatus['state'] || 'undefined-dir' === $muPluginStatus['state'] ) {
+			wp_send_json_error(
+				[
+					'message' => __( 'فایل mu-plugin پلاگیتی در پوشه‌ی mu-plugins وردپرس قرار نگرفته است. تا کپی شدن آن، ساخت افزونه‌ی جدید ممکن نیست.', 'plugitify' ),
+				],
+				409
+			);
+		}
+
 		$name        = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
 		$slug        = isset( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '';
 		$description = isset( $_POST['description'] ) ? sanitize_text_field( wp_unslash( $_POST['description'] ) ) : '';
